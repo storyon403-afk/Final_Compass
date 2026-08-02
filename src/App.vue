@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import AuthView from './views/AuthView.vue'
 import UserSurveyModal from './components/UserSurveyModal.vue'
 import AdminSurveyModal from './components/AdminSurveyModal.vue'
+import SuspendRest from './components/SuspendRest.vue'
 import { authApi, authenticated, authSession, initIdentity, isAdmin, profile, systemApi } from './api'
 
 const route = useRoute()
@@ -290,6 +291,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
     <main class="app-main"><router-view /></main>
+    <SuspendRest />
   </div>
 
   <div v-if="showPassword" class="modal-backdrop" @click.self="showPassword = false">
