@@ -1,18 +1,49 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { suspendApi } from '../suspendApi'
 
 const phase = ref('idle')
+const enabled = ref(false)
 const video = ref(null)
+const videoSource = ref('/media/suspend-transition.mp4')
 const videoMuted = ref(false)
 const playError = ref('')
 const now = ref(new Date())
 let clockTimer = null
+let objectUrl = ''
 
 const timeLabel = computed(() => now.value.toLocaleTimeString('zh-CN', {
   hour: '2-digit', minute: '2-digit', hour12: false
 }))
 
-function openConfirm() {
+async function loadConfig() {
+  try {
+    const config = await suspendApi.config()
+    enabled.value = config.enabled
+  } catch {
+    enabled.value = false
+  }
+}
+
+function chooseVideoId(ids) {
+  if (!ids?.length) return null
+  return ids[Math.floor(Math.random() * ids.length)]
+}
+
+async function openConfirm() {
+  const config = await suspendApi.config().catch(() => ({ enabled: false }))
+  enabled.value = config.enabled
+  if (!config.enabled) return
+  const id = chooseVideoId(config.videoIds)
+  if (objectUrl) URL.revokeObjectURL(objectUrl)
+  objectUrl = ''
+  videoSource.value = '/media/suspend-transition.mp4'
+  if (id) {
+    try {
+      objectUrl = await suspendApi.videoUrl(id)
+      videoSource.value = objectUrl
+    } catch { /* 内置视频作为可靠兜底 */ }
+  }
   phase.value = 'confirm'
   playError.value = ''
 }
@@ -67,21 +98,25 @@ function handleVisibility() {
 }
 
 onMounted(() => {
+  loadConfig()
   clockTimer = window.setInterval(() => { now.value = new Date() }, 15_000)
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('visibilitychange', handleVisibility)
+  window.addEventListener('finals-compass:suspend-settings-updated', loadConfig)
 })
 
 onBeforeUnmount(() => {
   window.clearInterval(clockTimer)
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('visibilitychange', handleVisibility)
+  window.removeEventListener('finals-compass:suspend-settings-updated', loadConfig)
+  if (objectUrl) URL.revokeObjectURL(objectUrl)
   document.documentElement.classList.remove('site-suspended')
 })
 </script>
 
 <template>
-  <button v-if="phase === 'idle'" class="suspend-rail" type="button" aria-label="暂时挂起网页" @click="openConfirm">
+  <button v-if="enabled && phase === 'idle'" class="suspend-rail" type="button" aria-label="暂时挂起网页" @click="openConfirm">
     <span>◐</span><b>暂挂</b>
   </button>
 
@@ -103,7 +138,7 @@ onBeforeUnmount(() => {
 
   <Transition name="suspend-fade">
     <section v-if="phase === 'video'" class="suspend-video-layer" aria-label="暂挂过渡视频">
-      <video ref="video" src="/media/suspend-transition.mp4" playsinline preload="auto" @ended="enterDarkMode" />
+      <video ref="video" :src="videoSource" playsinline preload="auto" @ended="enterDarkMode" />
       <div class="suspend-video-shade"></div>
       <span class="suspend-video-caption">正在收起页面里的声音与光…</span>
       <div class="suspend-video-actions">
@@ -120,7 +155,7 @@ onBeforeUnmount(() => {
       <div class="suspend-dark-note">
         <span>STAY A WHILE</span>
         <time>{{ timeLabel }}</time>
-        <p>网页在这里等你。</p>
+        <p>Final Compass 在这里等你。</p>
         <small v-if="playError">{{ playError }}</small>
       </div>
       <div class="suspend-resume-hint"><i></i>点击任意位置恢复</div>
