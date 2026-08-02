@@ -1,6 +1,6 @@
 # Finals Compass / 期末指南
 
-Finals Compass 是一个基于 Vue 3、Spring Boot 和 MySQL 的课程复习互助平台。它按照“学院 → 专业 → 课程 → 任课老师 → 老师圈”组织资料、讨论和复习指南，并提供内容审核、匿名身份、反馈问卷与 CET 练习模块。
+Finals Compass 是一个基于 Vue 3、Spring Boot 和 MySQL 的课程复习互助平台。目前，它按照“学院 → 专业 → 课程 → 任课老师 → 老师圈”组织资料、讨论和复习指南，并提供内容审核、匿名身份、反馈问卷与 CET 练习模块。
 
 ## 技术栈
 
