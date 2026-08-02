@@ -11,39 +11,60 @@ const playError = ref('')
 const now = ref(new Date())
 let clockTimer = null
 let objectUrl = ''
+let preloadPromise = null
+let videoPrepared = false
+let currentConfig = { enabled: true, playMode: 'FIXED', videoIds: [] }
 
 const timeLabel = computed(() => now.value.toLocaleTimeString('zh-CN', {
   hour: '2-digit', minute: '2-digit', hour12: false
 }))
-
-async function loadConfig() {
-  try {
-    const config = await suspendApi.config()
-    enabled.value = config.enabled
-  } catch {
-    enabled.value = true
-  }
-}
 
 function chooseVideoId(ids) {
   if (!ids?.length) return null
   return ids[Math.floor(Math.random() * ids.length)]
 }
 
-async function openConfirm() {
-  const config = await suspendApi.config().catch(() => ({ enabled: true, videoIds: [] }))
+function replaceObjectUrl(url) {
+  if (objectUrl) URL.revokeObjectURL(objectUrl)
+  objectUrl = url
+  videoSource.value = url || '/media/suspend-transition.mp4'
+}
+
+async function defaultVideoUrl() {
+  const response = await fetch('/media/suspend-transition.mp4', { cache: 'force-cache' })
+  if (!response.ok) throw new Error('内置视频预加载失败')
+  return URL.createObjectURL(await response.blob())
+}
+
+function preloadVideo(force = false) {
+  if (videoPrepared && !force) return Promise.resolve()
+  if (preloadPromise && !force) return preloadPromise
+  videoPrepared = false
+  preloadPromise = (async () => {
+    const config = await suspendApi.config().catch(() => ({ enabled: true, playMode: 'FIXED', videoIds: [] }))
+    currentConfig = config
+    enabled.value = config.enabled
+    if (!config.enabled) {
+      replaceObjectUrl('')
+      videoPrepared = true
+      return
+    }
+    const id = chooseVideoId(config.videoIds)
+    try {
+      replaceObjectUrl(id ? await suspendApi.videoUrl(id) : await defaultVideoUrl())
+    } catch {
+      replaceObjectUrl('')
+    }
+    videoPrepared = true
+  })().finally(() => { preloadPromise = null })
+  return preloadPromise
+}
+
+function openConfirm() {
+  preloadVideo()
+  const config = currentConfig
   enabled.value = config.enabled
   if (!config.enabled) return
-  const id = chooseVideoId(config.videoIds)
-  if (objectUrl) URL.revokeObjectURL(objectUrl)
-  objectUrl = ''
-  videoSource.value = '/media/suspend-transition.mp4'
-  if (id) {
-    try {
-      objectUrl = await suspendApi.videoUrl(id)
-      videoSource.value = objectUrl
-    } catch { /* 内置视频作为可靠兜底 */ }
-  }
   phase.value = 'confirm'
   playError.value = ''
 }
@@ -53,6 +74,7 @@ function closeConfirm() {
 }
 
 async function beginSuspend() {
+  await preloadVideo()
   phase.value = 'video'
   document.documentElement.classList.add('site-suspended')
   window.dispatchEvent(new CustomEvent('finals-compass:suspend'))
@@ -77,6 +99,7 @@ function resumeSite() {
   phase.value = 'idle'
   document.documentElement.classList.remove('site-suspended')
   window.dispatchEvent(new CustomEvent('finals-compass:resume'))
+  if (currentConfig.playMode === 'RANDOM') window.setTimeout(() => preloadVideo(true), 0)
 }
 
 function toggleMute() {
@@ -98,18 +121,20 @@ function handleVisibility() {
 }
 
 onMounted(() => {
-  loadConfig()
+  preloadVideo()
   clockTimer = window.setInterval(() => { now.value = new Date() }, 15_000)
   window.addEventListener('keydown', handleKeydown)
   document.addEventListener('visibilitychange', handleVisibility)
-  window.addEventListener('finals-compass:suspend-settings-updated', loadConfig)
+  window.addEventListener('finals-compass:suspend-settings-updated', handleSettingsUpdated)
 })
+
+function handleSettingsUpdated() { preloadVideo(true) }
 
 onBeforeUnmount(() => {
   window.clearInterval(clockTimer)
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('visibilitychange', handleVisibility)
-  window.removeEventListener('finals-compass:suspend-settings-updated', loadConfig)
+  window.removeEventListener('finals-compass:suspend-settings-updated', handleSettingsUpdated)
   if (objectUrl) URL.revokeObjectURL(objectUrl)
   document.documentElement.classList.remove('site-suspended')
 })
