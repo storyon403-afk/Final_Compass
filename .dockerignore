@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+dist
+backend/target
+.env
+.env.*
+!.env.example
+backups
+logs
+uploads/*
+!uploads/.gitkeep
+docs/内测账号清单.md
+docs/第二批内测账号.txt
+.DS_Store

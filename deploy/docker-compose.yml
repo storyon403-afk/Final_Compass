@@ -1,0 +1,62 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: finals-compass-mysql
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/backend/Dockerfile
+    container_name: finals-compass-backend
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8080
+      UPLOAD_DIR: /app/uploads
+      APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME:-}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
+      APP_ADMIN_DISPLAY_NAME: ${APP_ADMIN_DISPLAY_NAME:-Administrator}
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/frontend/Dockerfile
+    container_name: finals-compass-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  uploads:
