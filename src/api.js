@@ -161,6 +161,22 @@ export const surveyApi = {
   })
 }
 
+export const aiApi = {
+  dashboard: () => request('/ai/dashboard'),
+  saveByok: (provider, apiKey, label, consentToStore = true) => request('/ai/byok', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, apiKey, label, consentToStore })
+  }),
+  deleteByok: (provider) => request(`/ai/byok/${encodeURIComponent(provider)}`, { method: 'DELETE' }),
+  savePlatformKey: (provider, model, apiKey, enabled) => request('/ai/admin/platform-key', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, model, apiKey, enabled })
+  }),
+  invoke: (fields) => request('/ai/invoke', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  })
+}
+
 export const cetApi = {
   papers: (level = '') => request(`/cet/papers${level ? `?level=${encodeURIComponent(level)}` : ''}`),
   items: (level, mode, section = '') => request(`/cet/items?level=${encodeURIComponent(level)}&mode=${encodeURIComponent(mode)}${section ? `&section=${encodeURIComponent(section)}` : ''}`),

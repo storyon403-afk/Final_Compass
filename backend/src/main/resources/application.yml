@@ -20,6 +20,9 @@ server:
   address: ${SERVER_ADDRESS:127.0.0.1}
 app:
   upload-dir: ${UPLOAD_DIR:../uploads}
+  ai:
+    # 32 random bytes encoded with Base64. Keep it outside Git; changing it makes saved API keys unreadable.
+    encryption-key: ${AI_SECRET_ENCRYPTION_KEY:}
   bootstrap-admin:
     username: ${APP_ADMIN_USERNAME:}
     password: ${APP_ADMIN_PASSWORD:}

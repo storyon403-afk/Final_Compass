@@ -32,6 +32,7 @@ services:
       APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME:-}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
       APP_ADMIN_DISPLAY_NAME: ${APP_ADMIN_DISPLAY_NAME:-Administrator}
+      AI_SECRET_ENCRYPTION_KEY: ${AI_SECRET_ENCRYPTION_KEY:-}
       JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m
     volumes:
       - uploads:/app/uploads

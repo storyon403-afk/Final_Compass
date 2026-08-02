@@ -273,6 +273,7 @@ onBeforeUnmount(() => {
       <nav class="business-switch" aria-label="业务模块">
         <router-link to="/"><span>⌂</span>课程导航</router-link>
         <router-link to="/cet"><span>EN</span>英语等级考试收录</router-link>
+        <router-link to="/ai-analysis"><span>AI</span>AI 学习分析</router-link>
       </nav>
       <div class="browser-account">
         <button class="avatar-button" type="button" :title="profile.nickname || authSession.displayName" @click="showAccount = !showAccount">{{ (profile.nickname || authSession.displayName).slice(0, 1) }}</button>
