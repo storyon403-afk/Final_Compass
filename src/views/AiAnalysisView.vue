@@ -108,7 +108,7 @@ onMounted(load)
     <div v-else class="ai-grid">
       <section class="ai-paper leaderboard-paper">
         <header><div><span>MONTHLY TOP 20</span><h2>本月活跃度排行榜</h2></div><button type="button" @click="load">刷新</button></header>
-        <p class="ai-caption">每日登录 +1；提交资料 +2；资料审核通过再 +5；论坛或指南内容通过 +2。相同事件只计一次。</p>
+        <p class="ai-caption">每日登录 +1，且当天只记一次；每提交一份资料 +2，该资料审核通过再 +5；每条论坛或指南内容审核通过 +2。内容积分不设每日次数限制，仅防止同一条记录被重复计分。</p>
         <ol v-if="dashboard.leaderboard.length" class="ai-ranking">
           <li v-for="item in dashboard.leaderboard" :key="item.user_id">
             <b>{{ item.ranking_position }}</b><span>{{ item.display_name }}</span><strong>{{ item.score }} pts</strong>
