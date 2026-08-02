@@ -21,7 +21,7 @@ async function loadConfig() {
     const config = await suspendApi.config()
     enabled.value = config.enabled
   } catch {
-    enabled.value = false
+    enabled.value = true
   }
 }
 
@@ -31,7 +31,7 @@ function chooseVideoId(ids) {
 }
 
 async function openConfirm() {
-  const config = await suspendApi.config().catch(() => ({ enabled: false }))
+  const config = await suspendApi.config().catch(() => ({ enabled: true, videoIds: [] }))
   enabled.value = config.enabled
   if (!config.enabled) return
   const id = chooseVideoId(config.videoIds)
