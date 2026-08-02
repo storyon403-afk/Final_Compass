@@ -41,6 +41,8 @@ services:
       - app-network
 
   frontend:
+    profiles:
+      - container-frontend
     build:
       context: ..
       dockerfile: deploy/frontend/Dockerfile

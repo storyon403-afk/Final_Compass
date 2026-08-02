@@ -29,6 +29,12 @@ mvn test
 
 涉及接口字段时，同时检查 `src/api.js`、Vue 使用方、Java DTO 和 SQL 映射。涉及上传功能时，不要把测试文件加入 Git。
 
+## 部署模式
+
+- 默认 Compose 只启动 MySQL 和 backend，适合已有宿主机 Nginx 的服务器。
+- 只有需要容器内 Nginx 时才使用 `--profile container-frontend`。
+- 生产部署不得同时让宿主机 Nginx 和 frontend 容器绑定 80 端口。
+
 ## 报告问题
 
 普通缺陷可以提交 Issue。安全漏洞请遵循 `SECURITY.md`，不要公开漏洞细节或凭据。

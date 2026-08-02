@@ -76,13 +76,21 @@ cd deploy
 cp .env.example .env
 ```
 
-编辑 `.env`，将全部 `replace-with-...` 替换为随机密码，然后执行：
+编辑 `.env`，将全部 `replace-with-...` 替换为随机密码。如果目标机器没有宿主机 Nginx，希望前端、后端和 MySQL 全部由 Docker 提供，执行：
 
 ```bash
-docker compose up -d --build
+docker compose --profile container-frontend up -d --build
 ```
 
 随后访问 `http://localhost`。
+
+默认不启用 frontend 容器，避免与已有宿主机 Nginx 争用 80 端口。已有 Nginx 的服务器使用：
+
+```bash
+docker compose up -d --build mysql backend
+```
+
+前端执行 `npm ci && npm run build` 后，将 `dist/` 发布到宿主机 Nginx 的静态目录，并继续把 `/api/` 代理到 `127.0.0.1:8080`。
 
 `.env`、数据库卷和上传卷都不应提交到 Git。
 
