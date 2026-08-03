@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router'
 import AuthView from './views/AuthView.vue'
 import UserSurveyModal from './components/UserSurveyModal.vue'
 import AdminSurveyModal from './components/AdminSurveyModal.vue'
+import SuspendRest from './components/SuspendRest.vue'
+import AdminSuspendModal from './components/AdminSuspendModal.vue'
 import { authApi, authenticated, authSession, initIdentity, isAdmin, profile, systemApi } from './api'
 
 const route = useRoute()
@@ -16,6 +18,7 @@ const showModeration = ref(false)
 const showBetaAccess = ref(false)
 const showAnnouncement = ref(false)
 const showAnnouncementAdmin = ref(false)
+const showSuspendAdmin = ref(false)
 const showSurvey = ref(false)
 const currentPassword = ref('')
 const newPassword = ref('')
@@ -73,6 +76,7 @@ function closeOverlays(event) {
   showBetaAccess.value = false
   showAnnouncement.value = false
   showAnnouncementAdmin.value = false
+  showSuspendAdmin.value = false
   showSurvey.value = false
 }
 
@@ -284,6 +288,7 @@ onBeforeUnmount(() => {
           <button v-if="isAdmin" type="button" @click="openModeration">内容审核</button>
           <button v-if="isAdmin" type="button" @click="openBetaAccess">登录验证</button>
           <button v-if="isAdmin" type="button" @click="openAnnouncementAdmin">公告管理</button>
+          <button v-if="isAdmin" type="button" @click="showSuspendAdmin = true; showAccount = false">暂挂体验管理</button>
           <button type="button" @click="showSurvey = true; showAccount = false">{{ isAdmin ? '调查问卷管理' : '填写调查问卷' }}</button>
           <button type="button" @click="showPassword = true; showAccount = false">修改密码</button>
           <button type="button" @click="logout">退出登录</button>
@@ -291,6 +296,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
     <main class="app-main"><router-view /></main>
+    <SuspendRest />
   </div>
 
   <div v-if="showPassword" class="modal-backdrop" @click.self="showPassword = false">
@@ -381,4 +387,5 @@ onBeforeUnmount(() => {
   <div v-if="copiedMessage" class="toast">{{ copiedMessage }}</div>
   <AdminSurveyModal v-if="showSurvey && isAdmin" @close="showSurvey = false" />
   <UserSurveyModal v-else-if="showSurvey" @close="showSurvey = false" />
+  <AdminSuspendModal v-if="showSuspendAdmin && isAdmin" @close="showSuspendAdmin = false" />
 </template>
