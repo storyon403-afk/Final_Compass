@@ -1,0 +1,17 @@
+[project]
+name = "finals-compass-markitdown-worker"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi==0.116.1",
+  "uvicorn[standard]==0.35.0",
+  "python-multipart==0.0.20",
+  "markitdown[pdf,docx,pptx,xls,xlsx]>=0.1.3,<0.2",
+]
+
+[project.optional-dependencies]
+audio = ["markitdown[audio-transcription]>=0.1.3,<0.2"]
+test = ["pytest==8.4.1", "httpx==0.28.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

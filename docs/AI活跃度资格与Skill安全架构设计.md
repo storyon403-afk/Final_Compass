@@ -20,7 +20,7 @@
 - 不允许 Skill 直接执行数据库写入、任意 HTTP、Shell 或文件操作。
 - 不把平台或用户 API Key 写入源码、日志、错误信息和前端持久存储。
 
-当前 `PreviewAiProviderGateway` 只返回“安全预检完成”的预览结果。真实模型接入时新增 Provider 实现，不应把 HTTP 调用散落到 Controller 或 Skill 中。
+当前 `PreviewAiProviderAdapter` 只返回“安全预检完成”的预览结果。真实模型接入时为各厂商新增 Provider Adapter，不应把 HTTP 调用散落到 Controller 或 Skill 中。
 
 ## 2. 总体调用链
 
@@ -36,7 +36,7 @@ Vue AI 学习分析页
   └── POST /api/ai/invoke
         ├── AuthService：确认登录用户
         ├── AiSkillRegistry：只允许已注册 Skill
-        ├── AiAnalysisService：检查资格并选择凭据
+        ├── AiCredentialResolver：检查资格并选择短生命周期凭据
         ├── AiSecretCipher：必要时短暂解密
         ├── AiProviderGateway：统一模型调用边界
         └── ai_usage_log：记录元数据，不记录 Key 和完整输入
@@ -332,3 +332,37 @@ skill_id
 4. 增加每月资格批次任务、冲正事件和管理员积分审计。
 5. 增加 Provider Mock 集成测试、权限测试和日志泄密测试。
 6. 完成隐私说明与用户删除 Key 的验收后，再考虑部署。
+# AI 界面与附件解析边界（V1 UI）
+
+AI 主页面采用对话式布局，不向普通用户展示 Skill Registry、Provider Adapter 等内部扩展结构。用户只需要直接提出问题；模块规则、排行榜、凭据来源和管理员平台配置收纳在右上角三横线菜单中。Skill ID、输入上限和能力声明属于开发文档与后端契约，不作为主页面信息架构。
+
+界面已经提供图片、文档和音频的本地选择入口，但 V1 只展示待处理附件，不上传、不解析，也不发送给外部模型。页面必须明确显示这一阶段状态，不能让用户误以为附件已参与分析。
+
+## MarkItDown 接入评估
+
+Microsoft MarkItDown 是 MIT 许可的 Python 3.10+ 文件转 Markdown 工具，适合把 PDF、Word、PowerPoint、Excel、HTML、文本、图片 OCR 和音频转写结果转换为更适合 LLM 使用的 Markdown。它可以用于 Final Compass 后续的附件标准化，但不应直接嵌入 Vue，也不建议让 Spring Boot 通过不受约束的命令行处理用户路径。
+
+推荐架构：
+
+```text
+Vue 上传附件
+  -> Spring Boot 校验身份、大小、扩展名和实际 MIME
+  -> 保存到每次请求独立的临时目录
+  -> 隔离的 MarkItDown Worker 使用 convert_stream/convert_local
+  -> 返回 Markdown、页码和解析元数据
+  -> Spring Boot 再按 Skill 与权限调用外部 AI API
+  -> 请求结束按保留策略删除原文件和中间结果
+```
+
+安全要求：
+
+- Worker 使用独立低权限系统用户或容器，不能读取应用配置、数据库凭据和上传目录以外的文件。
+- 禁止把用户提供的任意 URL 或文件路径直接交给 MarkItDown；官方明确说明它会以当前进程权限执行 I/O。
+- 默认禁用第三方插件，只安装确实需要的格式依赖。
+- 设置文件大小、页数、解压文件数、解析时间和输出字符数上限，防止 ZIP 炸弹和资源耗尽。
+- 文件名只作展示，存储使用服务器生成的随机名称。
+- OCR 或音频转写若需要云 API，必须继续经过 Credential Resolver，不能让转换 Worker读取平台或用户 Key。
+- 解析后的 Markdown属于不可信数据，不能作为系统提示词；后续 MCP/Agent 接入时仍需防 Prompt Injection。
+- 记录 traceId、文件类型、大小、耗时和状态，不记录 API Key，也不默认长期保存原文件内容。
+
+由于当前后端是 Java/Spring Boot，而 MarkItDown 是 Python 包，正式接入会引入独立 Python 运行环境、进程通信、超时和部署维护。本次仅完成 UI 与架构说明，不把 Python 依赖加入当前 V1。

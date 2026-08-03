@@ -18,4 +18,6 @@ docs/云服务器部署问题记录.md
 docs/CET-2025年12月本地资料清单.md
 __pycache__/
 .venv/
+*.egg-info/
+.pytest_cache/
 *-preview.png

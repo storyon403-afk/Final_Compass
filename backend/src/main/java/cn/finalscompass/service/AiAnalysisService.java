@@ -4,6 +4,7 @@ import cn.finalscompass.ai.AiCredentialSource;
 import cn.finalscompass.ai.AiProviderGateway;
 import cn.finalscompass.ai.AiSkill;
 import cn.finalscompass.ai.AiSkillRegistry;
+import cn.finalscompass.ai.ResolvedAiCredential;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -24,14 +25,16 @@ public class AiAnalysisService {
     private final AiSecretCipher cipher;
     private final AiSkillRegistry skills;
     private final AiProviderGateway gateway;
+    private final AiCredentialResolver credentials;
 
     public AiAnalysisService(JdbcClient jdbc, ActivityService activity, AiSecretCipher cipher,
-                             AiSkillRegistry skills, AiProviderGateway gateway) {
+                             AiSkillRegistry skills, AiProviderGateway gateway, AiCredentialResolver credentials) {
         this.jdbc = jdbc;
         this.activity = activity;
         this.cipher = cipher;
         this.skills = skills;
         this.gateway = gateway;
+        this.credentials = credentials;
     }
 
     public Dashboard dashboard(long userId) {
@@ -46,12 +49,12 @@ public class AiAnalysisService {
             """).param("user", userId).query().listOfRows();
         return new Dashboard(YearMonth.now().toString(), activity.currentMonthScore(userId),
                 activity.hasPlatformEntitlement(userId), activity.currentMonthLeaderboard(),
-                skills.available(), providers, secrets, cipher.available());
+                skills.available(), gateway.available(), providers, secrets, cipher.available());
     }
 
     @Transactional
     public Map<String, Object> saveUserKey(long userId, SaveUserKey request) {
-        String provider = normalizeProvider(request.provider());
+        String provider = gateway.require(request.provider()).id();
         if (!request.consentToStore()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "保存 API Key 前必须获得用户明确同意");
         if (!cipher.available()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "当前环境未配置 API Key 加密主密钥，只能使用不保存模式");
         char[] apiKey = requiredApiKey(request.apiKey());
@@ -72,12 +75,12 @@ public class AiAnalysisService {
 
     public void deleteUserKey(long userId, String provider) {
         jdbc.sql("DELETE FROM user_ai_secret WHERE user_id=:user AND provider=:provider")
-                .param("user", userId).param("provider", normalizeProvider(provider)).update();
+                .param("user", userId).param("provider", gateway.require(provider).id()).update();
     }
 
     @Transactional
     public Map<String, Object> savePlatformKey(long adminId, SavePlatformKey request) {
-        String provider = normalizeProvider(request.provider());
+        String provider = gateway.require(request.provider()).id();
         if (!cipher.available()) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "当前环境未配置 API Key 加密主密钥");
         char[] apiKey = requiredApiKey(request.apiKey());
         try {
@@ -102,54 +105,28 @@ public class AiAnalysisService {
         try { source = AiCredentialSource.valueOf(request.credentialSource().toUpperCase()); }
         catch (Exception exception) { throw new IllegalArgumentException("不支持的凭据来源"); }
 
-        Credential credential = resolveCredential(userId, normalizeProvider(request.provider()), source, request.ephemeralApiKey());
-        String traceId = UUID.randomUUID().toString();
-        jdbc.sql("""
-            INSERT INTO ai_usage_log(user_id,provider,model_name,skill_id,credential_source,status,input_units,trace_id)
-            VALUES (:user,:provider,:model,:skill,:source,'ACCEPTED',:inputUnits,:trace)
-            """).param("user", userId).param("provider", credential.provider()).param("model", credential.model())
-                .param("skill", skill.id()).param("source", source.name()).param("inputUnits", request.input().length())
-                .param("trace", traceId).update();
-        try {
-            var result = gateway.invoke(new AiProviderGateway.AiProviderRequest(
-                    credential.provider(), credential.model(), skill, request.input()), credential.apiKey());
+        try (ResolvedAiCredential credential = credentials.resolve(
+                userId, request.provider(), source, request.ephemeralApiKey())) {
+            String traceId = UUID.randomUUID().toString();
             jdbc.sql("""
-                UPDATE ai_usage_log SET status='SUCCEEDED',input_units=:input,output_units=:output,completed_at=NOW()
-                WHERE trace_id=:trace
-                """).param("input", result.inputUnits()).param("output", result.outputUnits()).param("trace", traceId).update();
-            return new InvokeResult(result.content(), traceId, true);
-        } catch (RuntimeException exception) {
-            jdbc.sql("UPDATE ai_usage_log SET status='FAILED',error_code='PROVIDER_ERROR',completed_at=NOW() WHERE trace_id=:trace")
+                INSERT INTO ai_usage_log(user_id,provider,model_name,skill_id,credential_source,status,input_units,trace_id)
+                VALUES (:user,:provider,:model,:skill,:source,'ACCEPTED',:inputUnits,:trace)
+                """).param("user", userId).param("provider", credential.provider()).param("model", credential.model())
+                    .param("skill", skill.id()).param("source", source.name()).param("inputUnits", request.input().length())
                     .param("trace", traceId).update();
-            throw exception;
-        } finally { Arrays.fill(credential.apiKey(), '\0'); }
-    }
-
-    private Credential resolveCredential(long userId, String provider, AiCredentialSource source, String ephemeral) {
-        if (source == AiCredentialSource.PLATFORM) {
-            if (!activity.hasPlatformEntitlement(userId)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "本月暂无平台 AI 免费资格，可使用自己的 API Key");
-            SecretRow row = jdbc.sql("""
-                SELECT provider,model_name,encrypted_key,encryption_iv FROM platform_ai_config
-                WHERE provider=:provider AND enabled=TRUE
-                """).param("provider", provider).query(SecretRow.class).optional()
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "管理员尚未启用该平台 AI"));
-            return new Credential(provider, row.modelName(), cipher.decrypt(row.encryptedKey(), row.encryptionIv()));
+            try {
+                var result = gateway.invoke(credential.provider(), credential.model(), skill, request.input(), credential.apiKey());
+                jdbc.sql("""
+                    UPDATE ai_usage_log SET status='SUCCEEDED',input_units=:input,output_units=:output,completed_at=NOW()
+                    WHERE trace_id=:trace
+                    """).param("input", result.inputUnits()).param("output", result.outputUnits()).param("trace", traceId).update();
+                return new InvokeResult(result.content(), traceId, result.preview(), skill.id(), credential.provider());
+            } catch (RuntimeException exception) {
+                jdbc.sql("UPDATE ai_usage_log SET status='FAILED',error_code='PROVIDER_ERROR',completed_at=NOW() WHERE trace_id=:trace")
+                        .param("trace", traceId).update();
+                throw exception;
+            }
         }
-        if (source == AiCredentialSource.STORED_BYOK) {
-            UserSecretRow row = jdbc.sql("""
-                SELECT provider,encrypted_key,encryption_iv FROM user_ai_secret WHERE user_id=:user AND provider=:provider
-                """).param("user", userId).param("provider", provider).query(UserSecretRow.class).optional()
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "尚未保存该 Provider 的 API Key"));
-            return new Credential(provider, "user-selected", cipher.decrypt(row.encryptedKey(), row.encryptionIv()));
-        }
-        if (ephemeral == null || ephemeral.length() < 8 || ephemeral.length() > 500) throw new IllegalArgumentException("请输入本次请求使用的 API Key");
-        return new Credential(provider, "user-selected", ephemeral.toCharArray());
-    }
-
-    private String normalizeProvider(String value) {
-        String provider = value == null ? "" : value.trim().toLowerCase();
-        if (!provider.matches("[a-z0-9][a-z0-9_-]{1,39}")) throw new IllegalArgumentException("Provider 标识不合法");
-        return provider;
     }
 
     private char[] requiredApiKey(String value) {
@@ -165,13 +142,11 @@ public class AiAnalysisService {
 
     public record Dashboard(String month, int myScore, boolean platformEligible,
                             List<Map<String, Object>> leaderboard, List<AiSkillRegistry.SkillInfo> skills,
+                            List<AiProviderGateway.ProviderInfo> providers,
                             List<Map<String, Object>> platformProviders, List<Map<String, Object>> savedKeys,
                             boolean encryptedStorageAvailable) {}
     public record SaveUserKey(String provider, String apiKey, String label, boolean consentToStore) {}
     public record SavePlatformKey(String provider, String model, String apiKey, boolean enabled) {}
     public record InvokeRequest(String provider, String skillId, String credentialSource, String ephemeralApiKey, String input) {}
-    public record InvokeResult(String content, String traceId, boolean preview) {}
-    private record Credential(String provider, String model, char[] apiKey) {}
-    private record SecretRow(String provider, String modelName, String encryptedKey, String encryptionIv) {}
-    private record UserSecretRow(String provider, String encryptedKey, String encryptionIv) {}
+    public record InvokeResult(String content, String traceId, boolean preview, String skillId, String provider) {}
 }

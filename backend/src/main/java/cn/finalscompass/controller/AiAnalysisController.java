@@ -1,6 +1,7 @@
 package cn.finalscompass.controller;
 
 import cn.finalscompass.service.AiAnalysisService;
+import cn.finalscompass.service.AiDocumentConversionService;
 import cn.finalscompass.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -13,10 +14,12 @@ import java.util.Map;
 public class AiAnalysisController {
     private final AuthService auth;
     private final AiAnalysisService ai;
+    private final AiDocumentConversionService documents;
 
-    public AiAnalysisController(AuthService auth, AiAnalysisService ai) {
+    public AiAnalysisController(AuthService auth, AiAnalysisService ai, AiDocumentConversionService documents) {
         this.auth = auth;
         this.ai = ai;
+        this.documents = documents;
     }
 
     @GetMapping("/dashboard")
@@ -43,5 +46,12 @@ public class AiAnalysisController {
     @PostMapping("/invoke")
     public AiAnalysisService.InvokeResult invoke(HttpServletRequest request, @RequestBody AiAnalysisService.InvokeRequest body) {
         return ai.invoke(auth.current(request).id(), body);
+    }
+
+    @PostMapping(value = "/attachments/convert", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AiDocumentConversionService.ConversionResult convertAttachment(
+            HttpServletRequest request, @RequestPart org.springframework.web.multipart.MultipartFile file) {
+        auth.current(request);
+        return documents.convert(file);
     }
 }

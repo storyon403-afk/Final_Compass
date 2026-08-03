@@ -174,7 +174,12 @@ export const aiApi = {
   }),
   invoke: (fields) => request('/ai/invoke', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
-  })
+  }),
+  convertAttachment: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request('/ai/attachments/convert', { method: 'POST', body: form })
+  }
 }
 
 export const cetApi = {
