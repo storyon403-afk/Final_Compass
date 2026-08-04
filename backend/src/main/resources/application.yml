@@ -20,6 +20,13 @@ server:
   address: ${SERVER_ADDRESS:127.0.0.1}
 app:
   upload-dir: ${UPLOAD_DIR:../uploads}
+  ai:
+    # 32 random bytes encoded with Base64. Keep it outside Git; changing it makes saved API keys unreadable.
+    encryption-key: ${AI_SECRET_ENCRYPTION_KEY:}
+    document-worker:
+      url: ${MARKITDOWN_WORKER_URL:}
+      token: ${MARKITDOWN_WORKER_TOKEN:}
+      timeout: ${MARKITDOWN_WORKER_TIMEOUT:60s}
   bootstrap-admin:
     username: ${APP_ADMIN_USERNAME:}
     password: ${APP_ADMIN_PASSWORD:}
