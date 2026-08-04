@@ -101,7 +101,6 @@ public class AiAnalysisService {
         } finally { Arrays.fill(apiKey, '\0'); }
     }
 
-    @Transactional
     public InvokeResult invoke(long userId, InvokeRequest request) {
         AiSkillPlanner.ExecutionPlan plan = orchestrator.prepare(request.skillId(), request.input());
         AiSkill skill = plan.primarySkill();
