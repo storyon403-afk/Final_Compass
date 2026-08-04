@@ -94,7 +94,7 @@ function openExistingLogin() {
       </div>
 
       <form v-if="step === 'request'" class="auth-form" @submit.prevent="submitRequest">
-        <div class="auth-title"><h1>验证你的联系方式</h1><p>填写后，管理员会将一次性验证码发送到你的邮箱。</p></div>
+        <div class="auth-title"><h1>验证你的联系方式</h1><p>填写后，系统会自动将一次性验证码发送到你的邮箱。</p></div>
         <label>邮箱<input v-model.trim="email" type="email" autocomplete="email" maxlength="254" placeholder="name@example.com" required autofocus /></label>
         <label>再次确认邮箱<input v-model.trim="confirmEmail" type="email" autocomplete="email" maxlength="254" placeholder="请再次输入邮箱" required /></label>
         <label>手机号<input v-model.trim="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="14" placeholder="+8613812345678" pattern="\+861[3-9][0-9]{9}" required /><small>仅支持 +86 格式，例如 +8613812345678</small></label>
@@ -104,9 +104,9 @@ function openExistingLogin() {
       </form>
 
       <form v-else-if="step === 'verify'" class="auth-form" @submit.prevent="submitCode">
-        <div class="auth-title"><span class="eyebrow">邮箱验证</span><h1>输入 6 位验证码</h1><p>申请已提交。管理员会人工发送验证码至<br /><b>{{ challenge.email }}</b></p></div>
+        <div class="auth-title"><span class="eyebrow">邮箱验证</span><h1>输入 6 位验证码</h1><p>验证码已自动发送至<br /><b>{{ challenge.email }}</b></p></div>
         <label>验证码<input ref="codeInput" v-model="code" class="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required autofocus /></label>
-        <div class="auth-notice">验证码 30 分钟内有效且仅可使用一次。如暂未收到，请稍候检查收件箱和垃圾邮件。</div>
+        <div class="auth-notice">验证码 10 分钟内有效且仅可使用一次。如暂未收到，请稍候检查收件箱和垃圾邮件。</div>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <button class="primary-button wide" type="submit" :disabled="busy || code.length !== 6">{{ busy ? '正在验证…' : '验证并继续' }}</button>
         <button class="text-button" type="button" @click="restart">邮箱填错了？重新申请</button>

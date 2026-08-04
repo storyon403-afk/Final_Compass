@@ -23,7 +23,7 @@ class AuthenticationInterceptorTest {
 
     @Test
     void attachesAuthenticatedUserToRequest() throws Exception {
-        var user = new AuthService.CurrentUser(7, "user01", "user01", "USER", "hash", "valid");
+        var user = new AuthService.CurrentUser(7, "user01", "user01", "USER", "hash", "valid", false);
         var interceptor = new AuthenticationInterceptor(new StubAuthService(Optional.of(user)));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer valid");
