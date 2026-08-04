@@ -27,7 +27,9 @@ public class AiCredentialResolver {
     public ResolvedAiCredential resolve(long userId, String providerValue, AiCredentialSource source, String ephemeral) {
         String provider = providers.require(providerValue).id();
         if (source == AiCredentialSource.PLATFORM) {
-            if (!activity.hasPlatformEntitlement(userId)) {
+            boolean admin = jdbc.sql("SELECT role='ADMIN' FROM app_user WHERE id=:user")
+                    .param("user", userId).query(Boolean.class).optional().orElse(false);
+            if (!admin && !activity.hasPlatformEntitlement(userId)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "本月暂无平台 AI 免费资格，可使用自己的 API Key");
             }
             SecretRow row = jdbc.sql("""

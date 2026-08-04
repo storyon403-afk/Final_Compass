@@ -199,7 +199,9 @@ async function savePlatform() {
   try {
     await aiApi.savePlatformKey(adminProvider.value, adminModel.value, adminKey.value, adminEnabled.value)
     adminKey.value = ''
-    message.value = '平台 AI 配置已加密保存。'
+    provider.value = adminProvider.value
+    credentialSource.value = 'PLATFORM'
+    message.value = '平台 AI 配置已加密保存，并已切换到平台通道，可以直接发送问题测试。'
     await load()
   } catch (reason) { error.value = reason.message }
 }
