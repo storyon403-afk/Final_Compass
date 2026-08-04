@@ -2,6 +2,8 @@ package cn.finalscompass.service;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -11,6 +13,7 @@ import java.util.List;
 /** Allocates sequential beta login accounts using a single MySQL row lock. */
 @Service
 public class AccountAllocationService {
+    private static final Logger log = LoggerFactory.getLogger(AccountAllocationService.class);
     private final JdbcClient jdbc;
     private final TransactionTemplate transactions;
 
@@ -31,7 +34,16 @@ public class AccountAllocationService {
                 WHERE r.status='EMAIL_VERIFIED' AND a.id IS NULL
                 ORDER BY r.verified_at,r.id LIMIT 200
                 """).query(Long.class).list();
-        ids.forEach(this::reserve);
+        for (Long id : ids) {
+            try {
+                reserve(id);
+            } catch (RuntimeException exception) {
+                // One temporarily failing request must not prevent later verified users from
+                // receiving their reservations. A later list refresh retries the same row.
+                log.warn("Unable to backfill account reservation for request {}: {}",
+                        id, exception.getClass().getSimpleName());
+            }
+        }
     }
 
     public void consumeOrRelease(long requestId, String actualUsername) {

@@ -58,8 +58,7 @@ public class MicrosoftGraphMailService {
                 SELECT account_email,account_name,status,connected_at,last_refreshed_at,last_success_at,last_error_code
                 FROM mail_oauth_connection WHERE provider='MICROSOFT_GRAPH'
                 """).query().listOfRows();
-        boolean active = jdbc.sql("SELECT active_provider='MICROSOFT_GRAPH' FROM mail_provider_setting WHERE id=1")
-                .query(Boolean.class).single();
+        boolean active = active();
         if (rows.isEmpty()) return Map.of("configured", configured(), "connected", false, "active", false);
         var result = new java.util.LinkedHashMap<String, Object>(rows.getFirst());
         result.put("configured", configured()); result.put("connected", true); result.put("active", active);
@@ -118,11 +117,18 @@ public class MicrosoftGraphMailService {
     }
 
     public boolean active() {
-        return jdbc.sql("SELECT active_provider='MICROSOFT_GRAPH' FROM mail_provider_setting WHERE id=1")
-                .query(Boolean.class).single();
+        if (!configured()) return false;
+        return jdbc.sql("""
+                SELECT EXISTS(
+                  SELECT 1 FROM mail_provider_setting p
+                  JOIN mail_oauth_connection c ON c.provider='MICROSOFT_GRAPH' AND c.status='CONNECTED'
+                  WHERE p.id=1 AND p.active_provider='MICROSOFT_GRAPH'
+                )
+                """).query(Boolean.class).single();
     }
 
     public void send(String recipient, String subject, String text) {
+        requireConfigured();
         Connection row = jdbc.sql("""
                 SELECT encrypted_refresh_token,refresh_token_iv FROM mail_oauth_connection
                 WHERE provider='MICROSOFT_GRAPH' AND status='CONNECTED'
