@@ -48,6 +48,26 @@ MySQL + Flyway（账号、课程、内容、审核与审计事实）
 
 首次管理员由环境变量显式创建。应用不会在 Flyway 迁移中写入固定账号。
 
+## 快速克隆
+
+未配置 GitHub SSH Key 时使用 HTTPS：
+
+```bash
+git clone https://github.com/storyon403-afk/Final_Compass.git
+cd Final_Compass
+npm ci
+```
+
+已经配置 GitHub SSH Key 的贡献者可以使用 SSH：
+
+```bash
+git clone git@github.com:storyon403-afk/Final_Compass.git
+cd Final_Compass
+npm ci
+```
+
+克隆完成后，按照下方“本地启动”配置 MySQL、Redis 和后端环境变量。准备参与开发时，请先阅读 [贡献流程](CONTRIBUTING.md) 和 Wiki 的 [学习树](https://github.com/storyon403-afk/Final_Compass/wiki/Learning-Tree)。
+
 ## 本地启动
 
 ### 1. 准备环境
