@@ -63,24 +63,37 @@ async function capturePhoto(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file) return
+  await prepareTemporaryImage(file, '临时拍摄')
+}
+
+async function pasteScreenshot(event) {
+  const item = Array.from(event.clipboardData?.items || []).find((entry) => entry.kind === 'file' && entry.type.startsWith('image/'))
+  if (!item) return
+  const file = item.getAsFile()
+  if (!file) return
+  event.preventDefault()
+  await prepareTemporaryImage(file, '粘贴截图')
+}
+
+async function prepareTemporaryImage(file, sourceLabel) {
   error.value = ''
   try {
-    capturedPhoto.value = await compressPhoto(file)
+    capturedPhoto.value = { ...await compressPhoto(file), sourceLabel }
     const current = dashboard.value.providers.find((item) => item.id === provider.value)
     if (!current?.capabilities?.includes('IMAGE')) {
       const visual = dashboard.value.providers.find((item) => item.capabilities?.includes('IMAGE'))
       if (!visual) throw new Error('当前没有配置支持图片的 AI Provider')
       provider.value = visual.id
       credentialSource.value = 'EPHEMERAL_BYOK'
-      message.value = `拍题需要视觉模型，已切换到 ${visual.name}，请使用对应的 API Key。`
+      message.value = `${sourceLabel}需要视觉模型，已切换到 ${visual.name}，请使用对应的 API Key。`
     }
   }
-  catch (reason) { error.value = reason.message || '照片处理失败，请重新拍摄' }
+  catch (reason) { error.value = reason.message || '图片处理失败，请重新选择' }
 }
 
 function compressPhoto(file) {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) return reject(new Error('相机没有返回有效图片'))
+    if (!file.type.startsWith('image/')) return reject(new Error('没有读取到有效图片'))
     const image = new Image()
     const objectUrl = URL.createObjectURL(file)
     image.onload = () => {
@@ -93,7 +106,7 @@ function compressPhoto(file) {
         canvas.getContext('2d', { alpha: false }).drawImage(image, 0, 0, canvas.width, canvas.height)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.84)
         if (dataUrl.length > 5.4 * 1024 * 1024) throw new Error('照片压缩后仍超过 4MB，请靠近题目重新拍摄')
-        resolve({ name: `camera-${Date.now()}.jpg`, dataUrl, size: Math.round(dataUrl.length * 0.75) })
+        resolve({ name: `temporary-image-${Date.now()}.jpg`, dataUrl, size: Math.round(dataUrl.length * 0.75) })
         canvas.width = 1; canvas.height = 1
       } catch (reason) { reject(reason) }
       finally { URL.revokeObjectURL(objectUrl) }
@@ -220,11 +233,11 @@ onMounted(load)
           </div>
           <div v-if="capturedPhoto" class="ai-camera-preview">
             <img :src="capturedPhoto.dataUrl" alt="本次问题拍摄的临时照片" />
-            <div><b>临时拍摄</b><small>{{ formatSize(capturedPhoto.size) }} · 仅本次问题使用</small></div>
+            <div><b>{{ capturedPhoto.sourceLabel }}</b><small>{{ formatSize(capturedPhoto.size) }} · 仅本次问题使用</small></div>
             <button type="button" aria-label="删除拍摄照片" :disabled="invoking" @click="clearCapturedPhoto">×</button>
           </div>
           <div class="ai-composer">
-            <textarea v-model="input" rows="1" maxlength="8000" placeholder="向 FinalsCompass AI 工具提问…" @keydown.enter.exact.prevent="invoke"></textarea>
+            <textarea v-model="input" rows="1" maxlength="8000" placeholder="向 FinalsCompass AI 工具提问…也可以直接粘贴截图" @paste="pasteScreenshot" @keydown.enter.exact.prevent="invoke"></textarea>
             <div class="ai-composer-actions">
               <input ref="fileInput" class="visually-hidden" type="file" multiple accept="image/png,image/jpeg,image/webp,audio/wav,audio/mpeg,audio/mp4,.pdf,.docx,.pptx,.xls,.xlsx,.txt,.md,.csv,.json,.xml,.html" @change="chooseFiles" />
               <input ref="cameraInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" @change="capturePhoto" />
@@ -234,7 +247,7 @@ onMounted(load)
               <button class="ai-send" type="button" :disabled="invoking || (!input.trim() && !capturedPhoto)" @click="invoke">{{ invoking ? '···' : '↑' }}</button>
             </div>
           </div>
-          <p class="ai-stage-note">附件由隔离 Worker 解析；“拍题”照片只保存在当前页面内存并随本次请求发送，不写入资料库或服务器硬盘，请求完成后立即从页面释放。</p>
+          <p class="ai-stage-note">附件由隔离 Worker 解析；拍题照片和粘贴截图只保存在当前页面内存并随本次请求发送，不写入资料库或服务器硬盘，请求完成后立即释放。</p>
         </section>
       </template>
     </main>

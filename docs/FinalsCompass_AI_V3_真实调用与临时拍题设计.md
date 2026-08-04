@@ -33,6 +33,8 @@ finally / AutoCloseable 清零 byte[]
 
 该链路不调用课程资料上传接口、不生成数据库附件记录、不写入 `uploads/`，也不调用 Provider 的 Files API。浏览器只在当前组件状态中保存压缩照片；请求成功或用户主动删除时释放。调用失败时照片留在当前页面，便于确认后重试，关闭或刷新页面后自然消失。
 
+输入框同时监听剪贴板 `paste` 事件。剪贴板包含 PNG、JPEG 或 WebP 图片时，阻止图片作为普通文本粘贴，并复用相同的 Canvas 压缩、视觉 Provider 选择和请求级内存链路；普通文字粘贴不受影响。
+
 生产 Nginx 必须对精确路径 `/api/ai/invoke` 设置 `proxy_request_buffering off`，避免较大的请求体落入 Nginx `client_body_temp`。仓库容器配置已经包含该规则；使用宿主机 Nginx 时需要同步配置。
 
 外部 Provider 会接收到图片内容，其数据保留边界由对应 Provider 的账户配置和服务条款决定。因此界面只能承诺“不保存到 Finals Compass 服务器硬盘”，不能表述为“任何第三方均不保留”。
