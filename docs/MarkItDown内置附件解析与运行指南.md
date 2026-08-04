@@ -217,7 +217,7 @@ curl -X POST \
 ```bash
 LOGIN=$(curl -sS \
   -H 'Content-Type: application/json' \
-  -d '{"username":"ai_test_user","password":"你的测试密码"}' \
+  -d '{"username":"ai_test_user","password":"replace-with-local-test-password"}' \
   http://127.0.0.1:18081/api/auth/login)
 
 TOKEN=$(printf '%s' "$LOGIN" | jq -r .token)
@@ -388,7 +388,7 @@ pip install -e '.[audio]'
 
 Dockerfile 默认安装 `.[audio]`。音频转写依赖较重，低内存服务器上应限制时长，并在上线前评估内存和处理时间。
 
-## 11. 本次验证记录
+## 11. 实现验证记录
 
 2026-08-04 在 `feature/ai-analysis` 分支完成以下验证：
 
@@ -397,7 +397,7 @@ Dockerfile 默认安装 `.[audio]`。音频转写依赖较重，低内存服务�
 - Vue：Vite 生产构建通过。
 - 端到端：测试 Markdown 经 `Vue 5176 -> Spring Boot 18081 -> Worker 18090` 返回 HTTP 200，Markdown 内容和截断元数据正确。
 
-## 12. 后续版本建议
+## 12. 演进方向
 
 1. 流量进一步增加后，引入有界转换任务队列和独立进程级硬超时。
 2. 为转换结果增加短生命周期缓存，以文件 SHA-256 去重。
