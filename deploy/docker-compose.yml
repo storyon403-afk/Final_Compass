@@ -22,6 +22,7 @@ services:
     restart: unless-stopped
     depends_on:
       - mysql
+      - markitdown-worker
     environment:
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
       DB_USER: ${MYSQL_USER}
@@ -32,6 +33,9 @@ services:
       APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME:-}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
       APP_ADMIN_DISPLAY_NAME: ${APP_ADMIN_DISPLAY_NAME:-Administrator}
+      AI_SECRET_ENCRYPTION_KEY: ${AI_SECRET_ENCRYPTION_KEY:-}
+      MARKITDOWN_WORKER_URL: http://markitdown-worker:8090
+      MARKITDOWN_WORKER_TOKEN: ${MARKITDOWN_WORKER_TOKEN}
       JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m
     volumes:
       - uploads:/app/uploads
@@ -39,6 +43,30 @@ services:
       - "127.0.0.1:8080:8080"
     networks:
       - app-network
+
+  markitdown-worker:
+    build:
+      context: ..
+      dockerfile: services/markitdown-worker/Dockerfile
+    container_name: finals-compass-markitdown
+    restart: unless-stopped
+    environment:
+      MARKITDOWN_WORKER_TOKEN: ${MARKITDOWN_WORKER_TOKEN}
+      MARKITDOWN_MAX_BYTES: 20971520
+      MARKITDOWN_MAX_CHARS: 60000
+      MARKITDOWN_MAX_CONCURRENCY: 2
+      MARKITDOWN_MAX_PDF_PAGES: 80
+      MARKITDOWN_MAX_AUDIO_SECONDS: 600
+      MARKITDOWN_MAX_ARCHIVE_ENTRIES: 2000
+      MARKITDOWN_MAX_UNPACKED_BYTES: 104857600
+      MARKITDOWN_MAX_COMPRESSION_RATIO: 200
+    networks:
+      - app-network
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
 
   frontend:
     profiles:

@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -18,9 +19,19 @@ import java.util.UUID;
 public class AuthService {
     public static final String REQUEST_USER = "finalsCompassUser";
     private final JdbcClient jdbc;
+    private final ActivityService activity;
     private final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder();
 
-    public AuthService(JdbcClient jdbc) { this.jdbc = jdbc; }
+    @Autowired
+    public AuthService(JdbcClient jdbc, ActivityService activity) {
+        this.jdbc = jdbc;
+        this.activity = activity;
+    }
+
+    /** Keeps lightweight test doubles source-compatible without weakening production injection. */
+    protected AuthService(JdbcClient jdbc) {
+        this(jdbc, null);
+    }
 
     @Transactional
     public AuthProfile login(LoginRequest request) {
@@ -32,6 +43,7 @@ public class AuthService {
         String token = UUID.randomUUID().toString();
         jdbc.sql("INSERT INTO login_session(user_id,token,expires_at) VALUES (:user,:token,:expires)")
                 .param("user", user.id()).param("token", token).param("expires", LocalDateTime.now().plusDays(7)).update();
+        if (activity != null) activity.recordDailyLogin(user.id());
         return new AuthProfile(token, user.username(), user.displayName(), user.role());
     }
 
