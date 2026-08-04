@@ -10,10 +10,14 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.UUID;
 
+/** 为每次 HTTP 请求生成追踪号，并记录方法、路径、状态码和耗时。 */
 @Component
 public class RequestTraceFilter implements Filter {
     private static final Logger log = LoggerFactory.getLogger(RequestTraceFilter.class);
 
+    /**
+     * 包裹整条过滤器链，在响应头写入 {@code X-Trace-Id}，并在请求结束时记录访问日志。
+     */
     @Override public void doFilter(ServletRequest rawRequest, ServletResponse rawResponse, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) rawRequest;
         HttpServletResponse response = (HttpServletResponse) rawResponse;

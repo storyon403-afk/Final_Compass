@@ -12,7 +12,7 @@ class IdentityControllerTest {
     @Test
     void resolvesAnonymousIdentityFromAuthenticatedAccount() {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        var user = new AuthService.CurrentUser(42, "user01", "user01", "USER", "hash", "token");
+        var user = new AuthService.CurrentUser(42, "user01", "user01", "USER", "hash", "token", false);
         var expected = new AnonymousProfile("public-id", "银杏 0832");
         var identities = new StubIdentityService(expected);
         var auth = new StubAuthService(user);

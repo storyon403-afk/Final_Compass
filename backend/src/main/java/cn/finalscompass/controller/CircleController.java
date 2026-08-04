@@ -10,6 +10,7 @@ import cn.finalscompass.model.ApiModels.CreateGuideSubmission;
 import cn.finalscompass.model.ApiModels.GuideSubmission;
 import cn.finalscompass.service.AnonymousIdentityService;
 import cn.finalscompass.service.AuthService;
+import cn.finalscompass.service.ActivityService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,13 +43,15 @@ public class CircleController {
     private final JdbcClient jdbc;
     private final AnonymousIdentityService identities;
     private final AuthService auth;
+    private final ActivityService activity;
     private final Path uploadDir;
 
-    public CircleController(JdbcClient jdbc, AnonymousIdentityService identities, AuthService auth,
+    public CircleController(JdbcClient jdbc, AnonymousIdentityService identities, AuthService auth, ActivityService activity,
                             @Value("${app.upload-dir}") String uploadDir) {
         this.jdbc = jdbc;
         this.identities = identities;
         this.auth = auth;
+        this.activity = activity;
         this.uploadDir = Path.of(uploadDir).toAbsolutePath().normalize();
     }
 
@@ -94,7 +97,8 @@ public class CircleController {
     @PostMapping("/resources/{resourceId}/thanks")
     public Map<String, Object> thank(HttpServletRequest request, @PathVariable String courseSlug,
                                      @PathVariable String teacherSlug, @PathVariable long resourceId) {
-        long userId = identities.internalIdForAccount(auth.current(request).id());
+        long accountId = auth.current(request).id();
+        long userId = identities.internalIdForAccount(accountId);
         boolean published = jdbc.sql("""
             SELECT COUNT(*) FROM resource r JOIN course c ON c.id=r.course_id JOIN teacher t ON t.id=r.teacher_id
             WHERE r.id=:id AND c.slug=:course AND t.slug=:teacher AND r.status='PUBLISHED'
@@ -118,7 +122,8 @@ public class CircleController {
         String original = StringUtils.cleanPath(file.getOriginalFilename() == null ? "resource" : file.getOriginalFilename());
         String ext = StringUtils.getFilenameExtension(original);
         if (ext == null || !ALLOWED_EXTENSIONS.contains(ext.toLowerCase())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不支持此文件类型");
-        long userId = identities.internalIdForAccount(auth.current(request).id());
+        long accountId = auth.current(request).id();
+        long userId = identities.internalIdForAccount(accountId);
         long courseId = lookupId("course", courseSlug);
         long teacherId = lookupId("teacher", teacherSlug);
         Files.createDirectories(uploadDir);
@@ -132,6 +137,7 @@ public class CircleController {
                 .param("title", title).param("type", type).param("description", description)
                 .param("original", original).param("storage", storageName).param("mime", file.getContentType())
                 .param("size", file.getSize()).update();
+        activity.recordResourceSubmitted(accountId, storageName);
     }
 
     @GetMapping("/discussions")

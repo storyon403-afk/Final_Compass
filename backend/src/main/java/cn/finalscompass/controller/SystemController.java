@@ -3,10 +3,13 @@ package cn.finalscompass.controller;
 import cn.finalscompass.model.ApiModels.Announcement;
 import cn.finalscompass.model.ApiModels.UpdateAnnouncement;
 import cn.finalscompass.service.AuthService;
+import cn.finalscompass.service.ActivityService;
+import cn.finalscompass.service.AccountAllocationService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,8 +20,15 @@ import java.util.Map;
 public class SystemController {
     private final JdbcClient jdbc;
     private final AuthService auth;
+    private final ActivityService activity;
+    private final AccountAllocationService accounts;
 
-    public SystemController(JdbcClient jdbc, AuthService auth) { this.jdbc = jdbc; this.auth = auth; }
+    public SystemController(JdbcClient jdbc, AuthService auth, ActivityService activity, AccountAllocationService accounts) {
+        this.jdbc = jdbc;
+        this.auth = auth;
+        this.activity = activity;
+        this.accounts = accounts;
+    }
 
     @GetMapping("/health")
     public Map<String, Object> health() {
@@ -77,14 +87,18 @@ public class SystemController {
     @GetMapping("/beta-access")
     public List<Map<String, Object>> betaAccessRequests(HttpServletRequest request) {
         auth.requireAdmin(request);
-        jdbc.sql("UPDATE beta_access_request SET status='EXPIRED' WHERE status='PENDING' AND expires_at<=NOW()").update();
+        jdbc.sql("UPDATE beta_access_request SET status='EXPIRED' WHERE status IN ('CREATED','CODE_SENT') AND expires_at<=NOW()").update();
+        accounts.ensureVerifiedReservations();
         return jdbc.sql("""
-            SELECT id,email,phone,verification_code,status,failed_attempts,expires_at,verified_at,created_at
-            FROM beta_access_request ORDER BY created_at DESC LIMIT 200
+            SELECT r.id,r.email,r.phone,r.status,r.failed_attempts,r.expires_at,r.verified_at,r.created_at,
+                   r.reviewed_at,r.rejection_reason,a.reserved_username suggested_username
+            FROM beta_access_request r LEFT JOIN account_reservation a ON a.request_id=r.id
+            ORDER BY r.created_at DESC LIMIT 200
             """).query().listOfRows();
     }
 
     @PostMapping("/moderation/{type}/{id}")
+    @Transactional
     public Map<String, String> moderate(HttpServletRequest request, @PathVariable String type,
                                         @PathVariable long id, @RequestParam String decision) {
         var admin = auth.requireAdmin(request);
@@ -97,6 +111,7 @@ public class SystemController {
         else if ("GUIDE_SUBMISSION".equals(normalizedType)) { table = "guide_submission"; status = "APPROVE".equals(normalizedDecision) ? "APPROVED" : "REJECTED"; }
         else throw new IllegalArgumentException("不支持的审核类型");
         if (!"APPROVE".equals(normalizedDecision) && !"REJECT".equals(normalizedDecision)) throw new IllegalArgumentException("decision 只能是 APPROVE 或 REJECT");
+        Long beneficiaryId = "APPROVE".equals(normalizedDecision) ? contributionOwner(normalizedType, id) : null;
         int changed = jdbc.sql("UPDATE " + table + " SET status=:status WHERE id=:id AND status='PENDING'")
                 .param("status", status).param("id", id).update();
         if (changed != 1) throw new IllegalArgumentException("待审核记录不存在或已处理");
@@ -105,7 +120,18 @@ public class SystemController {
         if ("GUIDE_SUBMISSION".equals(normalizedType)) {
             jdbc.sql("UPDATE guide_submission SET reviewed_at=NOW() WHERE id=:id").param("id", id).update();
         }
+        if (beneficiaryId != null) activity.recordApproved(beneficiaryId, normalizedType, id);
         return Map.of("status", status);
+    }
+
+    private Long contributionOwner(String type, long id) {
+        String sql = switch (type) {
+            case "RESOURCE" -> "SELECT u.app_user_id FROM resource x JOIN anonymous_user u ON u.id=x.uploader_id WHERE x.id=:id";
+            case "DISCUSSION" -> "SELECT u.app_user_id FROM discussion x JOIN anonymous_user u ON u.id=x.author_id WHERE x.id=:id";
+            case "GUIDE_SUBMISSION" -> "SELECT u.app_user_id FROM guide_submission x JOIN anonymous_user u ON u.id=x.author_id WHERE x.id=:id";
+            default -> throw new IllegalArgumentException("不支持的审核类型");
+        };
+        return jdbc.sql(sql).param("id", id).query(Long.class).optional().orElse(null);
     }
 
     @DeleteMapping("/discussions/{id}")

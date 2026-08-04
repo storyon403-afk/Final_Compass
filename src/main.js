@@ -5,6 +5,7 @@ import HomeView from './views/HomeView.vue'
 import TeachersView from './views/TeachersView.vue'
 import TeacherCircleView from './views/TeacherCircleView.vue'
 import CetView from './views/CetView.vue'
+import AiAnalysisView from './views/AiAnalysisView.vue'
 import './styles.css'
 
 const router = createRouter({
@@ -13,6 +14,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: HomeView },
     { path: '/cet', component: CetView },
+    { path: '/ai-analysis', component: AiAnalysisView },
     { path: '/courses/:courseId', component: TeachersView },
     { path: '/courses/:courseId/teachers/:teacherId', component: TeacherCircleView }
   ]

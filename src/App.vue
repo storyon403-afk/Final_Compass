@@ -6,6 +6,7 @@ import UserSurveyModal from './components/UserSurveyModal.vue'
 import AdminSurveyModal from './components/AdminSurveyModal.vue'
 import SuspendRest from './components/SuspendRest.vue'
 import AdminSuspendModal from './components/AdminSuspendModal.vue'
+import AdminMailModal from './components/AdminMailModal.vue'
 import { authApi, authenticated, authSession, initIdentity, isAdmin, profile, systemApi } from './api'
 
 const route = useRoute()
@@ -19,6 +20,7 @@ const showBetaAccess = ref(false)
 const showAnnouncement = ref(false)
 const showAnnouncementAdmin = ref(false)
 const showSuspendAdmin = ref(false)
+const showMailAdmin = ref(false)
 const showSurvey = ref(false)
 const currentPassword = ref('')
 const newPassword = ref('')
@@ -77,6 +79,7 @@ function closeOverlays(event) {
   showAnnouncement.value = false
   showAnnouncementAdmin.value = false
   showSuspendAdmin.value = false
+  showMailAdmin.value = false
   showSurvey.value = false
 }
 
@@ -122,21 +125,38 @@ async function openBetaAccess() {
   showBetaAccess.value = true
   betaAccessLoading.value = true
   betaAccessError.value = ''
-  try { betaAccessItems.value = await systemApi.betaAccessRequests() }
+  try {
+    betaAccessItems.value = (await systemApi.betaAccessRequests()).map(item => ({
+      ...item,
+      provisionUsername: item.suggested_username || '',
+      provisionDisplayName: ''
+    }))
+  }
   catch (error) { betaAccessError.value = error.message }
   finally { betaAccessLoading.value = false }
 }
 
 function statusLabel(status) {
-  return { PENDING: '等待用户验证', VERIFIED: '验证成功', EXPIRED: '已失效' }[status] || status
+  return { CREATED: '正在发送', CODE_SENT: '等待用户验证', EMAIL_VERIFIED: '邮箱已验证', ACCOUNT_CREATED: '账号已创建', CREDENTIAL_SENT: '账号已发送', EXPIRED: '已失效' }[status] || status
 }
 
-function verificationEmail(item) {
-  return `主题：你的「期末指南」内测验证码\n\n你好！\n\n感谢你申请体验「期末指南」。本次邮箱验证码为：${item.verification_code}\n\n验证码将在 30 分钟后失效，且仅可使用一次。请回到验证页面完成验证，请勿将验证码转发给他人。\n\n如非本人操作，请忽略此邮件。\n\n祝学习顺利！\n期末指南内测支持`
+async function approveAccess(item) {
+  betaAccessError.value = ''
+  item.provisionBusy = true
+  try {
+    await systemApi.approveAccess(item.id, { username: item.provisionUsername, displayName: item.provisionDisplayName, confirmed: item.provisionConfirmed, adminPassword: item.provisionAdminPassword })
+    showCopiedMessage('账号已创建，临时密码已自动发送')
+    await openBetaAccess()
+  } catch (error) { betaAccessError.value = error.message }
+  finally { item.provisionBusy = false }
 }
 
-function accountEmail(item) {
-  return `主题：你的「期末指南」内测账号已开通\n\n你好！\n\n你的邮箱（${item.email}）已验证成功，内测账号现已开通：\n\n账号：【请填写账号】\n初始密码：【请填写密码】\n\n请使用以上信息登录，并在首次登录后及时修改密码。账号仅供本人使用，请勿转发。\n\n使用中如有问题，直接回复此邮件即可，我们会尽快协助你。\n\n祝使用愉快！\n期末指南内测支持`
+async function suggestDisplayName(item) {
+  betaAccessError.value = ''
+  item.displayNameBusy = true
+  try { item.provisionDisplayName = (await systemApi.suggestDisplayName()).displayName }
+  catch (error) { betaAccessError.value = error.message }
+  finally { item.displayNameBusy = false }
 }
 
 function showCopiedMessage(message) {
@@ -215,6 +235,8 @@ async function changePassword() {
   passwordMessage.value = ''
   try {
     await authApi.changePassword(currentPassword.value, newPassword.value)
+    authSession.value.mustChangePassword = false
+    localStorage.setItem('finals-compass-session', JSON.stringify(authSession.value))
     currentPassword.value = ''
     newPassword.value = ''
     passwordMessage.value = '密码修改成功'
@@ -252,6 +274,7 @@ watch(() => authSession.value.token, (token, previousToken) => {
   if (token && token !== previousToken) loadAnnouncement(true)
   else if (!token) showAnnouncement.value = false
 }, { immediate: true })
+watch(() => authSession.value.mustChangePassword, (required) => { if (required) showPassword.value = true }, { immediate: true })
 
 onMounted(() => {
   mediaQuery.addEventListener('change', handleSystemTheme)
@@ -277,6 +300,7 @@ onBeforeUnmount(() => {
       <nav class="business-switch" aria-label="业务模块">
         <router-link to="/"><span>⌂</span>课程导航</router-link>
         <router-link to="/cet"><span>EN</span>英语等级考试收录</router-link>
+        <router-link to="/ai-analysis"><span>AI</span>AI 学习分析</router-link>
       </nav>
       <div class="browser-account">
         <button class="avatar-button" type="button" :title="profile.nickname || authSession.displayName" @click="showAccount = !showAccount">{{ (profile.nickname || authSession.displayName).slice(0, 1) }}</button>
@@ -286,6 +310,7 @@ onBeforeUnmount(() => {
           <button type="button" @click="cycleTheme"><span>{{ effectiveTheme === 'dark' ? '☾' : '☀' }}</span>{{ themeLabel }}</button>
           <button v-if="isAdmin" type="button" @click="openModeration">内容审核</button>
           <button v-if="isAdmin" type="button" @click="openBetaAccess">登录验证</button>
+          <button v-if="isAdmin" type="button" @click="showMailAdmin = true; showAccount = false">SMTP与邮件</button>
           <button v-if="isAdmin" type="button" @click="openAnnouncementAdmin">公告管理</button>
           <button v-if="isAdmin" type="button" @click="showSuspendAdmin = true; showAccount = false">暂挂体验管理</button>
           <button type="button" @click="showSurvey = true; showAccount = false">{{ isAdmin ? '调查问卷管理' : '填写调查问卷' }}</button>
@@ -298,10 +323,10 @@ onBeforeUnmount(() => {
     <SuspendRest />
   </div>
 
-  <div v-if="showPassword" class="modal-backdrop" @click.self="showPassword = false">
+  <div v-if="showPassword" class="modal-backdrop" @click.self="!authSession.mustChangePassword && (showPassword = false)">
     <form class="upload-modal password-modal" @submit.prevent="changePassword">
-      <button class="modal-close" type="button" aria-label="关闭" @click="showPassword = false">×</button>
-      <span class="eyebrow">账户安全</span><h2>修改密码</h2><p>新密码至少 6 位。</p>
+      <button v-if="!authSession.mustChangePassword" class="modal-close" type="button" aria-label="关闭" @click="showPassword = false">×</button>
+      <span class="eyebrow">账户安全</span><h2>{{ authSession.mustChangePassword ? '首次登录，请修改临时密码' : '修改密码' }}</h2><p>新密码至少 6 位。</p>
       <label>当前密码<input v-model="currentPassword" type="password" autocomplete="current-password" required /></label>
       <label>新密码<input v-model="newPassword" type="password" minlength="6" maxlength="72" autocomplete="new-password" required /></label>
       <p v-if="passwordMessage" :class="passwordMessage === '密码修改成功' ? 'form-success' : 'form-error'">{{ passwordMessage }}</p>
@@ -327,17 +352,23 @@ onBeforeUnmount(() => {
   <div v-if="showBetaAccess" class="modal-backdrop" @click.self="showBetaAccess = false">
     <section class="upload-modal beta-access-modal" role="dialog" aria-modal="true" aria-labelledby="beta-access-title">
       <button class="modal-close" type="button" aria-label="关闭" @click="showBetaAccess = false">×</button>
-      <span class="eyebrow">管理员功能</span><h2 id="beta-access-title">登录验证</h2><p>查看用户申请、一次性验证码及验证结果。验证码请使用管理员邮箱人工发送。</p>
+      <span class="eyebrow">管理员功能</span><h2 id="beta-access-title">登录验证</h2><p>验证码由系统自动发送；用户验证邮箱后，必须由管理员亲自确认并发放账号。</p>
       <div class="moderation-toolbar"><strong>最近 {{ betaAccessItems.length }} 条</strong><button type="button" :disabled="betaAccessLoading" @click="openBetaAccess">刷新</button></div>
       <p v-if="betaAccessError" class="form-error">{{ betaAccessError }}</p>
       <div v-if="betaAccessLoading" class="empty-state">正在加载…</div>
       <div v-else-if="!betaAccessItems.length" class="empty-state">当前还没有登录验证申请。</div>
       <article v-for="item in betaAccessItems" v-else :key="item.id" class="beta-access-item">
         <header><div><strong>{{ item.email }}</strong><small>{{ item.phone }} · {{ new Date(item.created_at).toLocaleString('zh-CN') }}</small></div><span :class="`status-${item.status.toLowerCase()}`">{{ statusLabel(item.status) }}</span></header>
-        <div class="verification-code"><span>一次性验证码</span><b>{{ item.verification_code }}</b><button type="button" @click="copyText(item.verification_code, '验证码已复制')">复制</button></div>
-        <small v-if="item.status === 'PENDING'">有效至 {{ new Date(item.expires_at).toLocaleString('zh-CN') }}<template v-if="item.failed_attempts"> · 已输错 {{ item.failed_attempts }} 次</template></small>
-        <small v-else-if="item.status === 'VERIFIED'">{{ item.email }} 已于 {{ new Date(item.verified_at).toLocaleString('zh-CN') }} 验证成功</small>
-        <div class="mail-actions"><button type="button" @click="copyEmail(verificationEmail(item), '验证码邮件已复制')">复制验证码邮件</button><button type="button" :disabled="item.status !== 'VERIFIED'" @click="copyEmail(accountEmail(item), '账号邮件已复制')">复制账号邮件</button></div>
+        <small v-if="['CREATED', 'CODE_SENT'].includes(item.status)">有效至 {{ new Date(item.expires_at).toLocaleString('zh-CN') }}<template v-if="item.failed_attempts"> · 已输错 {{ item.failed_attempts }} 次</template></small>
+        <small v-else-if="item.status === 'EMAIL_VERIFIED'">{{ item.email }} 已于 {{ new Date(item.verified_at).toLocaleString('zh-CN') }} 验证成功</small>
+        <form v-if="item.status === 'EMAIL_VERIFIED'" class="account-provision-form" @submit.prevent="approveAccess(item)">
+          <label class="provision-field"><span>账号</span><input v-model.trim="item.provisionUsername" placeholder="用于登录，由管理员填写" required minlength="3" maxlength="64" /></label>
+          <label class="provision-field"><span>用户名</span><div class="display-name-generator"><input v-model.trim="item.provisionDisplayName" placeholder="登录后站内展示" required maxlength="100" /><button type="button" :disabled="item.displayNameBusy" @click="suggestDisplayName(item)">{{ item.displayNameBusy ? '…' : '随机' }}</button></div></label>
+          <label class="provision-field"><span>管理员密码</span><input v-model="item.provisionAdminPassword" type="password" autocomplete="current-password" placeholder="验证本次发放操作" required /></label>
+          <small class="provision-security-note">临时密码由系统随机生成并直接发送给用户，管理员无法查看；用户首次登录必须修改。</small>
+          <label><input v-model="item.provisionConfirmed" type="checkbox" required /> 我已亲自核对申请人，确认发送账号和临时密码</label>
+          <button class="primary-button" type="submit" :disabled="item.provisionBusy">{{ item.provisionBusy ? '正在发送…' : '确认并发放账号' }}</button>
+        </form>
       </article>
     </section>
   </div>
@@ -387,4 +418,5 @@ onBeforeUnmount(() => {
   <AdminSurveyModal v-if="showSurvey && isAdmin" @close="showSurvey = false" />
   <UserSurveyModal v-else-if="showSurvey" @close="showSurvey = false" />
   <AdminSuspendModal v-if="showSuspendAdmin && isAdmin" @close="showSuspendAdmin = false" />
+  <AdminMailModal v-if="showMailAdmin && isAdmin" @close="showMailAdmin = false" />
 </template>
