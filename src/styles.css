@@ -885,3 +885,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width: 560px) { .ai-chat-topbar { height: 58px; padding-inline: 15px; }.ai-conversation { min-height: calc(100vh - 114px); }.ai-welcome { padding-top: 52px; }.ai-composer-wrap { padding-bottom: 14px; }.ai-channel { max-width: 145px; }.ai-stage-note { font-size: 8px; }.ai-drawer { padding-inline: 18px; } }
 .ai-welcome h1 { margin: 0; color: #725b82; font: 500 clamp(42px, 7vw, 72px)/1 "Comic Sans MS", "Bradley Hand", cursive; letter-spacing: -.06em; transform: rotate(-4deg); text-shadow: 2px 3px 0 color-mix(in srgb, #d9cce5 55%, transparent); }
 .ai-composer-space { flex: 1; }
+.ai-camera-preview { display: grid; grid-template-columns: 72px 1fr 28px; align-items: center; gap: 10px; margin: 0 3px 9px; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.ai-camera-preview img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
+.ai-camera-preview div { min-width: 0; display: grid; gap: 3px; }
+.ai-camera-preview b { font-size: 11px; }
+.ai-camera-preview small { color: var(--text-3); font-size: 9px; }
+.ai-camera-preview button { border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 18px; }

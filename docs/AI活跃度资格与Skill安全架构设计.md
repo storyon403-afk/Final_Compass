@@ -2,7 +2,7 @@
 
 > 分支：`feature/ai-analysis`  
 > 对应议题：[#12 是否支持用户自带 API Key（BYOK）模式，以及 AI Skill 调用安全方案设计](https://github.com/storyon403-afk/Final_Compass/issues/12)  
-> 状态：第一版可运行预实现；真实模型 Provider 与业务 Skill 尚未接入。
+> 状态：V3 已接入 DeepSeek 文本与 OpenAI 多模态真实 Provider；Claude、Gemini、MCP 工具和多 Skill 顺序编排仍处于后续阶段。
 
 ## 1. 目标与非目标
 
@@ -20,7 +20,7 @@
 - 不允许 Skill 直接执行数据库写入、任意 HTTP、Shell 或文件操作。
 - 不把平台或用户 API Key 写入源码、日志、错误信息和前端持久存储。
 
-当前 `PreviewAiProviderAdapter` 只返回“安全预检完成”的预览结果。真实模型接入时为各厂商新增 Provider Adapter，不应把 HTTP 调用散落到 Controller 或 Skill 中。
+真实 Provider 由独立 Adapter 处理供应商 HTTP 协议，Controller 和 Skill 不直接发起外部调用。未实现真实协议的供应商继续使用 `PreviewAiProviderAdapter`，并在响应中标记预览状态。
 
 ## 2. 总体调用链
 
@@ -295,7 +295,7 @@ skill_id
 - 保存同意复选框和准确的加密说明。
 - Skill 扩展坞。
 - 管理员平台 Key 配置区。
-- 当前 Provider 只做调用预览，不伪造模型结果。
+- 真实 Provider 返回实际模型结果；Preview Provider 必须显式标记，不伪造模型结果。
 
 ## 12. 与其他功能分支合并
 
@@ -336,7 +336,7 @@ skill_id
 
 AI 主页面采用对话式布局，不向普通用户展示 Skill Registry、Provider Adapter 等内部扩展结构。用户只需要直接提出问题；模块规则、排行榜、凭据来源和管理员平台配置收纳在右上角三横线菜单中。Skill ID、输入上限和能力声明属于开发文档与后端契约，不作为主页面信息架构。
 
-界面提供图片、文档和音频入口。附件会真实上传到 Spring Boot，再交给隔离的 MarkItDown Worker 转换为 Markdown；普通文本默认使用 `auto` 进入 V2 Intent Router，图片与资料附件分别进入视觉和摘要 Skill。当前 Provider Adapter 仍是 Preview，因此页面不得把预览响应描述为真实外部模型分析。
+界面提供图片、文档、音频和手机拍题入口。普通附件交给隔离的 MarkItDown Worker 转换为 Markdown；拍题照片经浏览器压缩后仅随单次请求进入支持视觉的真实 Provider，不写入业务上传目录。Preview Provider 的响应仍不得描述为真实外部模型分析。
 
 ## MarkItDown 接入评估
 

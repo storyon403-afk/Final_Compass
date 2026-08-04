@@ -225,10 +225,15 @@ V2 已真实实现：
 - 凭据解析和审计。
 - MarkItDown 附件安全转换。
 
+V3 已在后续实现中补齐：
+
+- DeepSeek 文本调用和 OpenAI Responses 多模态调用。
+- 手机拍题的请求级临时图片输入。
+- Provider 调用前的分钟、平台日次数和月 Token 限制。
+
 仍未实现：
 
-- OpenAI、Claude、DeepSeek、Gemini 的真实 HTTP Adapter。
-- 原始图片作为多模态消息传给 Provider。
+- Claude、Gemini 的真实 HTTP Adapter。
 - MCP 工具真实执行。
 - 多轮 Context/Memory 持久化。
 - 一个问题顺序执行多个 Skill。

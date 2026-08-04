@@ -40,6 +40,10 @@ app:
   ai:
     # 32 random bytes encoded with Base64. Keep it outside Git; changing it makes saved API keys unreadable.
     encryption-key: ${AI_SECRET_ENCRYPTION_KEY:}
+    limits:
+      calls-per-minute: ${AI_CALLS_PER_MINUTE:6}
+      platform-daily-calls: ${AI_PLATFORM_DAILY_CALLS:20}
+      platform-monthly-tokens: ${AI_PLATFORM_MONTHLY_TOKENS:100000}
     document-worker:
       url: ${MARKITDOWN_WORKER_URL:}
       token: ${MARKITDOWN_WORKER_TOKEN:}

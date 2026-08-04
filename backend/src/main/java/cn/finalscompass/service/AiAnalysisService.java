@@ -23,10 +23,13 @@ public class AiAnalysisService {
     private final AiAgentOrchestrator orchestrator;
     private final AiProviderGateway gateway;
     private final AiCredentialResolver credentials;
+    private final TransientAiImageService images;
+    private final AiUsageGuardService usageGuard;
 
     public AiAnalysisService(JdbcClient jdbc, ActivityService activity, AiSecretCipher cipher,
                              AiSkillRegistry skills, AiAgentOrchestrator orchestrator,
-                             AiProviderGateway gateway, AiCredentialResolver credentials) {
+                             AiProviderGateway gateway, AiCredentialResolver credentials,
+                             TransientAiImageService images, AiUsageGuardService usageGuard) {
         this.jdbc = jdbc;
         this.activity = activity;
         this.cipher = cipher;
@@ -34,6 +37,8 @@ public class AiAnalysisService {
         this.orchestrator = orchestrator;
         this.gateway = gateway;
         this.credentials = credentials;
+        this.images = images;
+        this.usageGuard = usageGuard;
     }
 
     public Dashboard dashboard(long userId) {
@@ -105,7 +110,10 @@ public class AiAnalysisService {
         catch (Exception exception) { throw new IllegalArgumentException("不支持的凭据来源"); }
 
         try (ResolvedAiCredential credential = credentials.resolve(
-                userId, request.provider(), source, request.ephemeralApiKey())) {
+                userId, request.provider(), source, request.ephemeralApiKey());
+             AiProviderAdapter.TransientImage image = images.decode(request.imageDataUrl())) {
+            usageGuard.check(userId, source);
+            if (image != null && !skill.modalities().contains("IMAGE")) throw new IllegalArgumentException("当前 Skill 不接受图片");
             String traceId = UUID.randomUUID().toString();
             jdbc.sql("""
                 INSERT INTO ai_usage_log(user_id,provider,model_name,skill_id,credential_source,status,input_units,trace_id)
@@ -114,7 +122,7 @@ public class AiAnalysisService {
                     .param("skill", skill.id()).param("source", source.name()).param("inputUnits", request.input().length())
                     .param("trace", traceId).update();
             try {
-                var result = gateway.invoke(credential.provider(), credential.model(), plan, credential.apiKey());
+                var result = gateway.invoke(credential.provider(), credential.model(), plan, credential.apiKey(), image);
                 jdbc.sql("""
                     UPDATE ai_usage_log SET status='SUCCEEDED',input_units=:input,output_units=:output,completed_at=NOW()
                     WHERE trace_id=:trace
@@ -146,6 +154,7 @@ public class AiAnalysisService {
                             boolean encryptedStorageAvailable) {}
     public record SaveUserKey(String provider, String apiKey, String label, boolean consentToStore) {}
     public record SavePlatformKey(String provider, String model, String apiKey, boolean enabled) {}
-    public record InvokeRequest(String provider, String skillId, String credentialSource, String ephemeralApiKey, String input) {}
+    public record InvokeRequest(String provider, String skillId, String credentialSource, String ephemeralApiKey,
+                                String input, String imageDataUrl) {}
     public record InvokeResult(String content, String traceId, boolean preview, String skillId, String provider) {}
 }

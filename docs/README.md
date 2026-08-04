@@ -25,6 +25,7 @@
 | --- | --- |
 | [AI 活跃度资格与 Skill 安全架构设计](AI活跃度资格与Skill安全架构设计.md) | 活跃积分、月度资格、平台 Key/BYOK、安全边界与 Skill 抽象。 |
 | [Finals Compass AI V2：Skill 编排设计与扩展指南](FinalsCompass_AI_V2_Skill编排设计与扩展指南.md) | Agent 编排、Skill Registry、凭据解析和 Provider Gateway 的接口关系。 |
+| [Finals Compass AI V3：真实调用与临时拍题设计](FinalsCompass_AI_V3_真实调用与临时拍题设计.md) | DeepSeek/OpenAI 真实调用、手机拍题的请求级内存链路与平台用量保护。 |
 | [MarkItDown 内置附件解析与运行指南](MarkItDown内置附件解析与运行指南.md) | 文档、图片和音频的标准化解析链路、Worker 限制与故障处理。 |
 
 ## 四、基础设施与安全状态
@@ -34,4 +35,3 @@
 | [Redis 缓存与安全状态模块设计](Redis缓存与安全状态模块设计.md) | Key 命名空间、TTL、验证码限流、失效策略和不可缓存边界。 |
 
 部署方式、贡献流程和 Flyway 操作原则同时维护在项目 [Wiki](https://github.com/storyon403-afk/Final_Compass/wiki)。仓库文档描述实现细节，Wiki 描述学习路径和设计思想，两者互相链接但不重复保存生产凭据或私有运维数据。
-

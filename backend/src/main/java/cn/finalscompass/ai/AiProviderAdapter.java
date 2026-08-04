@@ -9,6 +9,9 @@ public interface AiProviderAdapter {
     Set<String> capabilities();
     AiProviderResult invoke(AiProviderRequest request, char[] apiKey);
 
-    record AiProviderRequest(String model, AiSkillPlanner.ExecutionPlan plan) {}
+    record AiProviderRequest(String model, AiSkillPlanner.ExecutionPlan plan, TransientImage image) {}
+    record TransientImage(String mediaType, byte[] bytes) implements AutoCloseable {
+        @Override public void close() { if (bytes != null) java.util.Arrays.fill(bytes, (byte) 0); }
+    }
     record AiProviderResult(String content, int inputUnits, int outputUnits, boolean preview) {}
 }

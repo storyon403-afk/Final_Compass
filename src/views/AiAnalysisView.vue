@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { aiApi, isAdmin } from '../api'
 
 const loading = ref(true)
@@ -7,6 +7,7 @@ const error = ref('')
 const message = ref('')
 const menuOpen = ref(false)
 const fileInput = ref(null)
+const cameraInput = ref(null)
 const dashboard = ref({
   month: '', myScore: 0, platformEligible: false, leaderboard: [], skills: [], providers: [],
   platformProviders: [], savedKeys: [], encryptedStorageAvailable: false
@@ -19,6 +20,7 @@ const keyLabel = ref('我的学习 Key')
 const consentToStore = ref(false)
 const credentialSource = ref('EPHEMERAL_BYOK')
 const attachments = ref([])
+const capturedPhoto = ref(null)
 const result = ref(null)
 const invoking = ref(false)
 const adminProvider = ref('deepseek')
@@ -57,6 +59,58 @@ function chooseFiles(event) {
 function removeAttachment(index) { attachments.value.splice(index, 1) }
 function formatSize(size) { return size < 1024 * 1024 ? `${Math.max(1, Math.round(size / 1024))} KB` : `${(size / 1024 / 1024).toFixed(1)} MB` }
 
+async function capturePhoto(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  error.value = ''
+  try {
+    capturedPhoto.value = await compressPhoto(file)
+    const current = dashboard.value.providers.find((item) => item.id === provider.value)
+    if (!current?.capabilities?.includes('IMAGE')) {
+      const visual = dashboard.value.providers.find((item) => item.capabilities?.includes('IMAGE'))
+      if (!visual) throw new Error('当前没有配置支持图片的 AI Provider')
+      provider.value = visual.id
+      credentialSource.value = 'EPHEMERAL_BYOK'
+      message.value = `拍题需要视觉模型，已切换到 ${visual.name}，请使用对应的 API Key。`
+    }
+  }
+  catch (reason) { error.value = reason.message || '照片处理失败，请重新拍摄' }
+}
+
+function compressPhoto(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) return reject(new Error('相机没有返回有效图片'))
+    const image = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    image.onload = () => {
+      try {
+        const maxSide = 1800
+        const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+        canvas.getContext('2d', { alpha: false }).drawImage(image, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.84)
+        if (dataUrl.length > 5.4 * 1024 * 1024) throw new Error('照片压缩后仍超过 4MB，请靠近题目重新拍摄')
+        resolve({ name: `camera-${Date.now()}.jpg`, dataUrl, size: Math.round(dataUrl.length * 0.75) })
+        canvas.width = 1; canvas.height = 1
+      } catch (reason) { reject(reason) }
+      finally { URL.revokeObjectURL(objectUrl) }
+    }
+    image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('无法读取照片')) }
+    image.src = objectUrl
+  })
+}
+
+function clearCapturedPhoto() { capturedPhoto.value = null }
+
+watch(provider, () => {
+  // Provider Key 不能跨供应商复用，切换时立即清除尚未发送的明文。
+  apiKey.value = ''
+  consentToStore.value = false
+})
+
 async function saveKey() {
   message.value = ''
   error.value = ''
@@ -83,13 +137,13 @@ async function removeKey() {
 }
 
 async function invoke() {
-  if (!input.value.trim() || invoking.value) return
+  if ((!input.value.trim() && !capturedPhoto.value) || invoking.value) return
   invoking.value = true
   error.value = ''
   result.value = null
   try {
-    const question = input.value.trim()
-    const hasImage = attachments.value.some((item) => item.type.startsWith('image/'))
+    const question = input.value.trim() || '请识别这张照片中的题目，并给出第一步分析。'
+    const hasImage = Boolean(capturedPhoto.value) || attachments.value.some((item) => item.type.startsWith('image/'))
     const selectedProvider = dashboard.value.providers.find((item) => item.id === provider.value)
     if (hasImage && !selectedProvider?.capabilities?.includes('IMAGE')) {
       throw new Error(`当前 ${selectedProvider?.name || provider.value} 通道不支持图片，请在右上角菜单切换到支持图片的 Provider`)
@@ -114,10 +168,13 @@ async function invoke() {
       skillId: requestSkillId,
       credentialSource: credentialSource.value,
       ephemeralApiKey: credentialSource.value === 'EPHEMERAL_BYOK' ? apiKey.value : null,
-      input: analysisInput
+      input: analysisInput,
+      imageDataUrl: capturedPhoto.value?.dataUrl || null
     })
     result.value = { question, attachmentNames: attachments.value.map((item) => item.name), ...response }
     input.value = ''
+    clearCapturedPhoto()
+    attachments.value = []
     if (credentialSource.value === 'EPHEMERAL_BYOK') apiKey.value = ''
   } catch (reason) { error.value = reason.message }
   finally { invoking.value = false }
@@ -161,16 +218,23 @@ onMounted(load)
           <div v-if="attachments.length" class="ai-attachment-list">
             <div v-for="(file, index) in attachments" :key="`${file.name}-${file.size}`"><span>{{ file.type.startsWith('image/') ? '▧' : file.type.startsWith('audio/') ? '♫' : '▤' }}</span><p><b>{{ file.name }}</b><small>{{ formatSize(file.size) }} · {{ file.status === 'CONVERTING' ? '正在解析' : file.status === 'DONE' ? '解析完成' : file.status === 'ERROR' ? '解析失败' : '等待发送' }}</small></p><button type="button" aria-label="移除附件" :disabled="invoking" @click="removeAttachment(index)">×</button></div>
           </div>
+          <div v-if="capturedPhoto" class="ai-camera-preview">
+            <img :src="capturedPhoto.dataUrl" alt="本次问题拍摄的临时照片" />
+            <div><b>临时拍摄</b><small>{{ formatSize(capturedPhoto.size) }} · 仅本次问题使用</small></div>
+            <button type="button" aria-label="删除拍摄照片" :disabled="invoking" @click="clearCapturedPhoto">×</button>
+          </div>
           <div class="ai-composer">
             <textarea v-model="input" rows="1" maxlength="8000" placeholder="向 FinalsCompass AI 工具提问…" @keydown.enter.exact.prevent="invoke"></textarea>
             <div class="ai-composer-actions">
               <input ref="fileInput" class="visually-hidden" type="file" multiple accept="image/png,image/jpeg,image/webp,audio/wav,audio/mpeg,audio/mp4,.pdf,.docx,.pptx,.xls,.xlsx,.txt,.md,.csv,.json,.xml,.html" @change="chooseFiles" />
+              <input ref="cameraInput" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" @change="capturePhoto" />
               <button class="ai-attach" type="button" title="添加图片、文档或音频" @click="fileInput?.click()"><span>＋</span>附件</button>
+              <button class="ai-attach" type="button" title="使用手机后置相机拍题" @click="cameraInput?.click()"><span>◎</span>拍题</button>
               <div class="ai-composer-space"></div>
-              <button class="ai-send" type="button" :disabled="invoking || !input.trim()" @click="invoke">{{ invoking ? '···' : '↑' }}</button>
+              <button class="ai-send" type="button" :disabled="invoking || (!input.trim() && !capturedPhoto)" @click="invoke">{{ invoking ? '···' : '↑' }}</button>
             </div>
           </div>
-          <p class="ai-stage-note">附件会在发送时由内置的隔离 MarkItDown Worker 转换为 Markdown，再进入现有 Skill 调用链；单个不超过 20MB，一次最多 3 个。</p>
+          <p class="ai-stage-note">附件由隔离 Worker 解析；“拍题”照片只保存在当前页面内存并随本次请求发送，不写入资料库或服务器硬盘，请求完成后立即从页面释放。</p>
         </section>
       </template>
     </main>
