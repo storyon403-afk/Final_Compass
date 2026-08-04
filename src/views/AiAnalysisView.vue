@@ -12,7 +12,7 @@ const dashboard = ref({
   platformProviders: [], savedKeys: [], encryptedStorageAvailable: false
 })
 const provider = ref('deepseek')
-const skillId = ref('progressive-hint')
+const skillId = ref('auto')
 const input = ref('')
 const apiKey = ref('')
 const keyLabel = ref('我的学习 Key')
@@ -37,7 +37,7 @@ async function load() {
     if (dashboard.value.providers?.length && !dashboard.value.providers.some((item) => item.id === provider.value)) {
       provider.value = dashboard.value.providers[0].id
     }
-    if (!dashboard.value.skills.some((skill) => skill.id === skillId.value)) skillId.value = dashboard.value.skills[0]?.id || ''
+    if (skillId.value !== 'auto' && !dashboard.value.skills.some((skill) => skill.id === skillId.value)) skillId.value = 'auto'
   } catch (reason) { error.value = reason.message }
   finally { loading.value = false }
 }

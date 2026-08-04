@@ -332,11 +332,11 @@ skill_id
 4. 增加每月资格批次任务、冲正事件和管理员积分审计。
 5. 增加 Provider Mock 集成测试、权限测试和日志泄密测试。
 6. 完成隐私说明与用户删除 Key 的验收后，再考虑部署。
-# AI 界面与附件解析边界（V1 UI）
+# AI 界面与附件解析边界（V2）
 
 AI 主页面采用对话式布局，不向普通用户展示 Skill Registry、Provider Adapter 等内部扩展结构。用户只需要直接提出问题；模块规则、排行榜、凭据来源和管理员平台配置收纳在右上角三横线菜单中。Skill ID、输入上限和能力声明属于开发文档与后端契约，不作为主页面信息架构。
 
-界面已经提供图片、文档和音频的本地选择入口，但 V1 只展示待处理附件，不上传、不解析，也不发送给外部模型。页面必须明确显示这一阶段状态，不能让用户误以为附件已参与分析。
+界面提供图片、文档和音频入口。附件会真实上传到 Spring Boot，再交给隔离的 MarkItDown Worker 转换为 Markdown；普通文本默认使用 `auto` 进入 V2 Intent Router，图片与资料附件分别进入视觉和摘要 Skill。当前 Provider Adapter 仍是 Preview，因此页面不得把预览响应描述为真实外部模型分析。
 
 ## MarkItDown 接入评估
 
@@ -365,4 +365,4 @@ Vue 上传附件
 - 解析后的 Markdown属于不可信数据，不能作为系统提示词；后续 MCP/Agent 接入时仍需防 Prompt Injection。
 - 记录 traceId、文件类型、大小、耗时和状态，不记录 API Key，也不默认长期保存原文件内容。
 
-由于当前后端是 Java/Spring Boot，而 MarkItDown 是 Python 包，正式接入会引入独立 Python 运行环境、进程通信、超时和部署维护。本次仅完成 UI 与架构说明，不把 Python 依赖加入当前 V1。
+MarkItDown 已作为项目内的独立 Python Worker 接入，由 Docker Compose 与 Spring Boot 一起部署。Worker 不接触数据库或 AI Key，具体格式、资源限制和运行方式见《MarkItDown 内置附件解析与运行指南》。V2 Skill 编排见《FinalsCompass AI V2 Skill 编排设计与扩展指南》。
