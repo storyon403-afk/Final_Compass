@@ -4,6 +4,7 @@ import cn.finalscompass.model.ApiModels.Announcement;
 import cn.finalscompass.model.ApiModels.UpdateAnnouncement;
 import cn.finalscompass.service.AuthService;
 import cn.finalscompass.service.ActivityService;
+import cn.finalscompass.service.AccountAllocationService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -20,11 +21,13 @@ public class SystemController {
     private final JdbcClient jdbc;
     private final AuthService auth;
     private final ActivityService activity;
+    private final AccountAllocationService accounts;
 
-    public SystemController(JdbcClient jdbc, AuthService auth, ActivityService activity) {
+    public SystemController(JdbcClient jdbc, AuthService auth, ActivityService activity, AccountAllocationService accounts) {
         this.jdbc = jdbc;
         this.auth = auth;
         this.activity = activity;
+        this.accounts = accounts;
     }
 
     @GetMapping("/health")
@@ -84,10 +87,13 @@ public class SystemController {
     @GetMapping("/beta-access")
     public List<Map<String, Object>> betaAccessRequests(HttpServletRequest request) {
         auth.requireAdmin(request);
-        jdbc.sql("UPDATE beta_access_request SET status='EXPIRED' WHERE status='PENDING' AND expires_at<=NOW()").update();
+        jdbc.sql("UPDATE beta_access_request SET status='EXPIRED' WHERE status IN ('CREATED','CODE_SENT') AND expires_at<=NOW()").update();
+        accounts.ensureVerifiedReservations();
         return jdbc.sql("""
-            SELECT id,email,phone,verification_code,status,failed_attempts,expires_at,verified_at,created_at
-            FROM beta_access_request ORDER BY created_at DESC LIMIT 200
+            SELECT r.id,r.email,r.phone,r.status,r.failed_attempts,r.expires_at,r.verified_at,r.created_at,
+                   r.reviewed_at,r.rejection_reason,a.reserved_username suggested_username
+            FROM beta_access_request r LEFT JOIN account_reservation a ON a.request_id=r.id
+            ORDER BY r.created_at DESC LIMIT 200
             """).query().listOfRows();
     }
 

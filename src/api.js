@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 const savedSession = localStorage.getItem('finals-compass-session')
-let initialSession = { token: '', username: '', displayName: '', role: '' }
+let initialSession = { token: '', username: '', displayName: '', role: '', mustChangePassword: false }
 if (savedSession) {
   try { initialSession = JSON.parse(savedSession) } catch { localStorage.removeItem('finals-compass-session') }
 }
@@ -47,7 +47,7 @@ function saveSession(value) {
 }
 
 export function clearSession() {
-  authSession.value = { token: '', username: '', displayName: '', role: '' }
+  authSession.value = { token: '', username: '', displayName: '', role: '', mustChangePassword: false }
   profile.value = { publicId: '', nickname: '匿名同学' }
   localStorage.removeItem('finals-compass-session')
 }
@@ -144,6 +144,29 @@ export const systemApi = {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, enabled })
   }),
   betaAccessRequests: () => request('/system/beta-access'),
+  smtpConfig: () => request('/system/mail/smtp'),
+  saveSmtp: (fields) => request('/system/mail/smtp', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  testSmtp: (recipient, adminPassword) => request('/system/mail/smtp/test-and-enable', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recipient, adminPassword })
+  }),
+  microsoftMail: () => request('/system/mail/microsoft'),
+  authorizeMicrosoftMail: () => request('/system/mail/microsoft/authorize', { method: 'POST' }),
+  testMicrosoftMail: (recipient, adminPassword) => request('/system/mail/microsoft/test-and-enable', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recipient, adminPassword })
+  }),
+  disconnectMicrosoftMail: (adminPassword) => request('/system/mail/microsoft', {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminPassword })
+  }),
+  mailTemplates: () => request('/system/mail/templates'),
+  saveMailTemplate: (type, fields) => request(`/system/mail/templates/${encodeURIComponent(type)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  approveAccess: (id, fields) => request(`/system/mail/beta-access/${id}/approve-and-send`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  suggestDisplayName: () => request('/system/mail/display-name-suggestion'),
   moderation: () => request('/system/moderation'),
   moderate: (type, id, decision) => request(`/system/moderation/${type}/${id}?decision=${decision}`, { method: 'POST' }),
   metrics: () => request('/system/metrics'),

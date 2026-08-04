@@ -26,8 +26,9 @@ public class AuthController {
 
     @PostMapping("/beta-access/request")
     public cn.finalscompass.model.ApiModels.BetaAccessChallenge requestBetaAccess(
+            HttpServletRequest servletRequest,
             @Valid @RequestBody cn.finalscompass.model.ApiModels.BetaAccessRequest request) {
-        return betaAccess.request(request);
+        return betaAccess.request(request, clientIp(servletRequest));
     }
 
     @PostMapping("/beta-access/verify")
@@ -73,5 +74,10 @@ public class AuthController {
     private void setSessionCookie(HttpServletResponse response, String token, long maxAge) {
         response.addHeader(HttpHeaders.SET_COOKIE, ResponseCookie.from(SESSION_COOKIE, token)
                 .httpOnly(true).sameSite("Lax").path("/api").maxAge(maxAge).build().toString());
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        return forwarded == null || forwarded.isBlank() ? request.getRemoteAddr() : forwarded.split(",", 2)[0].trim();
     }
 }

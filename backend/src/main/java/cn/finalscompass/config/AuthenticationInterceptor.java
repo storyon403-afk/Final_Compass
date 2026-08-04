@@ -41,6 +41,15 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             return false;
         }
         request.setAttribute(AuthService.REQUEST_USER, user.get());
+        if (user.get().mustChangePassword()
+                && !request.getRequestURI().equals("/api/auth/change-password")
+                && !request.getRequestURI().equals("/api/auth/logout")
+                && !request.getRequestURI().equals("/api/identity/anonymous")) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"error\":\"首次登录必须先修改临时密码\"}");
+            return false;
+        }
         return true;
     }
 }

@@ -23,6 +23,7 @@ services:
     depends_on:
       - mysql
       - markitdown-worker
+      - redis
     environment:
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
       DB_USER: ${MYSQL_USER}
@@ -34,6 +35,17 @@ services:
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
       APP_ADMIN_DISPLAY_NAME: ${APP_ADMIN_DISPLAY_NAME:-Administrator}
       AI_SECRET_ENCRYPTION_KEY: ${AI_SECRET_ENCRYPTION_KEY:-}
+      MAIL_SECRET_ENCRYPTION_KEY: ${MAIL_SECRET_ENCRYPTION_KEY:-}
+      EMAIL_CODE_PEPPER: ${EMAIL_CODE_PEPPER:-}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      APP_ENV: ${APP_ENV:-prod}
+      APP_LOGIN_URL: ${APP_LOGIN_URL}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL}
+      MICROSOFT_MAIL_CLIENT_ID: ${MICROSOFT_MAIL_CLIENT_ID:-}
+      MICROSOFT_MAIL_CLIENT_SECRET: ${MICROSOFT_MAIL_CLIENT_SECRET:-}
+      MICROSOFT_MAIL_REDIRECT_URI: ${MICROSOFT_MAIL_REDIRECT_URI:-}
       MARKITDOWN_WORKER_URL: http://markitdown-worker:8090
       MARKITDOWN_WORKER_TOKEN: ${MARKITDOWN_WORKER_TOKEN}
       JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m
@@ -43,6 +55,16 @@ services:
       - "127.0.0.1:8080:8080"
     networks:
       - app-network
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: finals-compass-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    networks:
+      - app-network
+    security_opt:
+      - no-new-privileges:true
 
   markitdown-worker:
     build:

@@ -33,7 +33,7 @@ public final class ApiModels {
      /** 登录成功响应，包含会话令牌和前端权限判断所需的账号信息。 */
             @NotBlank @Email String email,
             @NotBlank @Pattern(regexp = "^\\d{6}$", message = "请输入 6 位数字验证码") String code) {}
-    public record AuthProfile(String token, String username, String displayName, String role) {}
+    public record AuthProfile(String token, String username, String displayName, String role, boolean mustChangePassword) {}
     /** 修改密码请求。 */
     public record ChangePasswordRequest(@NotBlank String currentPassword, @NotBlank @Size(min = 6, max = 72) String newPassword) {}
      /** 当前系统公告。 */
