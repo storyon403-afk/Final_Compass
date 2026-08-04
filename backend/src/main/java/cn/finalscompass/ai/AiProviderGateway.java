@@ -33,13 +33,14 @@ public class AiProviderGateway {
         return adapter;
     }
 
-    public AiProviderAdapter.AiProviderResult invoke(String provider, String model, AiSkill skill,
-                                                      String input, char[] apiKey) {
+    public AiProviderAdapter.AiProviderResult invoke(String provider, String model,
+                                                      AiSkillPlanner.ExecutionPlan plan, char[] apiKey) {
         AiProviderAdapter adapter = require(provider);
+        AiSkill skill = plan.primarySkill();
         if ("VISION".equals(skill.category()) && !adapter.capabilities().contains("IMAGE")) {
             throw new IllegalArgumentException(adapter.displayName() + " 当前配置不支持图片 Skill");
         }
-        return adapter.invoke(new AiProviderAdapter.AiProviderRequest(model, skill, input), apiKey);
+        return adapter.invoke(new AiProviderAdapter.AiProviderRequest(model, plan), apiKey);
     }
 
     public String normalize(String value) {

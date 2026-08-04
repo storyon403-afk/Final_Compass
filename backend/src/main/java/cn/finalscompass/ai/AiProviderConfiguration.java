@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.Set;
 
-/** Registers the external providers supported by the V1 gateway contract. */
+/** Registers provider capabilities; preview adapters can later be replaced independently. */
 @Configuration
 public class AiProviderConfiguration {
     @Bean AiProviderAdapter openAiAdapter() {

@@ -63,8 +63,7 @@ public class AiDocumentConversionService {
                     .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                        response.statusCode() == 413 ? "附件超过解析服务限制" : "附件解析失败，请检查文件内容");
+                throw workerFailure(response.statusCode());
             }
             WorkerResponse converted = json.readValue(response.body(), WorkerResponse.class);
             return new ConversionResult(originalName, converted.contentType(), converted.markdown(),
@@ -77,6 +76,16 @@ public class AiDocumentConversionService {
         } catch (Exception exception) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "附件解析服务暂不可用");
         }
+    }
+
+    private ResponseStatusException workerFailure(int statusCode) {
+        return switch (statusCode) {
+            case 400 -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "附件类型与内容不匹配，或文件结构无效");
+            case 413 -> new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "附件超过页数、时长或解压限制");
+            case 429 -> new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "附件解析服务繁忙，请稍后重试");
+            case 401, 503 -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "附件解析服务配置异常");
+            default -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "附件解析失败，请检查文件内容");
+        };
     }
 
     private byte[] multipartBody(String boundary, String extension, String contentType, byte[] data) throws java.io.IOException {

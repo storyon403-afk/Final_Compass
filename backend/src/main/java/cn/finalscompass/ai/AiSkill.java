@@ -7,6 +7,9 @@ public interface AiSkill {
     String description();
     int maxInputLength();
     java.util.Set<String> modalities();
+    String systemInstruction();
+    String outputContract();
+    java.util.Set<String> allowedTools();
 
     default void validate(String input) {
         if (input == null || input.isBlank()) throw new IllegalArgumentException("请输入需要分析的内容");

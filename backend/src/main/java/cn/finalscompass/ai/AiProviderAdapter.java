@@ -9,6 +9,6 @@ public interface AiProviderAdapter {
     Set<String> capabilities();
     AiProviderResult invoke(AiProviderRequest request, char[] apiKey);
 
-    record AiProviderRequest(String model, AiSkill skill, String input) {}
+    record AiProviderRequest(String model, AiSkillPlanner.ExecutionPlan plan) {}
     record AiProviderResult(String content, int inputUnits, int outputUnits, boolean preview) {}
 }

@@ -1,10 +1,6 @@
 package cn.finalscompass.service;
 
-import cn.finalscompass.ai.AiCredentialSource;
-import cn.finalscompass.ai.AiProviderGateway;
-import cn.finalscompass.ai.AiSkill;
-import cn.finalscompass.ai.AiSkillRegistry;
-import cn.finalscompass.ai.ResolvedAiCredential;
+import cn.finalscompass.ai.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -24,15 +20,18 @@ public class AiAnalysisService {
     private final ActivityService activity;
     private final AiSecretCipher cipher;
     private final AiSkillRegistry skills;
+    private final AiAgentOrchestrator orchestrator;
     private final AiProviderGateway gateway;
     private final AiCredentialResolver credentials;
 
     public AiAnalysisService(JdbcClient jdbc, ActivityService activity, AiSecretCipher cipher,
-                             AiSkillRegistry skills, AiProviderGateway gateway, AiCredentialResolver credentials) {
+                             AiSkillRegistry skills, AiAgentOrchestrator orchestrator,
+                             AiProviderGateway gateway, AiCredentialResolver credentials) {
         this.jdbc = jdbc;
         this.activity = activity;
         this.cipher = cipher;
         this.skills = skills;
+        this.orchestrator = orchestrator;
         this.gateway = gateway;
         this.credentials = credentials;
     }
@@ -99,8 +98,8 @@ public class AiAnalysisService {
 
     @Transactional
     public InvokeResult invoke(long userId, InvokeRequest request) {
-        AiSkill skill = skills.require(request.skillId());
-        skill.validate(request.input());
+        AiSkillPlanner.ExecutionPlan plan = orchestrator.prepare(request.skillId(), request.input());
+        AiSkill skill = plan.primarySkill();
         AiCredentialSource source;
         try { source = AiCredentialSource.valueOf(request.credentialSource().toUpperCase()); }
         catch (Exception exception) { throw new IllegalArgumentException("不支持的凭据来源"); }
@@ -115,7 +114,7 @@ public class AiAnalysisService {
                     .param("skill", skill.id()).param("source", source.name()).param("inputUnits", request.input().length())
                     .param("trace", traceId).update();
             try {
-                var result = gateway.invoke(credential.provider(), credential.model(), skill, request.input(), credential.apiKey());
+                var result = gateway.invoke(credential.provider(), credential.model(), plan, credential.apiKey());
                 jdbc.sql("""
                     UPDATE ai_usage_log SET status='SUCCEEDED',input_units=:input,output_units=:output,completed_at=NOW()
                     WHERE trace_id=:trace
