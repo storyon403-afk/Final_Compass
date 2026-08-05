@@ -1,8 +1,8 @@
 package cn.finalscompass.service;
 
-import cn.finalscompass.ai.AiCredentialSource;
-import cn.finalscompass.ai.AiProviderGateway;
-import cn.finalscompass.ai.ResolvedAiCredential;
+import cn.finalscompass.ai.credential.AiCredentialSource;
+import cn.finalscompass.ai.provider.AiProviderGateway;
+import cn.finalscompass.ai.credential.ResolvedAiCredential;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;

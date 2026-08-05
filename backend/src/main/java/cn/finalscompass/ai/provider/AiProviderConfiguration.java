@@ -1,4 +1,4 @@
-package cn.finalscompass.ai;
+package cn.finalscompass.ai.provider;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

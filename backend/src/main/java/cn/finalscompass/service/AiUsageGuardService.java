@@ -1,6 +1,6 @@
 package cn.finalscompass.service;
 
-import cn.finalscompass.ai.AiCredentialSource;
+import cn.finalscompass.ai.credential.AiCredentialSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;

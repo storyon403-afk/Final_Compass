@@ -1,4 +1,6 @@
-package cn.finalscompass.ai;
+package cn.finalscompass.ai.provider;
+
+import cn.finalscompass.ai.skill.AiSkill;
 
 import java.util.Set;
 

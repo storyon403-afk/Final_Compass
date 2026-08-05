@@ -1,4 +1,4 @@
-package cn.finalscompass.ai;
+package cn.finalscompass.ai.skill;
 
 import org.springframework.stereotype.Component;
 

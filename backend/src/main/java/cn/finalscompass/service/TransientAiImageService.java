@@ -1,6 +1,6 @@
 package cn.finalscompass.service;
 
-import cn.finalscompass.ai.AiProviderAdapter;
+import cn.finalscompass.ai.provider.AiProviderAdapter;
 import org.springframework.stereotype.Service;
 
 import java.util.Base64;

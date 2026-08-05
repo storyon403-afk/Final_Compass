@@ -1,4 +1,7 @@
-package cn.finalscompass.ai;
+package cn.finalscompass.ai.provider;
+
+import cn.finalscompass.ai.agent.AiSkillPlanner;
+import cn.finalscompass.ai.skill.AiSkill;
 
 import org.springframework.stereotype.Component;
 

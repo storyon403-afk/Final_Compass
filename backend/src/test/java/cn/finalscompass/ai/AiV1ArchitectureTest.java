@@ -1,5 +1,15 @@
 package cn.finalscompass.ai;
 
+import cn.finalscompass.ai.agent.AiSkillPlanner;
+import cn.finalscompass.ai.credential.AiCredentialSource;
+import cn.finalscompass.ai.credential.ResolvedAiCredential;
+import cn.finalscompass.ai.provider.AiProviderAdapter;
+import cn.finalscompass.ai.provider.AiProviderGateway;
+import cn.finalscompass.ai.provider.PreviewAiProviderAdapter;
+import cn.finalscompass.ai.skill.AiSkill;
+import cn.finalscompass.ai.skill.AiSkillRegistry;
+import cn.finalscompass.ai.skill.DefaultAiSkill;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

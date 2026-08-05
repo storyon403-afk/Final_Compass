@@ -1,10 +1,10 @@
 package cn.finalscompass.service;
 
-import cn.finalscompass.ai.AiAgentOrchestrator;
-import cn.finalscompass.ai.AiProviderAdapter;
-import cn.finalscompass.ai.AiProviderGateway;
-import cn.finalscompass.ai.AiSkillPlanner;
-import cn.finalscompass.ai.ResolvedAiCredential;
+import cn.finalscompass.ai.agent.AiAgentOrchestrator;
+import cn.finalscompass.ai.provider.AiProviderAdapter;
+import cn.finalscompass.ai.provider.AiProviderGateway;
+import cn.finalscompass.ai.agent.AiSkillPlanner;
+import cn.finalscompass.ai.credential.ResolvedAiCredential;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

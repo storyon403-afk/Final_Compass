@@ -1,5 +1,15 @@
 package cn.finalscompass.ai;
 
+import cn.finalscompass.ai.agent.AiAgentOrchestrator;
+import cn.finalscompass.ai.agent.AiIntentRouter;
+import cn.finalscompass.ai.agent.AiSkillPlanner;
+import cn.finalscompass.ai.agent.intent.IntentValidator;
+import cn.finalscompass.ai.guard.AiInputGuardrail;
+import cn.finalscompass.ai.guard.AiToolLimiter;
+import cn.finalscompass.ai.skill.AiSkill;
+import cn.finalscompass.ai.skill.AiSkillRegistry;
+import cn.finalscompass.ai.skill.DefaultAiSkill;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -25,7 +35,7 @@ class AiV2OrchestratorTest {
                 skill("math-problem-image-analysis", "VISION", Set.of())
         ));
         var planner = new AiSkillPlanner(registry, new AiToolLimiter());
-        return new AiAgentOrchestrator(new AiInputGuardrail(), new AiIntentRouter(), planner);
+        return new AiAgentOrchestrator(new AiInputGuardrail(), new AiIntentRouter(), new IntentValidator(), planner);
     }
 
     @Test
@@ -50,7 +60,7 @@ class AiV2OrchestratorTest {
         var plan = orchestrator().prepare("concept-explanation", "帮我检查解答哪里错了");
 
         assertEquals("concept-explanation", plan.primarySkill().id());
-        assertEquals("EXPLICIT", plan.routingReason());
+        assertEquals("EXPLICIT_SKILL", plan.routingReason());
     }
 
     @Test
