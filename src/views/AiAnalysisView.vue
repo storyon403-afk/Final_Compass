@@ -1,6 +1,8 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { aiApi, isAdmin } from '../api'
+
+const SafeMarkdown = defineAsyncComponent(() => import('../components/SafeMarkdown.vue'))
 
 const loading = ref(true)
 const error = ref('')
@@ -23,13 +25,16 @@ const attachments = ref([])
 const capturedPhoto = ref(null)
 const result = ref(null)
 const invoking = ref(false)
-const adminProvider = ref('deepseek')
-const adminModel = ref('deepseek-chat')
-const adminKey = ref('')
-const adminEnabled = ref(true)
+const adminDeepseekModel = ref('deepseek-v4-flash')
+const adminDeepseekKey = ref('')
+const adminDeepseekEnabled = ref(true)
+const adminGeminiModel = ref('gemini-3.6-flash')
+const adminGeminiKey = ref('')
+const adminGeminiEnabled = ref(true)
 
 const savedForProvider = computed(() => dashboard.value.savedKeys.find((item) => item.provider === provider.value))
 const platformProvider = computed(() => dashboard.value.platformProviders.find((item) => item.provider === provider.value && item.enabled))
+const platformStatus = (providerId) => dashboard.value.platformProviders.find((item) => item.provider === providerId)
 
 async function load() {
   loading.value = true
@@ -80,7 +85,9 @@ async function prepareTemporaryImage(file, sourceLabel) {
   try {
     capturedPhoto.value = { ...await compressPhoto(file), sourceLabel }
     const current = dashboard.value.providers.find((item) => item.id === provider.value)
-    if (!current?.capabilities?.includes('IMAGE')) {
+    if (provider.value === 'deepseek') {
+      message.value = `${sourceLabel}将由 Gemini 识别题面，再交给 DeepSeek V4 Flash 分析。`
+    } else if (!current?.capabilities?.includes('IMAGE')) {
       const visual = dashboard.value.providers.find((item) => item.capabilities?.includes('IMAGE'))
       if (!visual) throw new Error('当前没有配置支持图片的 AI Provider')
       provider.value = visual.id
@@ -158,7 +165,8 @@ async function invoke() {
     const question = input.value.trim() || '请识别这张照片中的题目，并给出第一步分析。'
     const hasImage = Boolean(capturedPhoto.value) || attachments.value.some((item) => item.type.startsWith('image/'))
     const selectedProvider = dashboard.value.providers.find((item) => item.id === provider.value)
-    if (hasImage && !selectedProvider?.capabilities?.includes('IMAGE')) {
+    const usesGeminiVisionPipeline = hasImage && provider.value === 'deepseek'
+    if (hasImage && !usesGeminiVisionPipeline && !selectedProvider?.capabilities?.includes('IMAGE')) {
       throw new Error(`当前 ${selectedProvider?.name || provider.value} 通道不支持图片，请在右上角菜单切换到支持图片的 Provider`)
     }
     const converted = []
@@ -193,16 +201,25 @@ async function invoke() {
   finally { invoking.value = false }
 }
 
-async function savePlatform() {
+async function savePlatform(providerId) {
   error.value = ''
   message.value = ''
+  const gemini = providerId === 'gemini'
+  const model = gemini ? adminGeminiModel.value : adminDeepseekModel.value
+  const key = gemini ? adminGeminiKey.value : adminDeepseekKey.value
+  const enabled = gemini ? adminGeminiEnabled.value : adminDeepseekEnabled.value
   try {
-    await aiApi.savePlatformKey(adminProvider.value, adminModel.value, adminKey.value, adminEnabled.value)
-    adminKey.value = ''
-    provider.value = adminProvider.value
-    credentialSource.value = 'PLATFORM'
-    message.value = '平台 AI 配置已加密保存，并已切换到平台通道，可以直接发送问题测试。'
+    await aiApi.savePlatformKey(providerId, model, key, enabled)
+    if (gemini) adminGeminiKey.value = ''
+    else adminDeepseekKey.value = ''
     await load()
+    provider.value = 'deepseek'
+    credentialSource.value = 'PLATFORM'
+    apiKey.value = ''
+    const otherReady = platformStatus(gemini ? 'deepseek' : 'gemini')?.enabled
+    message.value = otherReady
+      ? `${gemini ? 'Gemini 视觉识别' : 'DeepSeek 解题'}通道已保存，双模型链路已就绪并切换到平台额度。`
+      : `${gemini ? 'Gemini 视觉识别' : 'DeepSeek 解题'}通道已保存；还需配置并启用${gemini ? ' DeepSeek 解题' : ' Gemini 视觉识别'}通道。`
   } catch (reason) { error.value = reason.message }
 }
 
@@ -226,7 +243,7 @@ onMounted(load)
 
         <section v-else class="ai-thread" aria-live="polite">
           <div class="ai-user-message"><span>你</span><p>{{ result.question }}</p></div>
-          <div class="ai-assistant-message"><span class="ai-answer-mark">FC</span><div><b>FinalsCompass AI</b><p>{{ result.content }}</p><small>{{ result.provider }} · trace {{ result.traceId }}</small></div></div>
+          <div class="ai-assistant-message"><span class="ai-answer-mark">FC</span><div><b>FinalsCompass AI</b><SafeMarkdown :content="result.content" /><small>{{ result.provider }} · trace {{ result.traceId }}</small></div></div>
         </section>
 
         <section class="ai-composer-wrap">
@@ -286,10 +303,22 @@ onMounted(load)
           </section>
 
           <section v-if="isAdmin" class="ai-drawer-section ai-admin-settings">
-            <h3>管理员 · 平台通道</h3>
-            <label>Provider<input v-model="adminProvider" /></label><label>模型<input v-model="adminModel" /></label><label>平台 API Key<input v-model="adminKey" type="password" autocomplete="off" /></label>
-            <label class="ai-consent"><input v-model="adminEnabled" type="checkbox" />立即向资格用户启用</label>
-            <button type="button" :disabled="!adminKey" @click="savePlatform">保存平台配置</button>
+            <h3>管理员 · 双模型拍题链路</h3>
+            <p class="ai-caption">图片先由 Gemini 识别题面，再由 DeepSeek V4 Flash 按用户意图解题。两把 Key 分开加密保存。</p>
+            <div class="ai-provider-config">
+              <div class="ai-provider-config-head"><b>① Gemini 视觉识别</b><small>{{ platformStatus('gemini')?.enabled ? '已启用' : '未配置或已停用' }}</small></div>
+              <label>Gemini 模型<input v-model="adminGeminiModel" autocomplete="off" placeholder="gemini-3.6-flash" /></label>
+              <label>Google API Key<input v-model="adminGeminiKey" type="password" autocomplete="new-password" placeholder="输入 Google AI Studio API Key" /></label>
+              <label class="ai-consent"><input v-model="adminGeminiEnabled" type="checkbox" />启用视觉识别</label>
+              <button type="button" :disabled="!adminGeminiKey || !adminGeminiModel" @click="savePlatform('gemini')">保存 Gemini 配置</button>
+            </div>
+            <div class="ai-provider-config">
+              <div class="ai-provider-config-head"><b>② DeepSeek 解题</b><small>{{ platformStatus('deepseek')?.enabled ? '已启用' : '未配置或已停用' }}</small></div>
+              <label>DeepSeek 模型<input v-model="adminDeepseekModel" autocomplete="off" placeholder="deepseek-v4-flash" /></label>
+              <label>DeepSeek API Key<input v-model="adminDeepseekKey" type="password" autocomplete="new-password" placeholder="输入 DeepSeek API Key" /></label>
+              <label class="ai-consent"><input v-model="adminDeepseekEnabled" type="checkbox" />启用最终分析</label>
+              <button type="button" :disabled="!adminDeepseekKey || !adminDeepseekModel" @click="savePlatform('deepseek')">保存 DeepSeek 配置</button>
+            </div>
           </section>
         </aside>
       </div>

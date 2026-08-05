@@ -26,6 +26,7 @@
 | [AI 活跃度资格与 Skill 安全架构设计](AI活跃度资格与Skill安全架构设计.md) | 活跃积分、月度资格、平台 Key/BYOK、安全边界与 Skill 抽象。 |
 | [Finals Compass AI V2：Skill 编排设计与扩展指南](FinalsCompass_AI_V2_Skill编排设计与扩展指南.md) | Agent 编排、Skill Registry、凭据解析和 Provider Gateway 的接口关系。 |
 | [Finals Compass AI V3：真实调用与临时拍题设计](FinalsCompass_AI_V3_真实调用与临时拍题设计.md) | DeepSeek/OpenAI 真实调用、手机拍题的请求级内存链路与平台用量保护。 |
+| [Finals Compass AI V4：Gemini 视觉与 DeepSeek 解题编排](FinalsCompass_AI_V4_Gemini视觉与DeepSeek解题编排.md) | Gemini 题面识别、用户意图路由、DeepSeek V4 Flash 解题及双模型安全边界。 |
 | [MarkItDown 内置附件解析与运行指南](MarkItDown内置附件解析与运行指南.md) | 文档、图片和音频的标准化解析链路、Worker 限制与故障处理。 |
 
 ## 四、基础设施与安全状态
