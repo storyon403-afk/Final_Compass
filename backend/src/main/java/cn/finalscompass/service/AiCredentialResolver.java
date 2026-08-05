@@ -46,13 +46,35 @@ public class AiCredentialResolver {
                 WHERE user_id=:user AND provider=:provider
                 """).param("user", userId).param("provider", provider).query(UserSecretRow.class).optional()
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "尚未保存该 Provider 的 API Key"));
-            return new ResolvedAiCredential(provider, "user-selected", source,
+            return new ResolvedAiCredential(provider, defaultByokModel(provider), source,
                     cipher.decrypt(row.encryptedKey(), row.encryptionIv()));
         }
         if (ephemeral == null || ephemeral.length() < 8 || ephemeral.length() > 500) {
             throw new IllegalArgumentException("请输入本次请求使用的 API Key");
         }
-        return new ResolvedAiCredential(provider, "user-selected", source, ephemeral.toCharArray());
+        return new ResolvedAiCredential(provider, defaultByokModel(provider), source, ephemeral.toCharArray());
+    }
+
+    private String defaultByokModel(String provider) {
+        return "deepseek".equals(provider) ? "deepseek-v4-flash" : "user-selected";
+    }
+
+    /** Resolves a platform-owned auxiliary model used inside an authorized multi-stage invocation. */
+    public ResolvedAiCredential resolvePlatformAuxiliary(long userId, String providerValue) {
+        String provider = providers.require(providerValue).id();
+        boolean admin = jdbc.sql("SELECT role='ADMIN' FROM app_user WHERE id=:user")
+                .param("user", userId).query(Boolean.class).optional().orElse(false);
+        if (!admin && !activity.hasPlatformEntitlement(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "本月暂无平台视觉识别资格");
+        }
+        SecretRow row = jdbc.sql("""
+            SELECT provider,model_name,encrypted_key,encryption_iv FROM platform_ai_config
+            WHERE provider=:provider AND enabled=TRUE
+            """).param("provider", provider).query(SecretRow.class).optional()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "管理员尚未配置 Gemini 视觉识别通道"));
+        return new ResolvedAiCredential(provider, row.modelName(), AiCredentialSource.PLATFORM,
+                cipher.decrypt(row.encryptedKey(), row.encryptionIv()));
     }
 
     private record SecretRow(String provider, String modelName, String encryptedKey, String encryptionIv) {}

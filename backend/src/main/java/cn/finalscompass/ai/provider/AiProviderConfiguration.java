@@ -21,7 +21,7 @@ public class AiProviderConfiguration {
         return new DeepSeekProviderAdapter(json);
     }
 
-    @Bean AiProviderAdapter geminiAdapter() {
-        return new PreviewAiProviderAdapter("gemini", "Google / Gemini", Set.of("TEXT", "IMAGE"));
+    @Bean AiProviderAdapter geminiAdapter(ObjectMapper json) {
+        return new GeminiGenerateContentAdapter(json);
     }
 }

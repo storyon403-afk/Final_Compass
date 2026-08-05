@@ -25,11 +25,13 @@ public class AiAnalysisService {
     private final AiCredentialResolver credentials;
     private final TransientAiImageService images;
     private final AiUsageGuardService usageGuard;
+    private final AiVisionProblemPipeline visionPipeline;
 
     public AiAnalysisService(JdbcClient jdbc, ActivityService activity, AiSecretCipher cipher,
                              AiSkillRegistry skills, AiAgentOrchestrator orchestrator,
                              AiProviderGateway gateway, AiCredentialResolver credentials,
-                             TransientAiImageService images, AiUsageGuardService usageGuard) {
+                             TransientAiImageService images, AiUsageGuardService usageGuard,
+                             AiVisionProblemPipeline visionPipeline) {
         this.jdbc = jdbc;
         this.activity = activity;
         this.cipher = cipher;
@@ -39,6 +41,7 @@ public class AiAnalysisService {
         this.credentials = credentials;
         this.images = images;
         this.usageGuard = usageGuard;
+        this.visionPipeline = visionPipeline;
     }
 
     public Dashboard dashboard(long userId) {
@@ -121,7 +124,10 @@ public class AiAnalysisService {
                     .param("skill", skill.id()).param("source", source.name()).param("inputUnits", request.input().length())
                     .param("trace", traceId).update();
             try {
-                var result = gateway.invoke(credential.provider(), credential.model(), plan, credential.apiKey(), image);
+                var result = image != null && "math-problem-image-analysis".equals(skill.id())
+                        && "deepseek".equals(credential.provider())
+                        ? invokeVisionPipeline(userId, request.input(), credential, image)
+                        : gateway.invoke(credential.provider(), credential.model(), plan, credential.apiKey(), image);
                 jdbc.sql("""
                     UPDATE ai_usage_log SET status='SUCCEEDED',input_units=:input,output_units=:output,completed_at=NOW()
                     WHERE trace_id=:trace
@@ -133,6 +139,12 @@ public class AiAnalysisService {
                 throw exception;
             }
         }
+    }
+
+    private AiProviderAdapter.AiProviderResult invokeVisionPipeline(long userId, String input,
+            ResolvedAiCredential credential, AiProviderAdapter.TransientImage image) {
+        AiVisionProblemPipeline.PipelineResult result = visionPipeline.invoke(userId, input, credential, image);
+        return new AiProviderAdapter.AiProviderResult(result.content(), result.inputUnits(), result.outputUnits(), false);
     }
 
     private char[] requiredApiKey(String value) {

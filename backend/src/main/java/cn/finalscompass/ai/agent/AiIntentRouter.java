@@ -10,6 +10,7 @@ import java.util.Locale;
 public class AiIntentRouter {
     private static final List<Rule> RULES = List.of(
             new Rule("solution-review", List.of("检查解答", "哪里错", "哪一步错", "批改", "验算", "review my solution")),
+            new Rule("complete-solution", List.of("解题", "完整解答", "直接解答", "给出答案", "求解", "solve")),
             new Rule("statistics-method-selector", List.of("统计方法", "用什么检验", "t检验", "卡方", "回归方法", "anova", "hypothesis test")),
             new Rule("concept-explanation", List.of("什么是", "解释概念", "区别是什么", "如何理解", "概念", "what is")),
             new Rule("course-question-answering", List.of("这门课", "课程资料", "老师要求", "课程考试", "course material")),

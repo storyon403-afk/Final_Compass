@@ -16,6 +16,7 @@ class AiV2OrchestratorTest {
     private AiAgentOrchestrator orchestrator() {
         var registry = new AiSkillRegistry(List.of(
                 skill("progressive-hint", "LEARNING", Set.of()),
+                skill("complete-solution", "LEARNING", Set.of()),
                 skill("solution-review", "LEARNING", Set.of()),
                 skill("concept-explanation", "LEARNING", Set.of()),
                 skill("statistics-method-selector", "STATISTICS", Set.of()),
@@ -35,6 +36,13 @@ class AiV2OrchestratorTest {
         assertEquals("RULE_MATCH", plan.routingReason());
         assertTrue(plan.systemInstruction().contains("输出要求"));
         assertEquals(List.of("statistics-method-selector"), plan.skillSequence());
+    }
+
+    @Test
+    void autoRoutesExplicitSolveRequestToCompleteSolution() {
+        var plan = orchestrator().prepare("auto", "请完整解题并给出答案");
+
+        assertEquals("complete-solution", plan.primarySkill().id());
     }
 
     @Test
