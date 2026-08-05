@@ -1,134 +1,62 @@
 package cn.finalscompass.ai.prompt;
 
-
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
-
 /**
- * AI Prompt模板实体。
+ * AI Prompt模板对象
  *
- * 一个Skill对应多个Prompt版本。
+ * 对应数据库表：
+ * ai_prompt_template
  *
- * 例如：
- *
- * math-proof-solver:v1
- * math-proof-solver:v2
- *
+ * 不使用JPA注解。
+ * 当前项目使用JdbcTemplate。
  */
-@Entity
-@Table(
-        name = "ai_prompt_template"
-)
 public class AiPromptTemplate {
 
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
 
 
     /**
      * 对应Skill ID
      *
      * 例如：
-     *
      * math-proof-solver
      */
-    @Column(
-            nullable = false,
-            length = 100
-    )
     private String skillId;
-
 
 
     /**
      * Prompt版本
      *
+     * 例如：
      * v1
-     * v2
      */
-    @Column(
-            nullable = false,
-            length = 20
-    )
     private String version;
 
 
-
     /**
-     * 系统Prompt正文
+     * 系统提示词
      */
-    @Lob
-    @Column(
-            nullable = false
-    )
     private String systemPrompt;
 
 
-
     /**
-     * 输出格式约束
+     * 输出约束
      */
-    @Lob
     private String outputContract;
-
 
 
     /**
      * 是否启用
      */
-    @Column(
-            nullable = false
-    )
-    private boolean enabled = true;
-
+    private Boolean enabled;
 
 
     /**
      * 创建时间
      */
-    @Column(
-            nullable = false
-    )
     private LocalDateTime createdAt;
-
-
-
-    @PrePersist
-    public void onCreate(){
-
-        if(createdAt == null){
-            createdAt = LocalDateTime.now();
-        }
-
-    }
-
-
-
-    protected AiPromptTemplate(){
-
-    }
-
-
-
-    public AiPromptTemplate(
-            String skillId,
-            String version,
-            String systemPrompt,
-            String outputContract
-    ){
-
-        this.skillId = skillId;
-        this.version = version;
-        this.systemPrompt = systemPrompt;
-        this.outputContract = outputContract;
-        this.enabled = true;
-
-    }
 
 
 
@@ -137,8 +65,18 @@ public class AiPromptTemplate {
     }
 
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+
     public String getSkillId() {
         return skillId;
+    }
+
+
+    public void setSkillId(String skillId) {
+        this.skillId = skillId;
     }
 
 
@@ -147,8 +85,18 @@ public class AiPromptTemplate {
     }
 
 
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+
     public String getSystemPrompt() {
         return systemPrompt;
+    }
+
+
+    public void setSystemPrompt(String systemPrompt) {
+        this.systemPrompt = systemPrompt;
     }
 
 
@@ -157,8 +105,18 @@ public class AiPromptTemplate {
     }
 
 
-    public boolean isEnabled() {
+    public void setOutputContract(String outputContract) {
+        this.outputContract = outputContract;
+    }
+
+
+    public Boolean getEnabled() {
         return enabled;
+    }
+
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
     }
 
 
@@ -166,5 +124,9 @@ public class AiPromptTemplate {
         return createdAt;
     }
 
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 
 }

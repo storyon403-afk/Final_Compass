@@ -1,25 +1,30 @@
 package cn.finalscompass.ai.prompt;
 
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-
-import java.util.Optional;
-
-
-
-@Repository
-public interface AiPromptRepository
-        extends JpaRepository<AiPromptTemplate,Long> {
-
+/**
+ * Prompt数据访问抽象。
+ *
+ * 当前实现：
+ *
+ * JdbcTemplate
+ *
+ * 后续可以替换：
+ *
+ * Redis
+ * 配置中心
+ * 远程Prompt服务
+ *
+ */
+public interface AiPromptRepository {
 
 
     /**
      * 查询指定Skill版本的启用Prompt
+     *
+     * @param skillId Skill编号
+     * @param version Prompt版本
      */
-    Optional<AiPromptTemplate>
-    findFirstBySkillIdAndVersionAndEnabledTrue(
+    AiPromptTemplate findActivePrompt(
             String skillId,
             String version
     );

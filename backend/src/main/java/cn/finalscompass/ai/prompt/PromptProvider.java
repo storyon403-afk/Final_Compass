@@ -2,15 +2,19 @@ package cn.finalscompass.ai.prompt;
 
 
 /**
- * Prompt获取抽象。
+ * Prompt提供层。
  *
- * Skill和数据库解耦。
+ * Skill不直接访问数据库。
  *
- * 后续可以接：
+ * 调用链：
  *
- * 数据库
- * Redis
- * 配置中心
+ * Skill
+ *   |
+ * PromptProvider
+ *   |
+ * Repository
+ *   |
+ * Database
  *
  */
 public interface PromptProvider {
