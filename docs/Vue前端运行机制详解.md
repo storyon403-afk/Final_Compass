@@ -396,22 +396,3 @@ App.vue 自动显示系统主体
 
 这里没有显式调用“打开主页面”。登录状态改变后，模板自然选择系统主体。
 
-## 17. 阅读顺序
-
-1. `src/main.js`：系统如何启动、有哪些地址。
-2. `src/App.vue`：登录前后、顶部外壳和页面容器。
-3. `src/api.js`：前端如何访问 Java 后端。
-4. `src/views/HomeView.vue`：最清楚的状态驱动页面。
-5. `src/views/TeachersView.vue`：路由参数和监听。
-6. `src/views/TeacherCircleView.vue`：多个 API、上传和子组件。
-7. `src/views/AuthView.vue`：多步骤表单状态机。
-8. `src/views/CetView.vue`：最后阅读复杂业务状态机。
-
-## 18. 先记住四句话
-
-1. `ref` 是能够驱动界面变化的状态。
-2. `computed` 是根据其他状态自动计算出的结果。
-3. `<template>` 描述当前状态下应该显示什么。
-4. `api.js` 把用户操作转换成对 Spring Boot 后端的 HTTP 请求。
-
-掌握这四点后，即使暂时不知道全部 Vue 语法，也能沿着“事件 → 状态 → API → 状态更新 → 模板重绘”读懂这个项目。
