@@ -15,6 +15,8 @@ const dashboard = ref({
   platformProviders: [], savedKeys: [], encryptedStorageAvailable: false
 })
 const provider = ref('deepseek')
+const runtime = ref('FINALS_COMPASS')
+const model = ref('deepseek-v4-flash')
 const skillId = ref('auto')
 const input = ref('')
 const apiKey = ref('')
@@ -31,9 +33,14 @@ const adminDeepseekEnabled = ref(true)
 const adminGeminiModel = ref('gemini-3.6-flash')
 const adminGeminiKey = ref('')
 const adminGeminiEnabled = ref(true)
+const adminDefaultProvider = ref('deepseek')
+const adminHermesKey = ref('')
+const adminHermesEnabled = ref(false)
 
-const savedForProvider = computed(() => dashboard.value.savedKeys.find((item) => item.provider === provider.value))
-const platformProvider = computed(() => dashboard.value.platformProviders.find((item) => item.provider === provider.value && item.enabled))
+const effectiveProvider = computed(() => runtime.value === 'HERMES' ? 'hermes' : provider.value)
+const savedForProvider = computed(() => dashboard.value.savedKeys.find((item) => item.provider === effectiveProvider.value))
+const platformAvailable = computed(() => runtime.value === 'HERMES'
+  ? dashboard.value.hermesPlatformAvailable : dashboard.value.platformDefaultAvailable)
 const platformStatus = (providerId) => dashboard.value.platformProviders.find((item) => item.provider === providerId)
 
 async function load() {
@@ -41,6 +48,7 @@ async function load() {
   error.value = ''
   try {
     dashboard.value = await aiApi.dashboard()
+    adminDefaultProvider.value = dashboard.value.defaultProvider || 'deepseek'
     if (dashboard.value.providers?.length && !dashboard.value.providers.some((item) => item.id === provider.value)) {
       provider.value = dashboard.value.providers[0].id
     }
@@ -129,7 +137,9 @@ watch(provider, () => {
   // Provider Key 不能跨供应商复用，切换时立即清除尚未发送的明文。
   apiKey.value = ''
   consentToStore.value = false
+  model.value = provider.value === 'deepseek' ? 'deepseek-v4-flash' : provider.value === 'openai' ? 'gpt-5' : provider.value === 'gemini' ? 'gemini-2.5-flash' : ''
 })
+watch(runtime, () => { apiKey.value = ''; consentToStore.value = false })
 
 async function saveKey() {
   message.value = ''
@@ -140,7 +150,7 @@ async function saveKey() {
     return
   }
   try {
-    await aiApi.saveByok(provider.value, apiKey.value, keyLabel.value, true)
+    await aiApi.saveByok(effectiveProvider.value, apiKey.value, keyLabel.value, true)
     apiKey.value = ''
     credentialSource.value = 'STORED_BYOK'
     message.value = 'API Key 已加密保存。'
@@ -150,7 +160,7 @@ async function saveKey() {
 
 async function removeKey() {
   if (!savedForProvider.value) return
-  await aiApi.deleteByok(provider.value)
+  await aiApi.deleteByok(effectiveProvider.value)
   credentialSource.value = 'EPHEMERAL_BYOK'
   message.value = '已删除保存的 API Key。'
   await load()
@@ -165,7 +175,7 @@ async function invoke() {
     const question = input.value.trim() || '请识别这张照片中的题目，并给出第一步分析。'
     const hasImage = Boolean(capturedPhoto.value) || attachments.value.some((item) => item.type.startsWith('image/'))
     const selectedProvider = dashboard.value.providers.find((item) => item.id === provider.value)
-    const usesGeminiVisionPipeline = hasImage && provider.value === 'deepseek'
+    const usesGeminiVisionPipeline = hasImage && runtime.value === 'FINALS_COMPASS' && provider.value === 'deepseek'
     if (hasImage && !usesGeminiVisionPipeline && !selectedProvider?.capabilities?.includes('IMAGE')) {
       throw new Error(`当前 ${selectedProvider?.name || provider.value} 通道不支持图片，请在右上角菜单切换到支持图片的 Provider`)
     }
@@ -185,7 +195,9 @@ async function invoke() {
     const maxLength = dashboard.value.skills.find((item) => item.id === requestSkillId)?.maxInputLength || 8000
     const analysisInput = `${question}${converted.join('')}`.slice(0, maxLength)
     const response = await aiApi.invoke({
-      provider: provider.value,
+      runtime: runtime.value,
+      provider: credentialSource.value === 'PLATFORM' ? null : effectiveProvider.value,
+      model: credentialSource.value === 'PLATFORM' || runtime.value === 'HERMES' ? null : model.value,
       skillId: requestSkillId,
       credentialSource: credentialSource.value,
       ephemeralApiKey: credentialSource.value === 'EPHEMERAL_BYOK' ? apiKey.value : null,
@@ -220,6 +232,23 @@ async function savePlatform(providerId) {
     message.value = otherReady
       ? `${gemini ? 'Gemini 视觉识别' : 'DeepSeek 解题'}通道已保存，双模型链路已就绪并切换到平台额度。`
       : `${gemini ? 'Gemini 视觉识别' : 'DeepSeek 解题'}通道已保存；还需配置并启用${gemini ? ' DeepSeek 解题' : ' Gemini 视觉识别'}通道。`
+  } catch (reason) { error.value = reason.message }
+}
+
+async function saveDefaultProvider() {
+  try {
+    await aiApi.savePlatformDefault(adminDefaultProvider.value)
+    message.value = '平台默认模型已更新；普通用户使用平台额度时不会看到或覆盖该配置。'
+    await load()
+  } catch (reason) { error.value = reason.message }
+}
+
+async function saveHermesPlatform() {
+  try {
+    await aiApi.savePlatformKey('hermes', 'hermes-agent', adminHermesKey.value, adminHermesEnabled.value)
+    adminHermesKey.value = ''
+    message.value = 'Hermes 平台 Runtime 配置已保存。'
+    await load()
   } catch (reason) { error.value = reason.message }
 }
 
@@ -289,20 +318,29 @@ onMounted(load)
           </section>
 
           <section class="ai-drawer-section">
-            <h3>AI 通道</h3>
-            <label>Provider<select v-model="provider"><option v-for="item in dashboard.providers || []" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+            <h3>Agent Runtime</h3>
+            <label>执行方式<select v-model="runtime"><option value="FINALS_COMPASS">FinalsCompass Agent</option><option value="HERMES">Hermes Agent</option></select></label>
             <div class="ai-source-options">
-              <label><input v-model="credentialSource" type="radio" value="PLATFORM" /><span><b>平台额度</b><small>{{ dashboard.platformEligible && platformProvider ? '当前可用' : '需要资格及管理员启用' }}</small></span></label>
+              <label><input v-model="credentialSource" type="radio" value="PLATFORM" /><span><b>平台额度</b><small>{{ dashboard.platformEligible && platformAvailable ? '当前可用' : '需要资格及管理员启用' }}</small></span></label>
               <label><input v-model="credentialSource" type="radio" value="STORED_BYOK" :disabled="!savedForProvider" /><span><b>已保存 Key</b><small>{{ savedForProvider ? `指纹 ${savedForProvider.key_fingerprint}` : '尚未保存' }}</small></span></label>
               <label><input v-model="credentialSource" type="radio" value="EPHEMERAL_BYOK" /><span><b>仅本次使用</b><small>不会写入数据库</small></span></label>
             </div>
-            <label>API Key<input v-model="apiKey" type="password" autocomplete="off" placeholder="输入对应 Provider 的 Key" /></label>
-            <label>Key 备注<input v-model="keyLabel" maxlength="80" /></label>
-            <label class="ai-consent"><input v-model="consentToStore" type="checkbox" />同意平台加密保存此 Key</label>
-            <div class="ai-drawer-actions"><button type="button" :disabled="!apiKey" @click="saveKey">{{ consentToStore ? '加密保存' : '仅本次使用' }}</button><button v-if="savedForProvider" type="button" @click="removeKey">删除保存</button></div>
+            <template v-if="credentialSource !== 'PLATFORM'">
+              <label v-if="runtime === 'FINALS_COMPASS'">Provider<select v-model="provider"><option v-for="item in dashboard.providers || []" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+              <label v-if="runtime === 'FINALS_COMPASS'">模型<input v-model="model" maxlength="120" placeholder="输入该 Provider 的模型 ID" /></label>
+              <p v-else class="ai-caption">将使用你自己的 Hermes 服务凭据，模型由 Hermes 配置决定。</p>
+              <label>API Key<input v-model="apiKey" type="password" autocomplete="off" placeholder="输入对应服务的 Key" /></label>
+              <label>Key 备注<input v-model="keyLabel" maxlength="80" /></label>
+              <label class="ai-consent"><input v-model="consentToStore" type="checkbox" />同意平台加密保存此 Key</label>
+              <div class="ai-drawer-actions"><button type="button" :disabled="!apiKey" @click="saveKey">{{ consentToStore ? '加密保存' : '仅本次使用' }}</button><button v-if="savedForProvider" type="button" @click="removeKey">删除保存</button></div>
+            </template>
+            <p v-else class="ai-caption">Provider、模型与密钥由管理员统一配置，用户无法查看或覆盖。</p>
           </section>
 
           <section v-if="isAdmin" class="ai-drawer-section ai-admin-settings">
+            <h3>管理员 · 平台默认模型</h3>
+            <label>默认 Provider<select v-model="adminDefaultProvider"><option v-for="item in dashboard.providers || []" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
+            <button type="button" @click="saveDefaultProvider">设为平台默认</button>
             <h3>管理员 · 双模型拍题链路</h3>
             <p class="ai-caption">图片先由 Gemini 识别题面，再由 DeepSeek V4 Flash 按用户意图解题。两把 Key 分开加密保存。</p>
             <div class="ai-provider-config">
@@ -311,6 +349,12 @@ onMounted(load)
               <label>Google API Key<input v-model="adminGeminiKey" type="password" autocomplete="new-password" placeholder="输入 Google AI Studio API Key" /></label>
               <label class="ai-consent"><input v-model="adminGeminiEnabled" type="checkbox" />启用视觉识别</label>
               <button type="button" :disabled="!adminGeminiKey || !adminGeminiModel" @click="savePlatform('gemini')">保存 Gemini 配置</button>
+            </div>
+            <div class="ai-provider-config">
+              <div class="ai-provider-config-head"><b>Hermes Agent Runtime</b><small>{{ platformStatus('hermes')?.enabled ? '已启用' : '未配置或已停用' }}</small></div>
+              <label>Hermes API Server Key<input v-model="adminHermesKey" type="password" autocomplete="new-password" /></label>
+              <label class="ai-consent"><input v-model="adminHermesEnabled" type="checkbox" />启用平台 Hermes Runtime</label>
+              <button type="button" :disabled="!adminHermesKey" @click="saveHermesPlatform">保存 Hermes 配置</button>
             </div>
             <div class="ai-provider-config">
               <div class="ai-provider-config-head"><b>② DeepSeek 解题</b><small>{{ platformStatus('deepseek')?.enabled ? '已启用' : '未配置或已停用' }}</small></div>

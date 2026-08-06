@@ -15,7 +15,9 @@ function renderFormula(source, displayMode) {
     throwOnError: false,
     trust: false,
     strict: 'warn',
-    output: 'htmlAndMathml'
+    // MathML + HTML renders correctly on screen, but browsers copy both hidden
+    // MathML text and the visual layer, producing duplicated/split formulas.
+    output: 'html'
   })
 }
 

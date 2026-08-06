@@ -195,6 +195,9 @@ export const aiApi = {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider, model, apiKey, enabled })
   }),
+  savePlatformDefault: (provider) => request('/ai/admin/platform-default', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider })
+  }),
   invoke: (fields) => request('/ai/invoke', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
   }),
