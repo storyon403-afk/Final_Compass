@@ -29,6 +29,10 @@ public class AiProviderGateway {
                 .toList();
     }
 
+    public List<ProviderInfo> availableModelProviders() {
+        return available().stream().filter(item -> !item.capabilities().contains("AGENT")).toList();
+    }
+
     public AiProviderAdapter require(String provider) {
         String normalized = normalize(provider);
         AiProviderAdapter adapter = adapters.get(normalized);

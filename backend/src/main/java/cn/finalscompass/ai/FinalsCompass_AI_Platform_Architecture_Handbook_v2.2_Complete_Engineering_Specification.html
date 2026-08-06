@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Finals Compass AI Platform Architecture Handbook v2.2</title>
+<style>
+body{
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+margin:0;
+background:#f8fafc;
+color:#1e293b;
+line-height:1.8;
+}
+.container{max-width:1200px;margin:auto;padding:40px;}
+h1{font-size:36px;color:#0f172a;}
+h2{margin-top:45px;color:#1d4ed8;border-bottom:1px solid #dbeafe;padding-bottom:8px;}
+h3{color:#334155;}
+.card{
+background:white;
+padding:25px;
+border-radius:12px;
+box-shadow:0 4px 16px rgba(0,0,0,.06);
+margin:20px 0;
+}
+pre{
+background:#0f172a;
+color:#e2e8f0;
+padding:20px;
+border-radius:10px;
+overflow:auto;
+}
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+}
+th,td{
+border:1px solid #e2e8f0;
+padding:10px;
+}
+th{background:#eff6ff;}
+.tag{
+display:inline-block;
+padding:4px 10px;
+background:#dbeafe;
+border-radius:20px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Finals Compass AI Platform Architecture Handbook v2.2</h1>
+<h2>Engineering Implementation Specification</h2>
+
+<div class="card">
+<span class="tag">定位</span>
+<p>
+本版本是在 v2.1 Engineering Design Specification 基础上的工程实现版本。
+目标不是继续扩展概念，而是定义如何在 Spring Boot 体系中实现可替换 Agent、
+Skill、Provider、Memory 与异步任务架构。
+</p>
+</div>
+
+
+<h2>1. 总体架构</h2>
+
+<pre>
+User
+ |
+Frontend
+ |
+Spring Boot Backend
+ |
+AI Gateway
+ |
++----------------+
+| Agent Runtime |
++----------------+
+ |
+Planner
+ |
+Executor
+ |
+Skill Engine
+ |
+Tool System
+ |
+Provider Adapter
+ |
+LLM Provider
+</pre>
+
+
+<h2>2. 核心设计原则</h2>
+
+<div class="card">
+<ul>
+<li>业务系统生命周期长，Agent框架变化快，因此必须隔离。</li>
+<li>Spring Boot 不直接绑定 Hermes、LangGraph 等框架。</li>
+<li>通过统一 Agent Runtime 接口实现替换。</li>
+<li>Skill 表示业务能力，不表示智能主体。</li>
+<li>Provider Adapter 屏蔽不同模型差异。</li>
+</ul>
+</div>
+
+
+<h2>3. 请求生命周期</h2>
+
+<pre>
+用户提交AI请求
+
+↓
+
+Controller
+
+↓
+
+AiAnalysisService
+
+↓
+
+AI Gateway
+
+↓
+
+创建 AgentContext
+
+↓
+
+Agent Runtime
+
+↓
+
+Planner生成TaskPlan
+
+↓
+
+Executor执行Step
+
+↓
+
+Skill调用Tool
+
+↓
+
+Provider调用模型
+
+↓
+
+Result Parser
+
+↓
+
+返回结果
+</pre>
+
+
+<h2>4. Agent Runtime设计</h2>
+
+<h3>4.1 Agent接口</h3>
+
+<pre>
+public interface AgentRuntime {
+
+    AgentResponse execute(
+        AgentContext context
+    );
+
+}
+</pre>
+
+
+<h3>4.2 AgentContext</h3>
+
+<pre>
+public class AgentContext {
+
+    UserContext user;
+
+    TaskContext task;
+
+    ConversationContext conversation;
+
+    ExecutionContext execution;
+
+    SecurityContext security;
+
+}
+</pre>
+
+
+设计原因：
+
+<ul>
+<li>Context不直接绑定Skill。</li>
+<li>Agent可以连续调用多个Skill。</li>
+<li>支持未来多Agent协作。</li>
+</ul>
+
+
+<h2>5. Agent执行状态机</h2>
+
+<pre>
+CREATED
+
+↓
+
+PLANNING
+
+↓
+
+READY
+
+↓
+
+EXECUTING
+
+↓
+
+WAITING_TOOL
+
+↓
+
+RETRYING
+
+↓
+
+COMPLETED
+
+
+失败:
+
+FAILED
+</pre>
+
+
+<h2>6. Planner与Executor</h2>
+
+<h3>Planner职责</h3>
+
+<ul>
+<li>理解任务。</li>
+<li>选择Skill。</li>
+<li>生成TaskPlan。</li>
+</ul>
+
+<pre>
+public interface AgentPlanner {
+
+    TaskPlan plan(
+        AgentContext context
+    );
+
+}
+</pre>
+
+
+<h3>Executor职责</h3>
+
+<ul>
+<li>执行计划。</li>
+<li>记录步骤。</li>
+<li>处理失败和重试。</li>
+</ul>
+
+
+<pre>
+public interface AgentExecutor {
+
+    ExecutionResult execute(
+        TaskPlan plan,
+        AgentContext context
+    );
+
+}
+</pre>
+
+
+<h2>7. Skill系统</h2>
+
+<p>
+Skill是可组合能力模块，不负责决策。
+</p>
+
+<pre>
+public interface AiSkill {
+
+    String id();
+
+    SkillResult execute(
+        SkillContext context
+    );
+
+}
+</pre>
+
+
+Skill生命周期：
+
+<pre>
+CREATE
+
+↓
+
+REGISTER
+
+↓
+
+VERSION
+
+↓
+
+ENABLE
+
+↓
+
+EXECUTE
+
+↓
+
+DEPRECATE
+</pre>
+
+
+<h2>8. Tool系统</h2>
+
+<table>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+<tr><td>name</td><td>工具名称</td></tr>
+<tr><td>schema</td><td>输入输出定义</td></tr>
+<tr><td>permission</td><td>调用权限</td></tr>
+<tr><td>status</td><td>启用状态</td></tr>
+</table>
+
+
+<h2>9. Provider Adapter</h2>
+
+<p>
+模型供应商变化不影响业务。
+</p>
+
+<pre>
+public interface AiProvider {
+
+    AiResponse completion(
+        AiRequest request
+    );
+
+    String providerId();
+
+}
+</pre>
+
+
+支持：
+
+<table>
+<tr><th>Provider</th><th>用途</th></tr>
+<tr><td>DeepSeek</td><td>低成本文本任务</td></tr>
+<tr><td>OpenAI</td><td>复杂推理</td></tr>
+<tr><td>Gemini</td><td>多模态任务</td></tr>
+<tr><td>其他Agent服务</td><td>外部Agent调用</td></tr>
+</table>
+
+
+<h2>10. Hermes / LangGraph 接入方式</h2>
+
+<pre>
+Spring Boot
+
+      HTTP / gRPC
+
+↓
+
+External Agent Runtime
+
+↓
+
+Hermes / LangGraph
+
+↓
+
+LLM
+</pre>
+
+
+原则：
+
+<p>
+外部Agent作为独立服务存在，不直接嵌入Spring。
+</p>
+
+
+<h2>11. Memory设计</h2>
+
+<table>
+<tr>
+<th>类型</th>
+<th>存储</th>
+</tr>
+<tr>
+<td>Conversation Memory</td>
+<td>Redis + MySQL归档</td>
+</tr>
+<tr>
+<td>Task Memory</td>
+<td>ai_task_step</td>
+</tr>
+<tr>
+<td>Knowledge Memory</td>
+<td>Vector Database</td>
+</tr>
+</table>
+
+
+<h2>12. 数据库设计</h2>
+
+<table>
+<tr><th>表</th><th>作用</th></tr>
+<tr><td>ai_task</td><td>AI任务</td></tr>
+<tr><td>ai_task_step</td><td>Agent执行步骤</td></tr>
+<tr><td>ai_agent</td><td>Agent注册</td></tr>
+<tr><td>ai_skill</td><td>Skill管理</td></tr>
+<tr><td>ai_tool</td><td>工具管理</td></tr>
+<tr><td>ai_model_provider</td><td>模型供应商</td></tr>
+<tr><td>ai_model_price</td><td>成本统计</td></tr>
+<tr><td>ai_quota_policy</td><td>额度策略</td></tr>
+<tr><td>user_ai_secret</td><td>用户Key安全存储</td></tr>
+</table>
+
+
+<h2>13. API设计</h2>
+
+<table>
+<tr><th>接口</th><th>用途</th></tr>
+<tr><td>POST /api/ai/tasks</td><td>创建AI任务</td></tr>
+<tr><td>GET /api/ai/tasks/{id}</td><td>查询任务</td></tr>
+<tr><td>GET /api/ai/tasks/{id}/steps</td><td>查询执行过程</td></tr>
+<tr><td>POST /api/ai/invoke</td><td>同步调用</td></tr>
+</table>
+
+
+<h2>14. 异步任务架构</h2>
+
+<pre>
+Request
+
+↓
+
+ai_task CREATED
+
+↓
+
+Redis Stream
+
+↓
+
+AI Worker
+
+↓
+
+Agent Runtime
+
+↓
+
+Update Task Status
+
+↓
+
+WebSocket通知
+</pre>
+
+
+<h2>15. 当前代码映射</h2>
+
+<pre>
+AiAnalysisController
+
+↓
+
+AiAnalysisService
+
+↓
+
+AiAgentOrchestrator
+
+↓
+
+AiSkillPlanner
+
+↓
+
+AiSkillRegistry
+
+↓
+
+AiProviderGateway
+
+↓
+
+LLM Provider
+</pre>
+
+
+<h2>16. Phase 3-2实施路线</h2>
+
+<ol>
+<li>Prompt数据库化</li>
+<li>Skill注册机制</li>
+<li>Provider抽象</li>
+<li>Agent Runtime接口</li>
+<li>Task状态管理</li>
+<li>AI调用日志</li>
+<li>额度控制</li>
+<li>RAG知识体系</li>
+</ol>
+
+
+<h2>17. 部署架构</h2>
+
+<pre>
+Nginx
+
+↓
+
+Spring Boot
+
+↓
+
+MySQL
+
+↓
+
+Redis
+
+↓
+
+AI Runtime Service
+
+↓
+
+Vector Database
+
+↓
+
+External LLM Provider
+</pre>
+
+
+<h2>18. 总结</h2>
+
+<div class="card">
+<p>
+v2.2作为 Finals Compass AI 平台工程实现蓝图。
+后续开发重点不再是增加架构概念，
+而是按照接口、数据库、任务流逐步实现。
+</p>
+</div>
+
+
+</div>
+</body>
+</html>

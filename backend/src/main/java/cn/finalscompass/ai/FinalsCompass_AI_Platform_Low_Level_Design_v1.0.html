@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Finals Compass AI Platform Low Level Design v1.0</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Microsoft YaHei",sans-serif;line-height:1.8;margin:40px;color:#1f2937}
+h1,h2{color:#1d4ed8}
+.card{background:#f8fafc;padding:20px;border-left:5px solid #2563eb;margin:20px 0}
+pre{background:#111827;color:#e5e7eb;padding:18px;border-radius:8px}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid #ddd;padding:8px}
+th{background:#eff6ff}
+</style>
+</head>
+<body>
+
+<h1>Finals Compass AI Platform Low Level Design v1.0</h1>
+<h2>基于 v2.2 Engineering Specification 的代码级设计</h2>
+
+<div class="card">
+目标：
+将 AI 平台架构转换为 Spring Boot 可实现的软件设计。
+本版本关注：
+Java模块、接口关系、数据库DDL、任务执行流、Agent扩展方式。
+</div>
+
+<h2>1. Backend模块结构</h2>
+
+<pre>
+cn.finalscompass.ai
+
+├── controller
+│
+├── gateway
+│
+├── agent
+│   ├── runtime
+│   ├── planner
+│   ├── executor
+│   ├── context
+│   └── state
+│
+├── skill
+│
+├── tool
+│
+├── provider
+│
+├── prompt
+│
+├── memory
+│
+├── quota
+│
+├── task
+│
+└── repository
+</pre>
+
+<h2>2. 核心调用链</h2>
+
+<pre>
+AiAnalysisController
+
+↓
+
+AiTaskService
+
+↓
+
+AiGateway
+
+↓
+
+AgentRuntime
+
+↓
+
+AgentPlanner
+
+↓
+
+TaskExecutor
+
+↓
+
+AiSkill
+
+↓
+
+AiTool
+
+↓
+
+AiProviderGateway
+
+↓
+
+LLM Provider
+</pre>
+
+<h2>3. Agent核心接口</h2>
+
+<pre>
+public interface AgentRuntime {
+
+    AgentResponse execute(
+        AgentContext context
+    );
+
+}
+</pre>
+
+<pre>
+public interface AgentPlanner {
+
+    TaskPlan createPlan(
+        AgentContext context
+    );
+
+}
+</pre>
+
+<pre>
+public interface AgentExecutor {
+
+    ExecutionResult execute(
+        TaskPlan plan
+    );
+
+}
+</pre>
+
+<h2>4. Context模型</h2>
+
+<pre>
+public class AgentContext {
+
+    UserContext user;
+
+    TaskContext task;
+
+    ConversationContext conversation;
+
+    ExecutionMetadata metadata;
+
+    SecurityContext security;
+
+}
+</pre>
+
+<h2>5. Skill接口</h2>
+
+<pre>
+public interface AiSkill {
+
+    String id();
+
+    SkillResult execute(
+        SkillContext context
+    );
+
+}
+</pre>
+
+<h2>6. Provider接口</h2>
+
+<pre>
+public interface AiProvider {
+
+    AiResponse chat(
+        AiRequest request
+    );
+
+    String provider();
+
+}
+</pre>
+
+<h2>7. Repository设计</h2>
+
+<table>
+<tr><th>Repository</th><th>职责</th></tr>
+<tr><td>AiTaskRepository</td><td>任务状态</td></tr>
+<tr><td>AiPromptRepository</td><td>Prompt模板</td></tr>
+<tr><td>AiSkillRepository</td><td>Skill注册</td></tr>
+<tr><td>AiUsageRepository</td><td>调用统计</td></tr>
+</table>
+
+<h2>8. MySQL核心表</h2>
+
+<pre>
+CREATE TABLE ai_task (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ user_id BIGINT,
+ skill_id VARCHAR(64),
+ status VARCHAR(32),
+ result TEXT,
+ created_at TIMESTAMP,
+ updated_at TIMESTAMP
+);
+
+
+CREATE TABLE ai_task_step (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ task_id BIGINT,
+ step_type VARCHAR(32),
+ step_name VARCHAR(128),
+ status VARCHAR(32),
+ input TEXT,
+ output TEXT
+);
+
+
+CREATE TABLE ai_usage_log (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT,
+ user_id BIGINT,
+ provider VARCHAR(64),
+ model VARCHAR(128),
+ input_tokens INT,
+ output_tokens INT,
+ cost DECIMAL(10,4)
+);
+</pre>
+
+<h2>9. Agent任务流程</h2>
+
+<pre>
+创建任务
+
+↓
+
+ai_task CREATED
+
+↓
+
+Planner生成Plan
+
+↓
+
+保存task_step
+
+↓
+
+Executor执行
+
+↓
+
+Skill调用
+
+↓
+
+Provider调用模型
+
+↓
+
+更新SUCCESS
+
+</pre>
+
+<h2>10. Redis Stream设计</h2>
+
+<pre>
+Stream:
+
+ai-task-stream
+
+
+Producer:
+
+Spring Boot
+
+
+Consumer:
+
+AiWorker
+
+
+Message:
+
+{
+ taskId,
+ skillId,
+ userId
+}
+</pre>
+
+<h2>11. Hermes Agent Adapter</h2>
+
+<pre>
+public interface ExternalAgentAdapter {
+
+    AgentResponse execute(
+        AgentRequest request
+    );
+
+}
+</pre>
+
+实现：
+
+<pre>
+HermesAdapter
+
+LangGraphAdapter
+
+LocalAgentAdapter
+</pre>
+
+Spring只依赖接口。
+
+<h2>12. 当前Phase3-2改造计划</h2>
+
+<table>
+<tr><th>阶段</th><th>实现</th></tr>
+<tr><td>Step1</td><td>Prompt数据库化</td></tr>
+<tr><td>Step2</td><td>Skill Registry</td></tr>
+<tr><td>Step3</td><td>Agent Runtime抽象</td></tr>
+<tr><td>Step4</td><td>Task异步化</td></tr>
+<tr><td>Step5</td><td>RAG接入</td></tr>
+<tr><td>Step6</td><td>外部Agent接入</td></tr>
+</table>
+
+<h2>13. 设计结论</h2>
+
+<div class="card">
+Finals Compass AI 平台不直接绑定任何模型或Agent框架。
+
+Spring Boot负责：
+业务、安全、权限、任务管理。
+
+Agent Runtime负责：
+规划、执行、工具调用。
+
+Provider负责：
+模型连接。
+
+因此未来可以替换：
+Hermes、LangGraph、AutoGen以及其他Agent框架。
+</div>
+
+</body>
+</html>

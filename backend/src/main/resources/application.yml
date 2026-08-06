@@ -48,6 +48,8 @@ app:
       url: ${MARKITDOWN_WORKER_URL:}
       token: ${MARKITDOWN_WORKER_TOKEN:}
       timeout: ${MARKITDOWN_WORKER_TIMEOUT:60s}
+    hermes:
+      url: ${HERMES_AGENT_URL:http://127.0.0.1:8642}
   bootstrap-admin:
     username: ${APP_ADMIN_USERNAME:}
     password: ${APP_ADMIN_PASSWORD:}

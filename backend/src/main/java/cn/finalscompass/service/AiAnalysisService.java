@@ -8,6 +8,8 @@ import cn.finalscompass.ai.provider.AiProviderAdapter;
 import cn.finalscompass.ai.provider.AiProviderGateway;
 import cn.finalscompass.ai.skill.AiSkill;
 import cn.finalscompass.ai.skill.AiSkillRegistry;
+import cn.finalscompass.ai.task.AiTaskRepository;
+import cn.finalscompass.ai.task.AiTaskStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -33,12 +35,13 @@ public class AiAnalysisService {
     private final TransientAiImageService images;
     private final AiUsageGuardService usageGuard;
     private final AiVisionProblemPipeline visionPipeline;
+    private final AiTaskRepository tasks;
 
     public AiAnalysisService(JdbcClient jdbc, ActivityService activity, AiSecretCipher cipher,
                              AiSkillRegistry skills, AiAgentOrchestrator orchestrator,
                              AiProviderGateway gateway, AiCredentialResolver credentials,
                              TransientAiImageService images, AiUsageGuardService usageGuard,
-                             AiVisionProblemPipeline visionPipeline) {
+                             AiVisionProblemPipeline visionPipeline, AiTaskRepository tasks) {
         this.jdbc = jdbc;
         this.activity = activity;
         this.cipher = cipher;
@@ -49,21 +52,34 @@ public class AiAnalysisService {
         this.images = images;
         this.usageGuard = usageGuard;
         this.visionPipeline = visionPipeline;
+        this.tasks = tasks;
     }
 
     public Dashboard dashboard(long userId) {
         activity.ensureCurrentEntitlements();
-        List<Map<String, Object>> providers = jdbc.sql("""
+        boolean admin = jdbc.sql("SELECT role='ADMIN' FROM app_user WHERE id=:user")
+                .param("user", userId).query(Boolean.class).optional().orElse(false);
+        List<Map<String, Object>> providerConfigs = admin ? jdbc.sql("""
             SELECT provider,model_name,enabled,key_fingerprint,updated_at
             FROM platform_ai_config ORDER BY provider
-            """).query().listOfRows();
+            """).query().listOfRows() : List.of();
         List<Map<String, Object>> secrets = jdbc.sql("""
             SELECT provider,key_fingerprint,key_label,consent_version,consented_at,updated_at
             FROM user_ai_secret WHERE user_id=:user ORDER BY provider
             """).param("user", userId).query().listOfRows();
+        String configuredDefault = jdbc.sql("SELECT default_provider FROM platform_ai_setting WHERE id=1")
+                .query(String.class).optional().orElse(null);
+        boolean platformDefaultAvailable = configuredDefault != null && jdbc.sql(
+                "SELECT enabled FROM platform_ai_config WHERE provider=:provider")
+                .param("provider", configuredDefault).query(Boolean.class).optional().orElse(false);
+        boolean hermesPlatformAvailable = jdbc.sql(
+                "SELECT enabled FROM platform_ai_config WHERE provider='hermes'")
+                .query(Boolean.class).optional().orElse(false);
         return new Dashboard(YearMonth.now().toString(), activity.currentMonthScore(userId),
                 activity.hasPlatformEntitlement(userId), activity.currentMonthLeaderboard(),
-                skills.available(), gateway.available(), providers, secrets, cipher.available());
+                skills.available(), gateway.availableModelProviders(), providerConfigs, secrets,
+                cipher.available(), admin ? configuredDefault : null,
+                platformDefaultAvailable, hermesPlatformAvailable);
     }
 
     @Transactional
@@ -111,6 +127,19 @@ public class AiAnalysisService {
         } finally { Arrays.fill(apiKey, '\0'); }
     }
 
+    @Transactional
+    public Map<String,Object> savePlatformDefault(long adminId, PlatformDefaultRequest request) {
+        String provider = gateway.require(request.provider()).id();
+        if (gateway.require(provider).capabilities().contains("AGENT"))
+            throw new IllegalArgumentException("外部 Agent 不能作为本地模型 Provider");
+        boolean enabled = jdbc.sql("SELECT enabled FROM platform_ai_config WHERE provider=:provider")
+                .param("provider", provider).query(Boolean.class).optional().orElse(false);
+        if (!enabled) throw new IllegalArgumentException("请先配置并启用该 Provider");
+        jdbc.sql("UPDATE platform_ai_setting SET default_provider=:provider,updated_by=:admin WHERE id=1")
+                .param("provider", provider).param("admin", adminId).update();
+        return Map.of("defaultProvider", provider);
+    }
+
     public InvokeResult invoke(long userId, InvokeRequest request) {
         AiSkillPlanner.ExecutionPlan plan = orchestrator.prepare(request.skillId(), request.input());
         AiSkill skill = plan.primarySkill();
@@ -118,12 +147,20 @@ public class AiAnalysisService {
         try { source = AiCredentialSource.valueOf(request.credentialSource().toUpperCase()); }
         catch (Exception exception) { throw new IllegalArgumentException("不支持的凭据来源"); }
 
+        String runtime = normalizeRuntime(request.runtime());
         try (ResolvedAiCredential credential = credentials.resolve(
-                userId, request.provider(), source, request.ephemeralApiKey());
+                userId, runtime, request.provider(), request.model(), source, request.ephemeralApiKey());
              AiProviderAdapter.TransientImage image = images.decode(request.imageDataUrl())) {
             usageGuard.check(userId, source);
             if (image != null && !skill.modalities().contains("IMAGE")) throw new IllegalArgumentException("当前 Skill 不接受图片");
             String traceId = UUID.randomUUID().toString();
+            long taskId = tasks.create(userId, skill.id(), credential.provider(), traceId, request.input());
+            tasks.transition(taskId, AiTaskStatus.PLANNING, 0);
+            long planningStep = tasks.startStep(taskId, 0, "SKILL");
+            tasks.completeStep(planningStep, "skill=" + skill.id());
+            tasks.transition(taskId, AiTaskStatus.EXECUTING, 1);
+            Long modelStep = tasks.startStep(taskId, 1,
+                    "hermes".equals(credential.provider()) ? "AGENT" : "MODEL");
             jdbc.sql("""
                 INSERT INTO ai_usage_log(user_id,provider,model_name,skill_id,credential_source,status,input_units,trace_id)
                 VALUES (:user,:provider,:model,:skill,:source,'ACCEPTED',:inputUnits,:trace)
@@ -139,13 +176,33 @@ public class AiAnalysisService {
                     UPDATE ai_usage_log SET status='SUCCEEDED',input_units=:input,output_units=:output,completed_at=NOW()
                     WHERE trace_id=:trace
                     """).param("input", result.inputUnits()).param("output", result.outputUnits()).param("trace", traceId).update();
-                return new InvokeResult(result.content(), traceId, result.preview(), skill.id(), credential.provider());
+                tasks.completeStep(modelStep, result.content());
+                tasks.complete(taskId, result.content());
+                return new InvokeResult(taskId, result.content(), traceId, AiTaskStatus.COMPLETED.name(),
+                        result.preview(), skill.id(), credential.provider());
             } catch (RuntimeException exception) {
                 jdbc.sql("UPDATE ai_usage_log SET status='FAILED',error_code='PROVIDER_ERROR',completed_at=NOW() WHERE trace_id=:trace")
                         .param("trace", traceId).update();
+                tasks.fail(taskId, modelStep, exception);
                 throw exception;
             }
         }
+    }
+
+    private String normalizeRuntime(String value) {
+        if (value == null || value.isBlank() || "FINALS_COMPASS".equalsIgnoreCase(value)) return "FINALS_COMPASS";
+        if ("HERMES".equalsIgnoreCase(value)) return "HERMES";
+        throw new IllegalArgumentException("不支持的 Agent Runtime");
+    }
+
+    public Map<String,Object> task(long userId, long taskId) {
+        return tasks.find(userId, taskId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "AI 任务不存在"));
+    }
+
+    public List<Map<String,Object>> taskSteps(long userId, long taskId) {
+        task(userId, taskId);
+        return tasks.steps(userId, taskId);
     }
 
     private AiProviderAdapter.AiProviderResult invokeVisionPipeline(long userId, String input,
@@ -169,10 +226,14 @@ public class AiAnalysisService {
                             List<Map<String, Object>> leaderboard, List<AiSkillRegistry.SkillInfo> skills,
                             List<AiProviderGateway.ProviderInfo> providers,
                             List<Map<String, Object>> platformProviders, List<Map<String, Object>> savedKeys,
-                            boolean encryptedStorageAvailable) {}
+                            boolean encryptedStorageAvailable, String defaultProvider,
+                            boolean platformDefaultAvailable, boolean hermesPlatformAvailable) {}
     public record SaveUserKey(String provider, String apiKey, String label, boolean consentToStore) {}
     public record SavePlatformKey(String provider, String model, String apiKey, boolean enabled) {}
-    public record InvokeRequest(String provider, String skillId, String credentialSource, String ephemeralApiKey,
+    public record PlatformDefaultRequest(String provider) {}
+    public record InvokeRequest(String runtime, String provider, String model, String skillId,
+                                String credentialSource, String ephemeralApiKey,
                                 String input, String imageDataUrl) {}
-    public record InvokeResult(String content, String traceId, boolean preview, String skillId, String provider) {}
+    public record InvokeResult(long taskId, String content, String traceId, String status,
+                               boolean preview, String skillId, String provider) {}
 }

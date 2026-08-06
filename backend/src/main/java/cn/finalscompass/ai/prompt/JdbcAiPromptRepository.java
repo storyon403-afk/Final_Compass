@@ -5,10 +5,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 
+import java.util.Optional;
+
+
 
 @Repository
-public class JdbcAiPromptRepository 
-        implements AiPromptRepository {
+public class JdbcAiPromptRepository {
 
 
     private final JdbcTemplate jdbcTemplate;
@@ -24,45 +26,39 @@ public class JdbcAiPromptRepository
 
 
 
-    @Override
-    public AiPromptTemplate findActivePrompt(
-            String skillId,
-            String version
+    public Optional<AiPromptTemplate> findActiveBySkillId(
+            String skillId
     ){
 
 
-        String sql = """
-                SELECT
-                    id,
-                    skill_id,
-                    version,
-                    system_prompt,
-                    output_contract,
-                    enabled,
-                    created_at
+        String sql="""
+        SELECT
+            id,
+            skill_id,
+            version,
+            system_prompt,
+            output_contract,
+            enabled,
+            created_at
 
-                FROM ai_prompt_template
+        FROM ai_prompt_template
 
-                WHERE skill_id = ?
-                AND version = ?
-                AND enabled = true
+        WHERE skill_id=?
+        AND enabled=true
 
-                LIMIT 1
-                """;
+        ORDER BY id DESC
+
+        LIMIT 1
+        """;
 
 
         return jdbcTemplate.query(
                 sql,
-
                 new PromptRowMapper(),
-
-                skillId,
-                version
-
+                skillId
         )
         .stream()
-        .findFirst()
-        .orElse(null);
+        .findFirst();
 
     }
 

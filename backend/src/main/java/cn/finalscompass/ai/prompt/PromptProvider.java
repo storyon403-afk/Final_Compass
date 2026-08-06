@@ -2,33 +2,27 @@ package cn.finalscompass.ai.prompt;
 
 
 /**
- * Prompt提供层。
+ * Prompt 提供接口
  *
- * Skill不直接访问数据库。
+ * 当前实现：
+ * MySQL + JdbcTemplate
  *
- * 调用链：
- *
- * Skill
- *   |
- * PromptProvider
- *   |
- * Repository
- *   |
- * Database
- *
+ * 后续可以替换：
+ * Redis
+ * 配置中心
+ * 远程Prompt服务
  */
 public interface PromptProvider {
 
 
     /**
-     * 获取Prompt模板
+     * 根据 Skill 获取当前启用 Prompt
      *
-     * @param skillId Skill编号
-     * @param version Prompt版本
+     * @param skillId Skill ID
+     * @return Prompt模板
      */
     AiPromptTemplate getPrompt(
-            String skillId,
-            String version
+            String skillId
     );
 
 
