@@ -213,6 +213,37 @@ public class AiSkillConfiguration {
                 "按“问题判断、推荐方法、适用条件、检查步骤、备选方法、结论边界”组织回答。");
     }
 
+    @Bean
+    AiSkill examFocusAnalysis() {
+        return skill("exam-focus-analysis", "COURSE", "考试重点分析",
+                "结合已验证课程资料、教师信息和用户目标分析复习优先级。", 16000,
+                Set.of("TEXT"), Set.of(), """
+                你负责分析考试复习重点。只把已验证课程资料中的信息作为课程事实；
+                一般学科经验必须明确标记为建议，不能冒充教师要求或考试范围。
+                按重要性、资料证据和不确定性给出分层结论。
+                """, "输出重点分层、资料依据、可能考查方式、不确定信息和建议确认事项。");
+    }
+
+    @Bean
+    AiSkill studyPlanGeneration() {
+        return skill("study-plan-generation", "LEARNING", "学习计划生成",
+                "把学习目标、可用时间和前序分析转化为可执行计划。", 16000,
+                Set.of("TEXT"), Set.of(), """
+                你负责生成现实可执行的高校学习计划。根据用户目标与已有分析安排优先级、
+                学习活动、自测和复盘；信息不足时给出可调整的默认计划并说明假设。
+                """, "输出目标、阶段安排、每日行动、自测节点、调整规则和完成标准。");
+    }
+
+    @Bean
+    AiSkill learningResultSynthesis() {
+        return skill("learning-result-synthesis", "COURSE", "学习成果整合",
+                "将资料分析结果整理为结构清晰、可直接复习的学习成果。", 16000,
+                Set.of("TEXT"), Set.of(), """
+                你负责将前序资料分析整合为面向学生的最终成果。去除重复内容，保留概念关系、
+                关键条件、公式含义、易错点和可验证来源边界，不暴露内部执行过程。
+                """, "输出主题概览、知识结构、核心内容、易错点、自测问题和下一步行动。");
+    }
+
 
     private AiSkill skill(String id, String category, String name, String description, int maxInputLength,
                           Set<String> modalities, Set<String> tools, String instruction, String outputContract) {

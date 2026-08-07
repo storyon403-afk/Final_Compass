@@ -10,6 +10,7 @@ import cn.finalscompass.ai.skill.AiSkill;
 import cn.finalscompass.ai.skill.AiSkillRegistry;
 import cn.finalscompass.ai.task.AiTaskRepository;
 import cn.finalscompass.ai.task.AiTaskStatus;
+import cn.finalscompass.ai.context.CourseContextLoader;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -36,12 +37,14 @@ public class AiAnalysisService {
     private final AiUsageGuardService usageGuard;
     private final AiVisionProblemPipeline visionPipeline;
     private final AiTaskRepository tasks;
+    private final CourseContextLoader courseContexts;
 
     public AiAnalysisService(JdbcClient jdbc, ActivityService activity, AiSecretCipher cipher,
                              AiSkillRegistry skills, AiAgentOrchestrator orchestrator,
                              AiProviderGateway gateway, AiCredentialResolver credentials,
                              TransientAiImageService images, AiUsageGuardService usageGuard,
-                             AiVisionProblemPipeline visionPipeline, AiTaskRepository tasks) {
+                             AiVisionProblemPipeline visionPipeline, AiTaskRepository tasks,
+                             CourseContextLoader courseContexts) {
         this.jdbc = jdbc;
         this.activity = activity;
         this.cipher = cipher;
@@ -53,6 +56,7 @@ public class AiAnalysisService {
         this.usageGuard = usageGuard;
         this.visionPipeline = visionPipeline;
         this.tasks = tasks;
+        this.courseContexts = courseContexts;
     }
 
     public Dashboard dashboard(long userId) {
@@ -77,7 +81,7 @@ public class AiAnalysisService {
                 .query(Boolean.class).optional().orElse(false);
         return new Dashboard(YearMonth.now().toString(), activity.currentMonthScore(userId),
                 activity.hasPlatformEntitlement(userId), activity.currentMonthLeaderboard(),
-                skills.available(), gateway.availableModelProviders(), providerConfigs, secrets,
+                admin ? skills.available() : List.of(), gateway.availableModelProviders(), providerConfigs, secrets,
                 cipher.available(), admin ? configuredDefault : null,
                 platformDefaultAvailable, hermesPlatformAvailable);
     }
@@ -141,7 +145,8 @@ public class AiAnalysisService {
     }
 
     public InvokeResult invoke(long userId, InvokeRequest request) {
-        AiSkillPlanner.ExecutionPlan plan = orchestrator.prepare(request.skillId(), request.input());
+        AiSkillPlanner.ExecutionPlan plan = orchestrator.prepare(request.skillId(), request.input(),
+                courseContexts.load(request.courseId(), request.teacherId()));
         AiSkill skill = plan.primarySkill();
         AiCredentialSource source;
         try { source = AiCredentialSource.valueOf(request.credentialSource().toUpperCase()); }
@@ -233,7 +238,7 @@ public class AiAnalysisService {
     public record PlatformDefaultRequest(String provider) {}
     public record InvokeRequest(String runtime, String provider, String model, String skillId,
                                 String credentialSource, String ephemeralApiKey,
-                                String input, String imageDataUrl) {}
+                                String input, String imageDataUrl, Long courseId, Long teacherId) {}
     public record InvokeResult(long taskId, String content, String traceId, String status,
                                boolean preview, String skillId, String provider) {}
 }

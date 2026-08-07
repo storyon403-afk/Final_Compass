@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Finals Compass AI Roadmap</title>
+
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Microsoft YaHei", sans-serif;
+    background:#f5f7fa;
+    color:#333;
+    line-height:1.7;
+    margin:40px;
+}
+
+.container {
+    max-width:1000px;
+    margin:auto;
+    background:white;
+    padding:40px;
+    border-radius:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+
+h1 {
+    color:#1f4e79;
+}
+
+h2 {
+    margin-top:35px;
+    color:#24527a;
+    border-left:5px solid #4c9aff;
+    padding-left:12px;
+}
+
+h3 {
+    color:#333;
+}
+
+.box {
+    background:#f8fbff;
+    border-left:4px solid #4c9aff;
+    padding:15px 20px;
+    margin:20px 0;
+    border-radius:8px;
+}
+
+.code {
+    background:#1e1e1e;
+    color:#ddd;
+    padding:20px;
+    border-radius:10px;
+    font-family:monospace;
+    white-space:pre-line;
+}
+
+.stage {
+    background:#ffffff;
+    border:1px solid #ddd;
+    padding:20px;
+    margin:25px 0;
+    border-radius:12px;
+}
+
+.tag {
+    display:inline-block;
+    background:#e6f2ff;
+    color:#1261a0;
+    padding:3px 10px;
+    border-radius:20px;
+    margin:3px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>
+Finals Compass AI 演进路线
+</h1>
+
+<p>
+本文用于记录 Finals Compass AI 当前阶段的技术路线规划。
+核心目标：
+从“AI功能模块”逐步演进为“面向学生学习任务的智能 Agent 平台”。
+</p>
+
+
+<h2>一、总体定位</h2>
+
+<div class="box">
+
+Finals Compass AI 不作为通用聊天机器人存在。
+
+它的目标是：
+
+学生提交学习资料、问题或目标后，
+系统自动理解需求，
+调用对应 AI 能力，
+完成具有实际价值的学习任务，
+输出可以直接使用的学习成果。
+
+</div>
+
+
+<div class="code">
+
+用户需求
+
+↓
+
+Learning Task识别
+
+↓
+
+Workflow执行
+
+↓
+
+Skill组合
+
+↓
+
+Provider调用模型
+
+↓
+
+生成学习成果
+
+</div>
+
+
+
+<h2>二、当前阶段架构</h2>
+
+<div class="code">
+
+用户
+
+↓
+
+AI Analysis Service
+
+↓
+
+AiAgentOrchestrator
+
+↓
+
+Input Guardrail
+
+↓
+
+LearningTask / Intent Router
+
+↓
+
+Workflow
+
+↓
+
+Skill
+
+↓
+
+Provider Gateway
+
+↓
+
+DeepSeek / Gemini / OpenAI
+
+</div>
+
+
+<h3>当前核心模块：</h3>
+
+<ul>
+<li>LearningTask：描述学生目标</li>
+<li>Workflow：描述完成目标的步骤</li>
+<li>Skill：描述单一AI能力</li>
+<li>CourseContext：提供课程、教师、资料背景</li>
+<li>AiTask：记录任务执行过程</li>
+</ul>
+
+
+
+<h2>阶段一：完善 AI 工作流核心（当前）</h2>
+
+<div class="stage">
+
+<h3>目标：</h3>
+
+<p>
+让 Finals Compass AI 可以稳定完成真实学习任务。
+</p>
+
+
+<h3>主要任务：</h3>
+
+<ul>
+
+<li>
+增加和完善 Skill
+</li>
+
+<li>
+完善 LearningTask 边界判断
+</li>
+
+<li>
+完善 Workflow 执行流程
+</li>
+
+<li>
+增加课程上下文读取能力
+</li>
+
+<li>
+完善 AI Task 状态记录
+</li>
+
+</ul>
+
+
+<h3>重点能力：</h3>
+
+<div class="code">
+
+课程资料分析
+
+↓
+
+考试重点分析
+
+↓
+
+复习计划生成
+
+↓
+
+答案检查
+
+↓
+
+解题辅助
+
+</div>
+
+
+</div>
+
+
+<h2>阶段一的重要原则</h2>
+
+<div class="box">
+
+用户不选择 Skill。
+
+Skill 是内部能力。
+
+用户只表达自然语言目标。
+
+系统自动判断：
+
+“用户想完成什么学习任务”。
+
+</div>
+
+
+例如：
+
+用户：
+
+“帮我准备数值分析考试”
+
+
+系统：
+
+<pre>
+LearningTask:
+EXAM_PREPARATION
+
+Workflow:
+material-summary
+        ↓
+exam-focus-analysis
+        ↓
+study-plan-generation
+</pre>
+
+
+
+<h2>阶段二：Skill 数据库化</h2>
+
+<div class="stage">
+
+<h3>目标：</h3>
+
+<p>
+将 Skill 从代码配置升级为平台配置能力。
+</p>
+
+
+当前：
+
+<pre>
+AiSkillConfiguration.java
+
+↓
+
+DefaultAiSkill
+
+↓
+
+AiSkillRegistry
+</pre>
+
+
+未来：
+
+<pre>
+ai_skill数据库
+
+↓
+
+SkillLoader
+
+↓
+
+AiSkillRegistry
+
+↓
+
+Workflow
+</pre>
+
+
+</div>
+
+
+<h3>数据库保存内容：</h3>
+
+<ul>
+
+<li>Skill ID</li>
+
+<li>Prompt(System Instruction)</li>
+
+<li>输出规范(Output Contract)</li>
+
+<li>工具权限</li>
+
+<li>输入限制</li>
+
+<li>版本信息</li>
+
+<li>启用状态</li>
+
+</ul>
+
+
+<h3>收益：</h3>
+
+<ul>
+
+<li>修改Prompt无需重新部署</li>
+
+<li>支持后台管理Skill</li>
+
+<li>支持Skill版本控制</li>
+
+<li>方便后期扩展AI能力</li>
+
+</ul>
+
+
+
+
+<h2>阶段三：Agent Runtime + MCP Tool体系</h2>
+
+
+<div class="stage">
+
+
+<h3>目标：</h3>
+
+<p>
+让 AI 从固定Workflow执行，
+扩展到可以调用外部环境完成复杂任务。
+</p>
+
+
+<div class="code">
+
+Agent Runtime
+
+↓
+
+MCP Gateway
+
+↓
+
+Tool Registry
+
+↓
+
+External Tools
+
+</div>
+
+
+</div>
+
+
+
+<h3>新增能力：</h3>
+
+<ul>
+
+<li>网页搜索</li>
+
+<li>文件处理</li>
+
+<li>浏览器访问</li>
+
+<li>用户环境交互</li>
+
+</ul>
+
+
+
+<h2>阶段四：用户授权浏览器 Agent</h2>
+
+
+<div class="stage">
+
+
+<h3>目标：</h3>
+
+<p>
+通过用户授权，让 Agent 使用用户浏览器环境获取信息。
+</p>
+
+
+<div class="code">
+
+用户Chrome浏览器
+
+↓
+
+Chrome Extension
+
+↓
+
+WebSocket
+
+↓
+
+MCP Gateway
+
+↓
+
+Agent Runtime
+
+↓
+
+Skill Workflow
+
+</div>
+
+
+</div>
+
+
+
+<h3>浏览器插件定位：</h3>
+
+
+<div class="box">
+
+浏览器插件不是Agent本身。
+
+它是Agent的工具执行端。
+
+类似：
+
+Agent = 大脑
+
+插件 = 眼睛和手
+
+MCP = 神经接口
+
+</div>
+
+
+
+<h3>第一阶段支持范围：</h3>
+
+
+<ul>
+
+<li>桌面 Chrome</li>
+
+<li>Chromium内核浏览器</li>
+
+<li>用户主动授权</li>
+
+</ul>
+
+
+暂不考虑：
+
+<ul>
+<li>手机浏览器插件</li>
+<li>所有浏览器兼容</li>
+</ul>
+
+
+
+<h2>最终目标架构</h2>
+
+
+<div class="code">
+
+                    用户
+
+                      |
+
+              Finals Compass Web
+
+                      |
+
+              AI Decision Layer
+
+                      |
+
+        +-------------+-------------+
+
+        |                           |
+
+  Learning Workflow          Agent Runtime
+
+        |                           |
+
+      Skill Chain              MCP Tools
+
+        |                           |
+
+ Course Database        Browser / Web / File
+
+                      |
+
+                    LLM API
+
+
+</div>
+
+
+
+<h2>开发优先级</h2>
+
+
+<table border="1" cellpadding="10" cellspacing="0">
+
+<tr>
+<th>阶段</th>
+<th>目标</th>
+</tr>
+
+
+<tr>
+<td>当前</td>
+<td>
+Workflow + Skill完善 + 边界判断
+</td>
+</tr>
+
+
+<tr>
+<td>下一阶段</td>
+<td>
+Skill数据库化
+</td>
+</tr>
+
+
+<tr>
+<td>之后</td>
+<td>
+MCP Tool体系
+</td>
+</tr>
+
+
+<tr>
+<td>长期</td>
+<td>
+Chrome Extension + Browser Agent
+</td>
+</tr>
+
+
+</table>
+
+
+<h2>核心思想</h2>
+
+
+<div class="box">
+
+不要先追求“万能Agent”。
+
+先建立：
+
+可靠的学习任务执行系统。
+
+Agent 是未来能力扩展，
+不是当前产品核心。
+
+Finals Compass 的核心价值：
+
+课程生态 + 教师信息 + 学习资料 + AI工作流。
+
+</div>
+
+
+</div>
+
+</body>
+</html>

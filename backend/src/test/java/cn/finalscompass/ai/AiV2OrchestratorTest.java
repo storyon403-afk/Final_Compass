@@ -9,6 +9,13 @@ import cn.finalscompass.ai.guard.AiToolLimiter;
 import cn.finalscompass.ai.skill.AiSkill;
 import cn.finalscompass.ai.skill.AiSkillRegistry;
 import cn.finalscompass.ai.skill.DefaultAiSkill;
+import cn.finalscompass.ai.task.LearningTaskRouter;
+import cn.finalscompass.ai.task.LearningTaskType;
+import cn.finalscompass.ai.workflow.DefaultWorkflow;
+import cn.finalscompass.ai.workflow.WorkflowExecutor;
+import cn.finalscompass.ai.workflow.WorkflowRegistry;
+import cn.finalscompass.ai.workflow.WorkflowStep;
+import cn.finalscompass.ai.workflow.Workflow;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,10 +39,27 @@ class AiV2OrchestratorTest {
                 skill("statistics-method-selector", "STATISTICS", Set.of()),
                 skill("course-question-answering", "COURSE", Set.of("CourseTools.find")),
                 skill("material-summary", "COURSE", Set.of()),
-                skill("math-problem-image-analysis", "VISION", Set.of())
+                skill("math-problem-image-analysis", "VISION", Set.of()),
+                skill("exam-focus-analysis", "COURSE", Set.of()),
+                skill("study-plan-generation", "LEARNING", Set.of()),
+                skill("learning-result-synthesis", "COURSE", Set.of())
         ));
         var planner = new AiSkillPlanner(registry, new AiToolLimiter());
-        return new AiAgentOrchestrator(new AiInputGuardrail(), new AiIntentRouter(), new IntentValidator(), planner);
+        List<Workflow> workflows = List.of(
+                workflow("exam", LearningTaskType.EXAM_PREPARATION, "material-summary", "exam-focus-analysis", "study-plan-generation"),
+                workflow("material", LearningTaskType.MATERIAL_ANALYSIS, "material-summary", "learning-result-synthesis"),
+                workflow("question", LearningTaskType.QUESTION_ASSISTANCE, "progressive-hint"),
+                workflow("review", LearningTaskType.ANSWER_REVIEW, "solution-review"),
+                workflow("planning", LearningTaskType.STUDY_PLANNING, "study-plan-generation"));
+        var workflowExecutor = new WorkflowExecutor(new WorkflowRegistry(workflows, registry), planner);
+        return new AiAgentOrchestrator(new AiInputGuardrail(), new AiIntentRouter(), new IntentValidator(), planner,
+                new LearningTaskRouter(registry), workflowExecutor);
+    }
+
+    private DefaultWorkflow workflow(String id, LearningTaskType type, String... skills) {
+        var steps = java.util.stream.IntStream.range(0, skills.length)
+                .mapToObj(index -> new WorkflowStep(index + 1, skills[index], Set.of())).toList();
+        return new DefaultWorkflow(id, type, steps);
     }
 
     @Test
@@ -61,6 +85,14 @@ class AiV2OrchestratorTest {
 
         assertEquals("concept-explanation", plan.primarySkill().id());
         assertEquals("EXPLICIT_SKILL", plan.routingReason());
+    }
+
+    @Test
+    void routesExamPreparationThroughProductWorkflow() {
+        var plan = orchestrator().prepare("auto", "帮我准备高等数学期末考试");
+        assertEquals("LEARNING_TASK:EXAM_PREPARATION", plan.routingReason());
+        assertEquals(List.of("material-summary", "exam-focus-analysis", "study-plan-generation"), plan.skillSequence());
+        assertTrue(plan.systemInstruction().contains("不得向用户暴露"));
     }
 
     @Test
