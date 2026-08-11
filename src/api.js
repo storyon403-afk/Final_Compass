@@ -173,6 +173,21 @@ export const systemApi = {
   removeDiscussion: (id) => request(`/system/discussions/${id}`, { method: 'DELETE' })
 }
 
+export const mcpAdminApi = {
+  overview: () => request('/system/mcp'),
+  saveServer: (fields) => request('/system/mcp/servers', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }),
+  discover: (serverKey) => request(`/system/mcp/servers/${encodeURIComponent(serverKey)}/discover`, { method: 'POST' }),
+  diff: (serverKey) => request(`/system/mcp/servers/${encodeURIComponent(serverKey)}/diff`),
+  authorize: (serverKey) => request(`/system/mcp/servers/${encodeURIComponent(serverKey)}/oauth/authorize`, { method: 'POST' }),
+  disconnectOAuth: (serverKey) => request(`/system/mcp/servers/${encodeURIComponent(serverKey)}/oauth`, { method: 'DELETE' }),
+  requestApproval: (fields) => request('/system/mcp/approvals', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  decide: (id, approve, note) => request(`/system/mcp/approvals/${id}/decision`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approve, note })
+  })
+}
+
 export const surveyApi = {
   questions: () => request('/survey'),
   submit: (answers, overallSuggestion) => request('/survey/submissions', {
@@ -190,6 +205,9 @@ export const aiApi = {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider, apiKey, label, consentToStore })
   }),
+  saveReviewByok: (provider, apiKey, label, consentToStore = true) => request('/ai/review-byok', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, apiKey, label, consentToStore })
+  }),
   deleteByok: (provider) => request(`/ai/byok/${encodeURIComponent(provider)}`, { method: 'DELETE' }),
   savePlatformKey: (provider, model, apiKey, enabled) => request('/ai/admin/platform-key', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -197,6 +215,10 @@ export const aiApi = {
   }),
   savePlatformDefault: (provider) => request('/ai/admin/platform-default', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider })
+  }),
+  savePlatformReviewKey: (provider, model, apiKey, enabled) => request('/ai/admin/platform-review-key', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, model, apiKey, enabled })
   }),
   invoke: (fields) => request('/ai/invoke', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
@@ -206,6 +228,68 @@ export const aiApi = {
     form.append('file', file)
     return request('/ai/attachments/convert', { method: 'POST', body: form })
   }
+}
+
+export const aiCenterApi = {
+  runtimes: () => request('/ai-center/runtimes'),
+  route: (goal, preferredRuntime = 'AUTO', clientCapabilities = []) => request('/ai-center/route', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ goal, preferredRuntime, clientCapabilities })
+  }),
+  content: (key) => request(`/ai-center/content/${encodeURIComponent(key)}`),
+  updateContent: (key, fields) => request(`/ai-center/content/${encodeURIComponent(key)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  dispatch: (fields) => request('/ai-center/dispatch', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  dispatchRun: (key) => request(`/ai-center/dispatch/${encodeURIComponent(key)}`),
+  cancelDispatch: (key) => request(`/ai-center/dispatch/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+  dispatchArtifacts: (key) => request(`/ai-center/dispatch/${encodeURIComponent(key)}/artifacts`),
+  dispatchArtifactFile: (key, artifactId) => requestBlob(`/ai-center/dispatch/${encodeURIComponent(key)}/artifacts/${artifactId}`),
+  reportParticipant: (key, fields) => request(`/ai-center/dispatch/${encodeURIComponent(key)}/participants`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  })
+}
+
+export const chatApi = {
+  createSession: () => request('/ai-center/chat/sessions', { method: 'POST' }),
+  async streamMessages(sessionKey, fields, signal) {
+    const headers = new Headers({ 'Content-Type': 'application/json', Accept: 'text/event-stream' })
+    if (authSession.value.token) headers.set('Authorization', `Bearer ${authSession.value.token}`)
+    const response = await fetch(`${API_BASE}/ai-center/chat/sessions/${encodeURIComponent(sessionKey)}/messages`, {
+      method: 'POST', headers, body: JSON.stringify(fields), signal
+    })
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      const error = new Error(body.error || body.detail || `Chat 请求失败（${response.status}）`)
+      error.status = response.status
+      throw error
+    }
+    return response
+  }
+}
+
+export const aiFeedbackApi = {
+  offer: (fields) => request('/ai-center/feedback/offers', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  submit: (fields) => request('/ai-center/feedback', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
+  dismiss: (key) => request(`/ai-center/feedback/offers/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+  optimizationQueue: () => request('/system/ai-feedback/optimization'),
+  decide: (id, status, note) => request(`/system/ai-feedback/optimization/${id}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, note })
+  })
+}
+
+export const aiEvolutionApi = {
+  dashboard: () => request('/system/ai-evolution'),
+  refresh: (date = '') => request(`/system/ai-evolution/refresh${date ? `?date=${encodeURIComponent(date)}` : ''}`, { method: 'POST' }),
+  review: (id, status, note) => request(`/system/ai-evolution/recommendations/${id}/review`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, note })
+  })
 }
 
 export const cetApi = {

@@ -7,6 +7,9 @@ import AdminSurveyModal from './components/AdminSurveyModal.vue'
 import SuspendRest from './components/SuspendRest.vue'
 import AdminSuspendModal from './components/AdminSuspendModal.vue'
 import AdminMailModal from './components/AdminMailModal.vue'
+import AdminMcpModal from './components/AdminMcpModal.vue'
+import AdminAiFeedbackModal from './components/AdminAiFeedbackModal.vue'
+import GlobalControlCenter from './components/GlobalControlCenter.vue'
 import { authApi, authenticated, authSession, initIdentity, isAdmin, profile, systemApi } from './api'
 
 const route = useRoute()
@@ -21,7 +24,11 @@ const showAnnouncement = ref(false)
 const showAnnouncementAdmin = ref(false)
 const showSuspendAdmin = ref(false)
 const showMailAdmin = ref(false)
+const showMcpAdmin = ref(false)
+const showAiFeedbackAdmin = ref(false)
 const showSurvey = ref(false)
+const showSurveyAdmin = ref(false)
+const showControlCenter = ref(false)
 const currentPassword = ref('')
 const newPassword = ref('')
 const passwordMessage = ref('')
@@ -80,7 +87,24 @@ function closeOverlays(event) {
   showAnnouncementAdmin.value = false
   showSuspendAdmin.value = false
   showMailAdmin.value = false
+  showMcpAdmin.value = false
+  showAiFeedbackAdmin.value = false
   showSurvey.value = false
+  showSurveyAdmin.value = false
+  showControlCenter.value = false
+}
+
+function openControlCenterSection(section) {
+  switch (section) {
+    case 'moderation': openModeration(); break
+    case 'beta-access': openBetaAccess(); break
+    case 'mail': showMailAdmin.value = true; break
+    case 'mcp': showMcpAdmin.value = true; break
+    case 'ai-feedback': showAiFeedbackAdmin.value = true; break
+    case 'announcement': openAnnouncementAdmin(); break
+    case 'suspend': showSuspendAdmin.value = true; break
+    case 'survey': showSurveyAdmin.value = true; break
+  }
 }
 
 async function loadAnnouncement(openForUser = true) {
@@ -300,7 +324,7 @@ onBeforeUnmount(() => {
       <nav class="business-switch" aria-label="业务模块">
         <router-link to="/"><span>⌂</span>课程导航</router-link>
         <router-link to="/cet"><span>EN</span>英语等级考试收录</router-link>
-        <router-link to="/ai-analysis"><span>AI</span>AI 学习分析</router-link>
+        <router-link to="/ai-center"><span>✦</span>AI Center</router-link>
       </nav>
       <div class="browser-account">
         <button class="avatar-button" type="button" :title="profile.nickname || authSession.displayName" @click="showAccount = !showAccount">{{ (profile.nickname || authSession.displayName).slice(0, 1) }}</button>
@@ -308,12 +332,8 @@ onBeforeUnmount(() => {
         <div v-if="showAccount" class="account-menu browser-menu">
           <div class="menu-identity"><b>{{ profile.nickname || authSession.displayName }}</b><small>{{ isAdmin ? '管理员' : '匿名内测用户' }}</small></div>
           <button type="button" @click="cycleTheme"><span>{{ effectiveTheme === 'dark' ? '☾' : '☀' }}</span>{{ themeLabel }}</button>
-          <button v-if="isAdmin" type="button" @click="openModeration">内容审核</button>
-          <button v-if="isAdmin" type="button" @click="openBetaAccess">登录验证</button>
-          <button v-if="isAdmin" type="button" @click="showMailAdmin = true; showAccount = false">SMTP与邮件</button>
-          <button v-if="isAdmin" type="button" @click="openAnnouncementAdmin">公告管理</button>
-          <button v-if="isAdmin" type="button" @click="showSuspendAdmin = true; showAccount = false">暂挂体验管理</button>
-          <button type="button" @click="showSurvey = true; showAccount = false">{{ isAdmin ? '调查问卷管理' : '填写调查问卷' }}</button>
+          <button v-if="isAdmin" class="control-center-entry" type="button" @click="showControlCenter = true; showAccount = false"><span>⌘</span>控制中心</button>
+          <button type="button" @click="showSurvey = true; showAccount = false">填写调查问卷</button>
           <button type="button" @click="showPassword = true; showAccount = false">修改密码</button>
           <button type="button" @click="logout">退出登录</button>
         </div>
@@ -415,8 +435,11 @@ onBeforeUnmount(() => {
     </form>
   </div>
   <div v-if="copiedMessage" class="toast">{{ copiedMessage }}</div>
-  <AdminSurveyModal v-if="showSurvey && isAdmin" @close="showSurvey = false" />
-  <UserSurveyModal v-else-if="showSurvey" @close="showSurvey = false" />
+  <GlobalControlCenter v-if="showControlCenter" @close="showControlCenter = false" @open="openControlCenterSection" />
+  <AdminSurveyModal v-if="showSurveyAdmin && isAdmin" @close="showSurveyAdmin = false" />
+  <UserSurveyModal v-if="showSurvey" @close="showSurvey = false" />
   <AdminSuspendModal v-if="showSuspendAdmin && isAdmin" @close="showSuspendAdmin = false" />
   <AdminMailModal v-if="showMailAdmin && isAdmin" @close="showMailAdmin = false" />
+  <AdminMcpModal v-if="showMcpAdmin && isAdmin" @close="showMcpAdmin = false" />
+  <AdminAiFeedbackModal v-if="showAiFeedbackAdmin && isAdmin" @close="showAiFeedbackAdmin = false" />
 </template>

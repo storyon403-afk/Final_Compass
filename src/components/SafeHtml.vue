@@ -1,0 +1,1 @@
+<script setup>import { computed } from 'vue';import DOMPurify from 'dompurify';const props=defineProps({content:{type:String,default:''}}),rendered=computed(()=>DOMPurify.sanitize(props.content,{USE_PROFILES:{html:true},ADD_ATTR:['target','rel']}))</script><template><div class="safe-html" v-html="rendered"></div></template>

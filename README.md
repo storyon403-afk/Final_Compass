@@ -116,6 +116,16 @@ npm run dev
 
 浏览器访问 `http://localhost:5173`，API 默认位于 `http://127.0.0.1:8080/api`。
 
+### 4. 启动本地 Hermes Agent（可选）
+
+```bash
+node scripts/hermes-agent.mjs
+```
+
+AI Center 的 Agent 模式会把临时 BYOK 仅传给本机 Gateway。Gateway 使用 `hermes -z` 创建一次性子进程，并将 Key 注入该子进程环境；任务完成、失败、超时或 Gateway 退出后子进程终止，Key 不写入项目文件或数据库。浏览器操作还需安装 `browser-extension/` 中的扩展并连接后端 WebSocket。
+
+Agent 单个生成产物默认最大 100 MB。部署环境可通过 `MAX_UPLOAD_FILE_SIZE` 和 `MAX_UPLOAD_REQUEST_SIZE` 调整服务端上传限制；由于当前 Gateway 使用 Base64 封装产物，请让请求上限至少比文件上限高约三分之一。
+
 ## 测试与构建
 
 ```bash

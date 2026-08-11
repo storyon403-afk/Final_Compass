@@ -32,6 +32,7 @@ public class AiUsageGuardService {
     }
 
     public void check(long userId, AiCredentialSource source) {
+        if (isAdministrator(userId)) return;
         increment(prefix + "minute:" + userId, perMinute, Duration.ofMinutes(1), "AI 请求过于频繁，请稍后再试");
         if (source != AiCredentialSource.PLATFORM) return;
         increment(prefix + "platform-day:" + LocalDate.now() + ":" + userId, platformDailyCalls,
@@ -44,6 +45,12 @@ public class AiUsageGuardService {
                 """).param("user",userId).param("start",start).param("end",end).query(Integer.class).single();
         if (used >= platformMonthlyTokens) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                 "本月平台 AI Token 额度已用完，可以切换自己的 API Key");
+    }
+
+    private boolean isAdministrator(long userId) {
+        if (userId <= 0) return false;
+        return jdbc.sql("SELECT EXISTS(SELECT 1 FROM app_user WHERE id=:user AND role='ADMIN' AND active=TRUE)")
+                .param("user",userId).query(Boolean.class).single();
     }
 
     private void increment(String key,int limit,Duration ttl,String message) {

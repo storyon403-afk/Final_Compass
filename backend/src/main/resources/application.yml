@@ -7,8 +7,8 @@ spring:
     password: ${DB_PASSWORD:change-me}
   servlet:
     multipart:
-      max-file-size: ${MAX_UPLOAD_FILE_SIZE:40MB}
-      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:42MB}
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:100MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:140MB}
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -48,8 +48,11 @@ app:
       url: ${MARKITDOWN_WORKER_URL:}
       token: ${MARKITDOWN_WORKER_TOKEN:}
       timeout: ${MARKITDOWN_WORKER_TIMEOUT:60s}
-    hermes:
-      url: ${HERMES_AGENT_URL:http://127.0.0.1:8642}
+    pdf-renderer:
+      url: ${PDF_RENDERER_URL:http://127.0.0.1:8787}
+      token: ${PDF_RENDERER_TOKEN:}
+    agent-gateway:
+      url: ${AGENT_GATEWAY_URL:http://127.0.0.1:8642}
   bootstrap-admin:
     username: ${APP_ADMIN_USERNAME:}
     password: ${APP_ADMIN_PASSWORD:}

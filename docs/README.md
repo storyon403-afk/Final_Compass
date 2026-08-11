@@ -19,15 +19,14 @@
 | [SMTP 邮箱验证与管理员账号发放设计](SMTP邮箱验证与管理员账号发放设计.md) | Redis 验证码、动态 SMTP、邮件模板、临时密码与顺序账号分配。 |
 | [暂挂体验模块设计与维护](暂挂体验模块设计与维护.md) | 全局暂挂入口、视频预加载、管理员配置和恢复交互。 |
 
-## 三、AI Beta
+## 三、AI Center
 
 | 文档 | 内容摘要 |
 | --- | --- |
-| [AI 活跃度资格与 Skill 安全架构设计](AI活跃度资格与Skill安全架构设计.md) | 活跃积分、月度资格、平台 Key/BYOK、安全边界与 Skill 抽象。 |
-| [Finals Compass AI V2：Skill 编排设计与扩展指南](FinalsCompass_AI_V2_Skill编排设计与扩展指南.md) | Agent 编排、Skill Registry、凭据解析和 Provider Gateway 的接口关系。 |
-| [Finals Compass AI V3：真实调用与临时拍题设计](FinalsCompass_AI_V3_真实调用与临时拍题设计.md) | DeepSeek/OpenAI 真实调用、手机拍题的请求级内存链路与平台用量保护。 |
-| [Finals Compass AI V4：Gemini 视觉与 DeepSeek 解题编排](FinalsCompass_AI_V4_Gemini视觉与DeepSeek解题编排.md) | Gemini 题面识别、用户意图路由、DeepSeek V4 Flash 解题及双模型安全边界。 |
+| [AI 模块研发交接文档](AI模块研发交接文档.md) | **AI 模块唯一权威入口**：runtime 架构全景、业务链路图（对话/Agent 调度/MCP 治理/知识库）、权限模型图、端点清单、注册表速查与交接陷阱。 |
 | [MarkItDown 内置附件解析与运行指南](MarkItDown内置附件解析与运行指南.md) | 文档、图片和音频的标准化解析链路、Worker 限制与故障处理。 |
+| [系统架构与设计总览](系统架构与设计总览.md) | 前端、浏览器扩展、Worker、部署拓扑与端到端数据流（AI 章节以交接文档为准）。 |
+| [安全审计报告](安全审计报告.md) | 2026-08-09 全栈只读安全审计快照，未覆盖 chat 重构后的新链路。 |
 
 ## 四、基础设施与安全状态
 

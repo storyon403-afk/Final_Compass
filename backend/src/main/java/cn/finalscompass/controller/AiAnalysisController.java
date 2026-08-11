@@ -38,6 +38,11 @@ public class AiAnalysisController {
         ai.deleteUserKey(auth.current(request).id(), provider);
     }
 
+    @PutMapping("/review-byok")
+    public Map<String,Object> saveReviewByok(HttpServletRequest request,@RequestBody AiAnalysisService.SaveUserKey body){
+        return ai.saveUserReviewKey(auth.current(request).id(),body);
+    }
+
     @PutMapping("/admin/platform-key")
     public Map<String, Object> savePlatformKey(HttpServletRequest request, @RequestBody AiAnalysisService.SavePlatformKey body) {
         return ai.savePlatformKey(auth.requireAdmin(request).id(), body);
@@ -49,26 +54,10 @@ public class AiAnalysisController {
         return ai.savePlatformDefault(auth.requireAdmin(request).id(), body);
     }
 
-    @PostMapping("/invoke")
-    public AiAnalysisService.InvokeResult invoke(HttpServletRequest request, @RequestBody AiAnalysisService.InvokeRequest body) {
-        return ai.invoke(auth.current(request).id(), body);
-    }
-
-    /** Task-oriented API; execution is synchronous until the Redis worker phase is enabled. */
-    @PostMapping("/tasks")
-    public AiAnalysisService.InvokeResult createTask(HttpServletRequest request,
-            @RequestBody AiAnalysisService.InvokeRequest body) {
-        return ai.invoke(auth.current(request).id(), body);
-    }
-
-    @GetMapping("/tasks/{taskId}")
-    public Map<String,Object> task(HttpServletRequest request, @PathVariable long taskId) {
-        return ai.task(auth.current(request).id(), taskId);
-    }
-
-    @GetMapping("/tasks/{taskId}/steps")
-    public java.util.List<Map<String,Object>> taskSteps(HttpServletRequest request, @PathVariable long taskId) {
-        return ai.taskSteps(auth.current(request).id(), taskId);
+    @PutMapping("/admin/platform-review-key")
+    public Map<String,Object> savePlatformReviewKey(HttpServletRequest request,
+            @RequestBody AiAnalysisService.SavePlatformKey body) {
+        return ai.savePlatformReviewKey(auth.requireAdmin(request).id(), body);
     }
 
     @PostMapping(value = "/attachments/convert", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)

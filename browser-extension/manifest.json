@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Finals Compass AI Runtime Bridge",
+  "version": "0.6.3",
+  "description": "Browser bridge for Agent Runtime research and Multi-WebAgent collaboration.",
+  "permissions": ["tabs", "scripting", "storage", "alarms"],
+  "host_permissions": [
+    "http://localhost:5173/*",
+    "http://127.0.0.1:5173/*",
+    "https://kimi.moonshot.cn/*",
+    "https://chat.deepseek.com/*",
+    "https://www.qianwen.com/*",
+    "https://tongyi.aliyun.com/*",
+    "https://www.bing.com/*",
+    "https://www.google.com/*",
+    "https://*/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [{
+    "matches": ["http://localhost:5173/*", "http://127.0.0.1:5173/*"],
+    "js": ["bridge.js"],
+    "run_at": "document_start"
+  }],
+  "action": { "default_popup": "popup.html", "default_title": "Finals Compass WebAgent" }
+}
