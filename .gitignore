@@ -6,6 +6,7 @@ target/
 .DS_Store
 uploads/*
 !uploads/.gitkeep
+backend/uploads/
 backups/
 *.log
 .env
