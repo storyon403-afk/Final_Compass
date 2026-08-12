@@ -1,0 +1,2 @@
+ALTER TABLE ai_runtime_run ADD COLUMN callback_token CHAR(36) NULL AFTER status;
+CREATE TABLE ai_runtime_run_artifact(id BIGINT AUTO_INCREMENT PRIMARY KEY,run_id BIGINT NOT NULL,file_name VARCHAR(255) NOT NULL,content_type VARCHAR(160) NOT NULL DEFAULT 'application/octet-stream',storage_path VARCHAR(500) NOT NULL,size_bytes BIGINT NOT NULL DEFAULT 0,created_at TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6),INDEX idx_run_artifact_run(run_id),FOREIGN KEY(run_id) REFERENCES ai_runtime_run(id));
