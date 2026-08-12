@@ -4,5 +4,5 @@ import cn.finalscompass.ai.credential.ResolvedAiCredential;
 
 @FunctionalInterface
 public interface RuntimeCredentialLeaseResolver {
-    ResolvedAiCredential resolve(RuntimeModelInvocationCommand command);
+  ResolvedAiCredential resolve(RuntimeModelInvocationCommand command);
 }

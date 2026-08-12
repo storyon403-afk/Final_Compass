@@ -1,3 +1,7 @@
 package cn.finalscompass.ai.runtime.provider;
 
-public enum RuntimeProviderStatus { ACTIVE, DEGRADED, DISABLED }
+public enum RuntimeProviderStatus {
+  ACTIVE,
+  DEGRADED,
+  DISABLED
+}

@@ -1,10 +1,8 @@
 # Finals Compass AI Center 模块交接文档（Runtime 架构）
 
-> 交接人：原 AI 后端架构师 / 开发负责人 · 接收人：新接手后端工程师
 > 文档基线：2026-08-11，Flyway 迁移至 V54，分支 `feature/ai-analysis`
 > 代码路径：`backend/src/main/java/cn/finalscompass/`，迁移：`backend/src/main/resources/db/migration/`
->
-> 本文取代此前所有 AI 架构文档（V1 Skill 指南、V2 编排指南、V3 真实调用、V4 视觉编排、活跃度与 Skill 安全设计均已随旧代码删除）。**以本文为唯一权威入口。**
+
 
 ---
 
@@ -27,7 +25,7 @@ AI 模块经历过四代演进，前三代半的代码**已全部删除**，不�
 
 另有三个关键支撑类仍在 `cn.finalscompass.service` 包下：`AiCredentialResolver`（唯一取 Key 入口）、`AiUsageGuardService`（限流配额，**当前未接线，见第 9 节**）、`AiAnalysisService`（dashboard 与 Key 管理）。
 
-一句话记住：**改行为先查数据库注册表（provider/skill/tool/workflow 种子），再改代码。**
+**改行为先查数据库注册表（provider/skill/tool/workflow 种子），再改代码。**
 
 ---
 
@@ -131,7 +129,7 @@ flowchart TB
 
 路由启发式：目标含"pdf/文档/生成"→AGENT；含"多网页/kimi/qwen"→MULTI_WEB_AGENT；否则 CHAT。选 MULTI_WEB_AGENT 但客户端无 `CHROME_EXTENSION` 能力时回退 AGENT。
 
-### 3.2 CHAT 对话链路（最常用，务必吃透）
+### 3.2 CHAT 对话链路
 
 入口：`POST /api/ai-center/chat/sessions` 建会话 → `POST /api/ai-center/chat/sessions/{sessionKey}/messages`（SSE）。
 
@@ -267,7 +265,7 @@ flowchart LR
 
 ## 4. 权限图（安全模型）
 
-### 4.1 总原则（颠覆认知，先记住）
+### 4.1 总原则
 
 **本项目没有用 Spring Security**（pom 里只有 `spring-security-crypto` 做 BCrypt）。没有 SecurityFilterChain、没有 JWT、没有任何 `@PreAuthorize`。全部鉴权是命令式的三层：
 
@@ -450,7 +448,7 @@ MCP 凭据按 `authMode` 分发：`NONE`→空凭据；`PLATFORM_OAUTH`→subjec
 
 ---
 
-## 8. 交接陷阱与已知缺口（接手必读）
+## 8. 交接陷阱与已知缺口
 
 1. **`AiUsageGuardService` 是孤儿**：限频（每分钟 6 次）与平台日/月配额已实现，但旧调用方随 agent/task 包删除后**没有任何类调用 `check()`**。当前实际生效的门槛只有"活跃度 Top20 资格"。**请尽早决定是接线到 AiChatService/Dispatch 还是删除。**
 2. **MCP `SERVICE_TOKEN` 模式未实现**：枚举和 DB CHECK 允许，但没有凭据 resolver，真用会抛 "credential resolver is unavailable"。

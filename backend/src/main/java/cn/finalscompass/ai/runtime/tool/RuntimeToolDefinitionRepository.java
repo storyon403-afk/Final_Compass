@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RuntimeToolDefinitionRepository {
-    Optional<RuntimeToolDefinition> findActiveByKey(String toolKey);
-    List<RuntimeToolDefinition> findActiveByKeys(Collection<String> toolKeys);
+  Optional<RuntimeToolDefinition> findActiveByKey(String toolKey);
+
+  List<RuntimeToolDefinition> findActiveByKeys(Collection<String> toolKeys);
 }

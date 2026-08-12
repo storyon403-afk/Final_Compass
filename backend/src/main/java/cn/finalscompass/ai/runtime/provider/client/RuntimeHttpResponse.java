@@ -4,5 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public record RuntimeHttpResponse(int statusCode, Map<String, List<String>> headers, String body) {
-    public RuntimeHttpResponse { headers = Map.copyOf(headers); }
+  public RuntimeHttpResponse {
+    headers = Map.copyOf(headers);
+  }
 }
