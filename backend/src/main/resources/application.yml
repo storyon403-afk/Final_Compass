@@ -2,13 +2,13 @@ spring:
   application:
     name: finals-compass-api
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/finals_compass?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    url: ${DB_URL}
     username: ${DB_USER:finals}
     password: ${DB_PASSWORD:change-me}
   servlet:
     multipart:
-      max-file-size: ${MAX_UPLOAD_FILE_SIZE:40MB}
-      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:42MB}
+      max-file-size: ${MAX_UPLOAD_FILE_SIZE:100MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:140MB}
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -40,10 +40,19 @@ app:
   ai:
     # 32 random bytes encoded with Base64. Keep it outside Git; changing it makes saved API keys unreadable.
     encryption-key: ${AI_SECRET_ENCRYPTION_KEY:}
+    limits:
+      calls-per-minute: ${AI_CALLS_PER_MINUTE:6}
+      platform-daily-calls: ${AI_PLATFORM_DAILY_CALLS:20}
+      platform-monthly-tokens: ${AI_PLATFORM_MONTHLY_TOKENS:100000}
     document-worker:
       url: ${MARKITDOWN_WORKER_URL:}
       token: ${MARKITDOWN_WORKER_TOKEN:}
       timeout: ${MARKITDOWN_WORKER_TIMEOUT:60s}
+    pdf-renderer:
+      url: ${PDF_RENDERER_URL:http://127.0.0.1:8787}
+      token: ${PDF_RENDERER_TOKEN:}
+    agent-gateway:
+      url: ${AGENT_GATEWAY_URL:http://127.0.0.1:8642}
   bootstrap-admin:
     username: ${APP_ADMIN_USERNAME:}
     password: ${APP_ADMIN_PASSWORD:}

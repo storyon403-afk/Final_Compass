@@ -11,14 +11,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/identity")
 public class IdentityController {
-    private final AnonymousIdentityService identities;
-    private final AuthService auth;
-    public IdentityController(AnonymousIdentityService identities, AuthService auth) {
-        this.identities = identities;
-        this.auth = auth;
-    }
-    @PostMapping("/anonymous")
-    public AnonymousProfile current(HttpServletRequest request) {
-        return identities.forAccount(auth.current(request).id());
-    }
+  private final AnonymousIdentityService identities;
+  private final AuthService auth;
+
+  public IdentityController(AnonymousIdentityService identities, AuthService auth) {
+    this.identities = identities;
+    this.auth = auth;
+  }
+
+  @PostMapping("/anonymous")
+  public AnonymousProfile current(HttpServletRequest request) {
+    return identities.forAccount(auth.current(request).id());
+  }
 }

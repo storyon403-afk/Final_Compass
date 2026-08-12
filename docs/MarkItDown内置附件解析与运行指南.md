@@ -25,7 +25,7 @@ Vue 选择附件
 
 “内置”表示 Worker 源码、Dockerfile、Compose 配置和启动方式都属于 Final Compass，一个部署命令可以同时启动。它不是 Maven 依赖，因为 MarkItDown 是 Python 3.10+ 软件，不能在 JVM 中作为普通 Java 类加载。
 
-当前真实模型 Adapter 仍是预览实现。附件转换是真实的，但转换后的内容暂时只会进入 Preview Provider；接入真实 Provider Adapter 后无需重做附件解析层。
+附件转换会进入统一 Skill 调用链。V3 的 DeepSeek 文本和 OpenAI 多模态 Adapter 可以真实处理转换结果；Claude、Gemini 仍保持 Preview。手机拍题采用独立的请求级内存图片链路，不经过 MarkItDown Worker。
 
 ## 2. 目录结构
 
