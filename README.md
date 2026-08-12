@@ -1,18 +1,22 @@
 # Finals Compass / 期末指南
 
-Finals Compass 是一个面向高校课程复习与学习协作的开源平台。系统以“学院 → 专业 → 课程 → 任课老师 → 老师圈”组织课程、资料、讨论和复习指南，同时提供英语等级考试内容、邮箱验证与内测账号发放，以及可扩展的 AI Beta 学习分析能力。
+Finals Compass 是一个面向鬼大课程复习与学习协作的开源平台（目前只在树桶学院开放）。系统以“学院 → 专业 → 课程 → 任课老师 → 老师圈”组织课程、资料、讨论和复习指南，同时提供英语等级考试内容，以及由 Chat、Agent 和 MultiWeb AI 组成的 AI Center。
 
-## 当前能力
+## 当前功能
 
 - **课程知识网络**：课程代码全局唯一，公共专业课可以关联多个专业；资料、老师、讨论和复习指南围绕课程组织。
 - **学习资料协作**：支持资料上传、在线预览、感谢、讨论、指南引用和管理员审核。
 - **英语等级考试**：提供 CET 内容导航、试卷展示与听力相关能力；公开仓库不分发受版权保护的试题资源。
 - **身份与账号发放**：通过 Redis 管理邮箱验证码、有效期、失败次数和限流，由管理员在邮箱验证成功后确认发放账号。
 - **动态邮件服务**：管理员可以配置 SMTP 和邮件模板；同时预留 Microsoft Graph OAuth2 Provider，未配置时保持关闭。
-- **FinalsCompass AI Beta**：具备活跃度资格、平台 Key/BYOK、Agent 与 Skill 抽象、多供应商 Gateway，以及图片、文档和音频附件入口。
+- **AI Center Chat**：知识库 RAG、Redis 对话历史、SSE 响应、多 Provider/Model/Endpoint 匹配以及主模型失败后的候选降级。
+- **Agent Runtime**：由平台创建运行记录并向本地 Agent Gateway 下发任务，支持知识上下文、浏览器只读命令、状态回调和文件产物。
+- **MultiWeb AI**：通过 Chrome 扩展复用用户已有网页登录态，让 Kimi、DeepSeek、Qwen 分工或独立回答，再由配置的审核模型汇总与复核。
+- **AI 运行时治理**：Provider、Model、Endpoint、Skill、Tool、MCP 和执行 Trace 均由注册表与状态机管理；管理员可维护知识库、MCP 审批、反馈优化和 AI Evolution 指标。
+- **AI 凭据边界**：支持平台 Key、加密保存的 BYOK 和仅驻留当前请求的临时 BYOK；模型调用统一通过凭据解析入口取得 Key。
 - **暂挂体验**：提供全局可访问的短暂休息交互，支持视频预加载和管理员配置。
 
-AI Beta 当前属于可扩展基础版本。仓库提供编排、安全边界和 Provider 接口，不包含平台生产 API Key，也不部署本地大模型。
+AI Center 当前提供三种对外 Runtime：`CHAT`、`AGENT`、`MULTI_WEB_AGENT`。历史上的硬编码 Skill 编排、Workflow 页面和旧版解题链路已经退出当前入口；数据库仍保留部分注册表和演进基础设施，不能据此判断旧 Runtime 仍可由用户调用。仓库不包含平台生产 API Key，也不捆绑或自动部署本地大模型。
 
 ## 技术栈
 
@@ -20,6 +24,7 @@ AI Beta 当前属于可扩展基础版本。仓库提供编排、安全边界和
 - Java 21、Spring Boot、Spring MVC、JdbcClient
 - MySQL 8、Flyway
 - Redis 7
+- Chrome Manifest V3 扩展、WebSocket 浏览器桥接
 - Python 3.10+、Microsoft MarkItDown（可选附件解析 Worker）
 - Docker Compose、Nginx
 
@@ -27,14 +32,16 @@ AI Beta 当前属于可扩展基础版本。仓库提供编排、安全边界和
 
 ```text
 浏览器 / Vue 3
-      │ HTTP / JSON
+      │ HTTP / JSON / SSE
       ▼
-Spring Boot API ───── Redis（验证码、限流、短期安全状态）
+Spring Boot API ───── Redis（验证码、对话历史、OAuth state、短期安全状态）
       │       ├───── SMTP / Microsoft Graph（邮件发送）
-      │       ├───── AI Provider API（平台 Key 或 BYOK）
-      │       └───── MarkItDown Worker（附件标准化）
-      ▼
-MySQL + Flyway（账号、课程、内容、审核与审计事实）
+      │       ├───── AI Provider API（平台 Key / 已保存 BYOK / 临时 BYOK）
+      │       ├───── MarkItDown Worker（附件标准化）
+      │       └───── Agent Gateway（任务执行、回调和文件产物）
+      ▼                            │ WebSocket
+MySQL + Flyway                     ▼
+（业务事实、AI 注册表与 Trace）  Chrome 扩展（网页搜索 / MultiWeb AI）
 ```
 
 ## 开源版说明
@@ -76,7 +83,7 @@ npm ci
 - Java 21
 - Maven 3.9 或更高版本
 - MySQL 8
-- Redis 7（邮箱验证功能需要）
+- Redis 7（邮箱验证、AI 对话历史和 MCP OAuth 状态需要）
 - Python 3.10 或更高版本（仅独立运行附件解析 Worker 时需要）
 
 创建数据库和开发账号：
@@ -116,13 +123,15 @@ npm run dev
 
 浏览器访问 `http://localhost:5173`，API 默认位于 `http://127.0.0.1:8080/api`。
 
-### 4. 启动本地 Hermes Agent（可选）
+### 4. 启动本地 Agent Gateway（可选）
 
 ```bash
 node scripts/hermes-agent.mjs
 ```
 
-AI Center 的 Agent 模式会把临时 BYOK 仅传给本机 Gateway。Gateway 使用 `hermes -z` 创建一次性子进程，并将 Key 注入该子进程环境；任务完成、失败、超时或 Gateway 退出后子进程终止，Key 不写入项目文件或数据库。浏览器操作还需安装 `browser-extension/` 中的扩展并连接后端 WebSocket。
+`scripts/hermes-agent.mjs` 是仓库提供的本地 Gateway 实现，默认监听 `127.0.0.1:8642`。AI Center 的 Agent 模式会把临时 BYOK 仅传给本机 Gateway。Gateway 使用 `hermes -z` 创建一次性子进程，并将 Key 注入该子进程环境；任务完成、失败、超时或 Gateway 退出后子进程终止，Key 不写入项目文件或数据库。
+
+需要网页搜索或 MultiWeb AI 时，还要安装 [`browser-extension/`](browser-extension/README.md) 中的扩展。扩展通过 `/ws/browser-bridge` 与后端连接，只负责浏览器侧任务；网页登录、验证码和服务条款确认始终由用户完成。
 
 Agent 单个生成产物默认最大 100 MB。部署环境可通过 `MAX_UPLOAD_FILE_SIZE` 和 `MAX_UPLOAD_REQUEST_SIZE` 调整服务端上传限制；由于当前 Gateway 使用 Base64 封装产物，请让请求上限至少比文件上限高约三分之一。
 
@@ -167,6 +176,8 @@ Final_Compass/
 ├── src/                    Vue 前端
 ├── backend/                Spring Boot API 与 Flyway 迁移
 ├── services/               隔离运行的附件解析等辅助服务
+├── browser-extension/      Agent 搜索与 MultiWeb AI 的 Chrome 桥接扩展
+├── scripts/                本地启动、Agent Gateway 与端到端测试脚本
 ├── public/pdfjs/           PDF.js 运行资源及其许可证
 ├── pictures/               已获授权的项目成员开场照片
 ├── deploy/                 通用 Docker / Nginx 模板
@@ -183,8 +194,9 @@ Final_Compass/
 - [MySQL 数据库设计](docs/MySQL数据库设计详解.md)
 - [课程、老师与接口维护](docs/课程老师与接口维护手册.md)
 - [SMTP 邮箱验证与账号发放](docs/SMTP邮箱验证与管理员账号发放设计.md)
-- [AI 活跃度与 Skill 安全架构](docs/AI活跃度资格与Skill安全架构设计.md)
-- [AI V2 Skill 编排与扩展](docs/FinalsCompass_AI_V2_Skill编排设计与扩展指南.md)
+- [AI Center Runtime 研发交接文档](docs/AI模块研发交接文档.md)
+- [系统架构与设计总览](docs/系统架构与设计总览.md)
+- [MarkItDown 附件解析与运行指南](docs/MarkItDown内置附件解析与运行指南.md)
 - [项目 Wiki 学习树](https://github.com/storyon403-afk/Final_Compass/wiki/Learning-Tree)
 
 ## 贡献
