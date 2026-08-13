@@ -7,7 +7,10 @@ import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
-/** Runtime provider directory backed by the ai_runtime_provider registry. */
+/**
+ * 提供前端和业务层可见的供应商目录，并校验供应商是否已注册可用。
+ * 维护入口：新增运行时类型或目录展示字段时改这里；真实模型配置由 provider repository 管理。
+ */
 @Component
 public final class RuntimeProviderCatalog {
   /**
@@ -22,6 +25,7 @@ public final class RuntimeProviderCatalog {
     this.jdbc = jdbc;
   }
 
+  // 判断目标能力当前是否可用。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；利用流式过滤和排序得到符合约束的稳定结果。
   public List<ProviderInfo> available() {
     List<ProviderInfo> values =
         new ArrayList<>(
@@ -41,10 +45,12 @@ public final class RuntimeProviderCatalog {
     return values.stream().sorted(Comparator.comparing(ProviderInfo::id)).toList();
   }
 
+  // 查询当前可用的模型供应商。利用流式过滤和排序得到符合约束的稳定结果。
   public List<ProviderInfo> availableModelProviders() {
     return available().stream().filter(item -> !item.capabilities().contains("AGENT")).toList();
   }
 
+  // 按类型查找必需的组件。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   public String require(String provider) {
     String normalized = normalize(provider);
     if (AGENT_RUNTIME_KEY.equals(normalized)) return normalized;
@@ -58,6 +64,7 @@ public final class RuntimeProviderCatalog {
     return normalized;
   }
 
+  // 把供应商数据转换为内部统一格式。
   public String normalize(String value) {
     String provider = value == null ? "" : value.trim().toLowerCase();
     if (!provider.matches("[a-z0-9][a-z0-9_-]{1,39}"))

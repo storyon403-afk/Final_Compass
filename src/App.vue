@@ -10,6 +10,8 @@ import AdminMailModal from './components/AdminMailModal.vue'
 import AdminMcpModal from './components/AdminMcpModal.vue'
 import AdminAiFeedbackModal from './components/AdminAiFeedbackModal.vue'
 import GlobalControlCenter from './components/GlobalControlCenter.vue'
+import AdminModuleSettingsModal from './components/AdminModuleSettingsModal.vue'
+import ModuleMaintenanceView from './views/ModuleMaintenanceView.vue'
 import { authApi, authenticated, authSession, initIdentity, isAdmin, profile, systemApi } from './api'
 
 const route = useRoute()
@@ -29,6 +31,10 @@ const showAiFeedbackAdmin = ref(false)
 const showSurvey = ref(false)
 const showSurveyAdmin = ref(false)
 const showControlCenter = ref(false)
+const showModuleAdmin = ref(false)
+const moduleSettings = ref([])
+const routeModuleKey=computed(()=>route.path.startsWith('/ai-center')?'AI_CENTER':route.path.startsWith('/cet')?'CET_PRACTICE':route.path==='/'||route.path.startsWith('/courses/')?'COURSE_NAVIGATION':null)
+const activeMaintenance=computed(()=>moduleSettings.value.find(item=>item.moduleKey===routeModuleKey.value&&item.status==='MAINTENANCE'))
 const currentPassword = ref('')
 const newPassword = ref('')
 const passwordMessage = ref('')
@@ -92,6 +98,7 @@ function closeOverlays(event) {
   showSurvey.value = false
   showSurveyAdmin.value = false
   showControlCenter.value = false
+  showModuleAdmin.value = false
 }
 
 function openControlCenterSection(section) {
@@ -104,6 +111,7 @@ function openControlCenterSection(section) {
     case 'announcement': openAnnouncementAdmin(); break
     case 'suspend': showSuspendAdmin.value = true; break
     case 'survey': showSurveyAdmin.value = true; break
+    case 'modules': showModuleAdmin.value = true; break
   }
 }
 
@@ -304,6 +312,7 @@ onMounted(() => {
   mediaQuery.addEventListener('change', handleSystemTheme)
   window.addEventListener('keydown', closeOverlays)
   if (authenticated.value) initIdentity()
+  if(authenticated.value)systemApi.modules().then(value=>moduleSettings.value=value).catch(()=>{})
 })
 onBeforeUnmount(() => {
   mediaQuery.removeEventListener('change', handleSystemTheme)
@@ -339,9 +348,10 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </header>
-    <main class="app-main"><router-view /></main>
+    <main class="app-main"><ModuleMaintenanceView v-if="activeMaintenance&&!isAdmin" :setting="activeMaintenance"/><router-view v-else /></main>
     <SuspendRest />
   </div>
+  <AdminModuleSettingsModal v-if="showModuleAdmin" @close="showModuleAdmin=false" @updated="systemApi.modules().then(value=>moduleSettings=value)"/>
 
   <div v-if="showPassword" class="modal-backdrop" @click.self="!authSession.mustChangePassword && (showPassword = false)">
     <form class="upload-modal password-modal" @submit.prevent="changePassword">
@@ -383,7 +393,7 @@ onBeforeUnmount(() => {
         <small v-else-if="item.status === 'EMAIL_VERIFIED'">{{ item.email }} 已于 {{ new Date(item.verified_at).toLocaleString('zh-CN') }} 验证成功</small>
         <form v-if="item.status === 'EMAIL_VERIFIED'" class="account-provision-form" @submit.prevent="approveAccess(item)">
           <label class="provision-field"><span>账号</span><input v-model.trim="item.provisionUsername" placeholder="用于登录，由管理员填写" required minlength="3" maxlength="64" /></label>
-          <label class="provision-field"><span>用户名</span><div class="display-name-generator"><input v-model.trim="item.provisionDisplayName" placeholder="登录后站内展示" required maxlength="100" /><button type="button" :disabled="item.displayNameBusy" @click="suggestDisplayName(item)">{{ item.displayNameBusy ? '…' : '随机' }}</button></div></label>
+          <label class="provision-field"><span>用户名</span><div class="display-name-generator"><input v-model.trim="item.provisionDisplayName" placeholder="登录后站内展示，最多32个字符" required maxlength="32" /><button type="button" :disabled="item.displayNameBusy" @click="suggestDisplayName(item)">{{ item.displayNameBusy ? '…' : '随机' }}</button></div></label>
           <label class="provision-field"><span>管理员密码</span><input v-model="item.provisionAdminPassword" type="password" autocomplete="current-password" placeholder="验证本次发放操作" required /></label>
           <small class="provision-security-note">临时密码由系统随机生成并直接发送给用户，管理员无法查看；用户首次登录必须修改。</small>
           <label><input v-model="item.provisionConfirmed" type="checkbox" required /> 我已亲自核对申请人，确认发送账号和临时密码</label>

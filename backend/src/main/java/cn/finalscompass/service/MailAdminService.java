@@ -148,8 +148,19 @@ UPDATE email_template SET version=version+1,subject_template=:subject,text_templ
     if (!input.confirmed()) throw new IllegalArgumentException("请确认已经人工核实申请人");
     requireText(input.username(), "登录账号");
     requireText(input.displayName(), "显示名");
-    if (!input.username().matches("[A-Za-z0-9_.-]{3,64}"))
-      throw new IllegalArgumentException("账号只能包含字母、数字、下划线、点或短横线，长度3-64位");
+    // 同时遵守 app_user.username(40) 与 anonymous_user.nickname(32) 的数据库边界，
+    // 在进入事务前返回可读错误，避免由数据库截断异常变成通用 500。
+    if (!input.username().trim().matches("[A-Za-z0-9_.-]{3,40}"))
+      throw new IllegalArgumentException("账号只能包含字母、数字、下划线、点或短横线，长度3-40位");
+    if (input.displayName().trim().length() > 32)
+      throw new IllegalArgumentException("用户名不能超过32个字符");
+    boolean usernameExists =
+        jdbc.sql("SELECT COUNT(*) FROM app_user WHERE username=:username")
+                .param("username", input.username().trim())
+                .query(Integer.class)
+                .single()
+            > 0;
+    if (usernameExists) throw new IllegalArgumentException("该登录账号已存在，请更换账号");
     char[] temporaryPassword = randomPassword();
     Provisioned provisioned;
     try {
@@ -166,6 +177,14 @@ UPDATE email_template SET version=version+1,subject_template=:subject,text_templ
                         .orElseThrow(() -> new IllegalArgumentException("申请不存在"));
                 if (!"EMAIL_VERIFIED".equals(request.status()))
                   throw new IllegalArgumentException("申请尚未完成邮箱验证或已经处理");
+                boolean emailExists =
+                    jdbc.sql("SELECT COUNT(*) FROM app_user WHERE email=:email")
+                            .param("email", request.email())
+                            .query(Integer.class)
+                            .single()
+                        > 0;
+                if (emailExists)
+                  throw new IllegalArgumentException("该邮箱已经绑定现有账号，不能重复发放账号");
                 GeneratedKeyHolder keys = new GeneratedKeyHolder();
                 jdbc.sql(
                         """

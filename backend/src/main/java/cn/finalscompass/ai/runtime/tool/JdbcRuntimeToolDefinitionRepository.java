@@ -10,6 +10,10 @@ import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+/**
+ * 从数据库读取已启用的运行时工具定义和权限契约。
+ * 维护入口：工具表结构或查询条件变化时改这里；执行安全校验由 RuntimeToolExecutor 负责。
+ */
 @Repository
 public class JdbcRuntimeToolDefinitionRepository implements RuntimeToolDefinitionRepository {
   private static final String SELECT =
@@ -27,6 +31,7 @@ WHERE t.status='ACTIVE' AND v.lifecycle_status='PUBLISHED'
     this.json = json;
   }
 
+  // 查询业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   @Override
   public Optional<RuntimeToolDefinition> findActiveByKey(String toolKey) {
     if (toolKey == null || toolKey.isBlank()) return Optional.empty();
@@ -36,6 +41,7 @@ WHERE t.status='ACTIVE' AND v.lifecycle_status='PUBLISHED'
         .optional();
   }
 
+  // 查询业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   @Override
   public List<RuntimeToolDefinition> findActiveByKeys(Collection<String> toolKeys) {
     if (toolKeys == null || toolKeys.isEmpty()) return List.of();
@@ -45,6 +51,7 @@ WHERE t.status='ACTIVE' AND v.lifecycle_status='PUBLISHED'
         .list();
   }
 
+  // 把数据库行映射为领域对象。
   private RuntimeToolDefinition map(java.sql.ResultSet result) throws java.sql.SQLException {
     return new RuntimeToolDefinition(
         result.getLong("id"),
@@ -62,6 +69,7 @@ WHERE t.status='ACTIVE' AND v.lifecycle_status='PUBLISHED'
         result.getInt("max_result_bytes"));
   }
 
+  // 解析并返回工具权限集合。通过 Jackson 完成 JSON 的解析或序列化。
   private Set<String> permissions(String value) {
     try {
       JsonNode permissions = json.readTree(value).path("requiredPermissions");

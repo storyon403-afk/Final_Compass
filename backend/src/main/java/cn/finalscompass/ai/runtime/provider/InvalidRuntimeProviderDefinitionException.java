@@ -1,5 +1,9 @@
 package cn.finalscompass.ai.runtime.provider;
 
+/**
+ * 表示Invalid运行时供应商定义Exception场景下可识别并向上层传播的失败。
+ * 维护入口：供应商、模型、端点定义及匹配规则变化时修改这里。
+ */
 public final class InvalidRuntimeProviderDefinitionException extends RuntimeException {
   private final String providerKey;
   private final String field;

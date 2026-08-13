@@ -21,6 +21,18 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+/*
+ * 维护流程图：
+ *   Dispatch 主命令 --> ProviderClient.invoke --> 有工具调用？
+ *        |失败                                  |是
+ *        v                                      v
+ *   fallback 候选 <-- 记录 Invocation <-- ToolExecutor --> continue
+ *        \------------------> ExecutionResult + Trace
+ */
+/**
+ * 统一编排模型调用、供应商回退、工具多轮执行、用量成本和追踪记录。
+ * 维护入口：调用主流程与回退改这里；供应商报文改 client；工具安全契约改 RuntimeToolExecutor。
+ */
 @Component
 public final class LegacyRuntimeModelClientGateway implements RuntimeModelClientGateway {
   private final RuntimeExecutionTraceStore traces;
@@ -42,6 +54,15 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
     this(traces, nativeClients, null);
   }
 
+  /**
+   * 执行一次运行时调用。
+   *
+   * @param executionNodeId executionNode 对应的数据库 ID
+   * @param dispatch 包含主命令和备用命令的调度计划
+   * @param credentials 按候选模型动态解析凭据的回调
+   * @param binaryInput 可选的图片等二进制输入
+   * @return 处理后的业务结果
+   */
   @Override
   public RuntimeModelExecutionResult execute(
       long executionNodeId,
@@ -51,6 +72,16 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
     return executeInternal(executionNodeId, dispatch, credentials, binaryInput, null, 0, 0);
   }
 
+  /**
+   * 执行一次运行时调用。
+   *
+   * @param executionNodeId executionNode 对应的数据库 ID
+   * @param dispatch 包含主命令和备用命令的调度计划
+   * @param credentials 按候选模型动态解析凭据的回调
+   * @param binaryInput 可选的图片等二进制输入
+   * @param attemptOffset 当前候选项在完整尝试链中的偏移量
+   * @return 处理后的业务结果
+   */
   @Override
   public RuntimeModelExecutionResult execute(
       long executionNodeId,
@@ -64,6 +95,16 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         executionNodeId, dispatch, credentials, binaryInput, null, 0, attemptOffset);
   }
 
+  /**
+   * 执行一次运行时调用。
+   *
+   * @param dispatch 包含主命令和备用命令的调度计划
+   * @param credentials 按候选模型动态解析凭据的回调
+   * @param binaryInput 可选的图片等二进制输入
+   * @param toolContext 工具执行时使用的用户与权限上下文
+   * @param maxToolRounds 允许模型与工具往返的最大轮数
+   * @return 处理后的业务结果
+   */
   @Override
   public RuntimeModelExecutionResult executeWithTools(
       RuntimeModelDispatch dispatch,
@@ -83,6 +124,20 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         toolContext.nodeId(), dispatch, credentials, binaryInput, toolContext, maxToolRounds, 0);
   }
 
+  /**
+   * 执行一次运行时调用。
+   * 实现上，主路径不可用时按候选顺序尝试备用项，提高调用成功率；状态变化先经过状态机约束，阻止非法跳转。
+   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+   *
+   * @param executionNodeId executionNode 对应的数据库 ID
+   * @param dispatch 包含主命令和备用命令的调度计划
+   * @param credentials 按候选模型动态解析凭据的回调
+   * @param binaryInput 可选的图片等二进制输入
+   * @param toolContext 工具执行时使用的用户与权限上下文
+   * @param maxToolRounds 允许模型与工具往返的最大轮数
+   * @param attemptOffset 当前候选项在完整尝试链中的偏移量
+   * @return 处理后的业务结果
+   */
   private RuntimeModelExecutionResult executeInternal(
       long executionNodeId,
       RuntimeModelDispatch dispatch,
@@ -172,6 +227,18 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         "All Runtime Provider candidates failed" + detail, lastFailure);
   }
 
+  /**
+   * 调用外部服务并解析返回结果。
+   * 实现上，局部失败会降级为空结果，不让辅助能力中断主流程。
+   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+   *
+   * @param command 已经归一化的执行命令
+   * @param credential 本次调用使用的凭据
+   * @param binaryInput 可选的图片等二进制输入
+   * @param toolContext 工具执行时使用的用户与权限上下文
+   * @param maxToolRounds 允许模型与工具往返的最大轮数
+   * @return 处理后的业务结果
+   */
   private ClientResult invokeCandidate(
       RuntimeModelInvocationCommand command,
       ResolvedAiCredential credential,
@@ -251,6 +318,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
     }
   }
 
+  // 把供应商响应转换为统一客户端结果。
   private ClientResult clientResult(RuntimeProviderClientResult result) {
     return new ClientResult(
         result.content(),
@@ -261,6 +329,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         result.toolCalls());
   }
 
+  // 把客户端结果转换为追踪记录。
   private RuntimeProviderInvocationResult invocationResult(
       RuntimeModelInvocationCommand command, ClientResult result, long latencyMs) {
     BigDecimal cost = cost(command, result.inputUnits(), result.outputUnits());
@@ -276,6 +345,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         "{}");
   }
 
+  // 根据输入输出用量计算本次调用成本。
   private BigDecimal cost(
       RuntimeModelInvocationCommand command, long inputUnits, long outputUnits) {
     if (command.inputUnitPrice() == null && command.outputUnitPrice() == null) return null;
@@ -288,6 +358,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         .add(output.multiply(BigDecimal.valueOf(outputUnits)));
   }
 
+  // 校验凭据与候选供应商是否匹配。
   private void requireMatchingCredential(
       RuntimeModelInvocationCommand command, ResolvedAiCredential credential) {
     if (credential == null
@@ -298,6 +369,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
           "Resolved credential does not match the selected Provider candidate");
   }
 
+  // 判断异常链中是否包含超时异常。
   private boolean timeout(Throwable failure) {
     for (Throwable current = failure; current != null; current = current.getCause())
       if (current.getClass().getSimpleName().toLowerCase().contains("timeout")

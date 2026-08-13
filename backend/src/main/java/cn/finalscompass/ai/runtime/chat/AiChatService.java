@@ -55,7 +55,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  *                   返回前端
  */
 
-/** Lightweight AI Center chat: knowledge-base RAG + direct model invocation, no file generation. */
+/**
+ * AI 中心轻量聊天入口：组合知识库 RAG、模型选择、凭据解析、执行追踪和 SSE 返回，不生成文件。
+ * 维护入口：聊天编排和历史上下文改这里；检索改 KnowledgeService；模型回退改 ModelClientGateway。
+ */
 @Service
 public final class AiChatService {
   private static final int HISTORY_LIMIT = 20;

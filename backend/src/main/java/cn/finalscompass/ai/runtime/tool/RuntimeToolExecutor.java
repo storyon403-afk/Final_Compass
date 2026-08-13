@@ -9,6 +9,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
+/*
+ * 维护流程图：
+ *   ToolCall --> 查定义 --> 权限校验 --> 输入 Schema
+ *       --> Handler.invoke --> 大小限制 --> 输出 Schema --> ToolCallResult
+ */
+/**
+ * 运行时工具的安全执行边界：校验权限、输入 Schema、处理器和输出大小及 Schema。
+ * 维护入口：新增安全规则优先放这里；工具业务实现放 RuntimeToolHandler，不要绕过统一校验。
+ */
 @Component
 public final class RuntimeToolExecutor {
   private final RuntimeToolDefinitionRepository tools;
@@ -31,6 +40,7 @@ public final class RuntimeToolExecutor {
                     }));
   }
 
+  // 执行一次运行时调用。
   public RuntimeToolCallResult execute(RuntimeToolExecutionContext context, RuntimeToolCall call) {
     if (!context.allowedTools().contains(call.toolKey()))
       throw new SecurityException("Runtime Tool call is outside the Skill allowlist");
@@ -51,6 +61,7 @@ public final class RuntimeToolExecutor {
     return new RuntimeToolCallResult(call.callId(), call.toolKey(), true, output, null);
   }
 
+  // 校验定义及其关联配置。通过 Jackson 完成 JSON 的解析或序列化。
   private void validateObject(String value, String schemaValue, String label) {
     try {
       JsonNode object = json.readTree(value);
@@ -64,6 +75,7 @@ public final class RuntimeToolExecutor {
     }
   }
 
+  // 筛选满足请求约束的模型候选项。
   private boolean matchesSchema(JsonNode value, JsonNode schema) {
     String type = schema.path("type").asText("");
     boolean typeMatches =

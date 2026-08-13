@@ -7,6 +7,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 汇总技能、供应商、工作流和节点指标，并生成可供管理员审核的优化建议。
+ * 维护入口：新增指标维度改聚合方法；推荐规则升级时优先拆出独立策略组件。
+ */
 @Service
 public class AiEvolutionService {
   private final JdbcClient jdbc;
@@ -17,6 +21,7 @@ public class AiEvolutionService {
     this.json = json;
   }
 
+  // 刷新远端配置或发现结果。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   @Transactional
   public RefreshResult refresh(long admin, LocalDate date) {
     if (date == null
@@ -51,6 +56,7 @@ public class AiEvolutionService {
     }
   }
 
+  // 汇总 AI 演进指标看板。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   public Dashboard dashboard() {
     Map<String, Object> summary =
         jdbc.sql(
@@ -99,6 +105,7 @@ FROM ai_skill_daily_metric WHERE metric_date>=CURRENT_DATE-INTERVAL 30 DAY
     return new Dashboard(summary, skills, providers, workflows, recommendations);
   }
 
+  // 复核用户反馈并沉淀改进建议。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   public void review(long admin, long id, Review request) {
     if (request == null || !Set.of("APPROVED", "REJECTED").contains(request.status()))
       throw new IllegalArgumentException("AI Evolution review is invalid");
@@ -116,6 +123,7 @@ FROM ai_skill_daily_metric WHERE metric_date>=CURRENT_DATE-INTERVAL 30 DAY
       throw new IllegalStateException("Recommendation is unavailable or already reviewed");
   }
 
+  // 删除业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private void delete(LocalDate date) {
     jdbc.sql("DELETE FROM ai_skill_daily_metric WHERE metric_date=:date")
         .param("date", date)
@@ -131,6 +139,7 @@ FROM ai_skill_daily_metric WHERE metric_date>=CURRENT_DATE-INTERVAL 30 DAY
         .update();
   }
 
+  // 写入技能维度的每日统计。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private int skills(LocalDate date) {
     return jdbc.sql(
             """
@@ -162,6 +171,7 @@ GROUP BY n.skill_id,n.skill_version_id,n.skill_key_snapshot,n.skill_version_snap
         .update();
   }
 
+  // 写入供应商维度的每日统计。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private int providers(LocalDate date) {
     return jdbc.sql(
             """
@@ -174,6 +184,7 @@ INSERT INTO ai_provider_daily_metric SELECT :date,p.provider_id,p.provider_model
         .update();
   }
 
+  // 写入工作流维度的每日统计。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private int workflows(LocalDate date) {
     return jdbc.sql(
             """
@@ -187,6 +198,7 @@ FROM ai_runtime_execution e WHERE e.workflow_key IS NOT NULL AND DATE(e.created_
         .update();
   }
 
+  // 写入节点维度的每日统计。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private int nodes(LocalDate date) {
     return jdbc.sql(
             """
@@ -201,6 +213,7 @@ FROM ai_runtime_execution_node n JOIN ai_runtime_execution e ON e.id=n.execution
         .update();
   }
 
+  // 根据运行指标生成优化建议。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private int recommend(LocalDate date) {
     List<Map<String, Object>> rows =
         jdbc.sql(
@@ -259,6 +272,7 @@ FROM ai_runtime_execution_node n JOIN ai_runtime_execution e ON e.id=n.execution
     return created;
   }
 
+  // 把对象序列化为 JSON。通过 Jackson 完成 JSON 的解析或序列化。
   private String write(Object value) {
     try {
       return json.writeValueAsString(value);
@@ -267,6 +281,7 @@ FROM ai_runtime_execution_node n JOIN ai_runtime_execution e ON e.id=n.execution
     }
   }
 
+  // 清理并限制外部文本长度。
   private String clean(String value) {
     if (value == null || value.isBlank()) return null;
     String result = value.trim();

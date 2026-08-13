@@ -139,6 +139,8 @@ export const circleApi = {
 }
 
 export const systemApi = {
+  modules: () => request('/system/modules'),
+  updateModule: (key, fields) => request(`/system/modules/${encodeURIComponent(key)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }),
   announcement: () => request('/system/announcement'),
   updateAnnouncement: (content, enabled) => request('/system/announcement', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, enabled })
@@ -208,6 +210,10 @@ export const aiApi = {
   saveReviewByok: (provider, apiKey, label, consentToStore = true) => request('/ai/review-byok', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, apiKey, label, consentToStore })
   }),
+  saveVisionByok: (provider, apiKey, label, consentToStore = true) => request('/ai/vision-byok', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, apiKey, label, consentToStore }) }),
+  deleteVisionByok: (provider) => request(`/ai/vision-byok/${encodeURIComponent(provider)}`, { method: 'DELETE' }),
+  saveVisionFeatures: (fields) => request('/ai/admin/vision-features', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }),
+  analyzeVision: (file, fields) => { const form=new FormData();form.append('file',file);for(const [key,value] of Object.entries(fields))if(value!==null&&value!==undefined)form.append(key,value);return request('/ai/vision/analyze',{method:'POST',body:form}) },
   deleteByok: (provider) => request(`/ai/byok/${encodeURIComponent(provider)}`, { method: 'DELETE' }),
   savePlatformKey: (provider, model, apiKey, enabled) => request('/ai/admin/platform-key', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },

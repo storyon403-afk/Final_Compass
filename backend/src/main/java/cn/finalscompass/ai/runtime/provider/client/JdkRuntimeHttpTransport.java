@@ -6,8 +6,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 
+/**
+ * 基于 JDK HttpClient 执行受限 HTTP 请求，统一处理超时、响应大小和响应头。
+ * 维护入口：代理、重试、TLS 或响应上限等通用网络策略应在这里维护。
+ */
 @Component
 public final class JdkRuntimeHttpTransport implements RuntimeHttpTransport {
+  // 发送带限制的 JSON HTTP 请求。先组装协议请求，再通过传输层发送并校验响应；在结束时主动释放资源或擦除敏感数据。
   @Override
   public RuntimeHttpResponse postJson(RuntimeHttpRequest request) {
     validate(request);
@@ -40,6 +45,7 @@ public final class JdkRuntimeHttpTransport implements RuntimeHttpTransport {
     }
   }
 
+  // 校验定义及其关联配置。
   private void validate(RuntimeHttpRequest request) {
     if (request == null
         || request.uri() == null
@@ -68,6 +74,7 @@ public final class JdkRuntimeHttpTransport implements RuntimeHttpTransport {
             });
   }
 
+  // 校验远端地址是否在安全白名单内。
   private boolean allowedUri(java.net.URI uri) {
     if (uri.getHost() == null || uri.getUserInfo() != null) return false;
     if ("https".equalsIgnoreCase(uri.getScheme())) return true;

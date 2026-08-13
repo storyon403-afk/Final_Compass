@@ -16,6 +16,15 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
+/*
+ * 维护流程图：
+ *   initialize --> 获取 MCP-Session-Id
+ *   tools/list 或 tools/call --> HTTP POST --> JSON / SSE 解析 --> 统一结果
+ */
+/**
+ * 通过 Streamable HTTP/SSE 实现 MCP 初始化、工具发现和调用。
+ * 维护入口：HTTP 头、会话 ID、SSE 解析或协议版本变化时修改这里。
+ */
 @Component
 public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransport {
   private static final int MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -32,6 +41,7 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     return RuntimeMcpTransportType.STREAMABLE_HTTP;
   }
 
+  // 调用目标服务。通过 Jackson 完成 JSON 的解析或序列化。
   @Override
   public RuntimeMcpCallResult callTool(RuntimeMcpCallRequest request, char[] accessToken) {
     if (request == null
@@ -78,6 +88,7 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     }
   }
 
+  // 发现并同步 MCP 服务器提供的工具。通过 Jackson 完成 JSON 的解析或序列化。
   @Override
   public RuntimeMcpDiscoveryResult discoverTools(
       RuntimeMcpServerDefinition server, char[] accessToken) {
@@ -124,6 +135,7 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     }
   }
 
+  // 初始化 MCP 协议会话。通过 Jackson 完成 JSON 的解析或序列化。
   private Session initialize(RuntimeMcpServerDefinition server, char[] accessToken)
       throws Exception {
     validateServer(server);
@@ -164,6 +176,17 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     return new Session(server, negotiated, result.path("capabilities"), sessionId);
   }
 
+  /**
+   * 组装并发送一次 MCP JSON-RPC 请求。
+   * 实现上，通过 Jackson 完成 JSON 的解析或序列化。
+   *
+   * @param session 当前 MCP 协议会话信息
+   * @param token 用于认证的令牌
+   * @param id 记录 ID
+   * @param method JSON-RPC 方法名
+   * @param params 发送给目标方法的参数
+   * @return 处理后的业务结果
+   */
   private JsonNode request(
       Session session, char[] token, String id, String method, Map<String, Object> params)
       throws Exception {
@@ -176,6 +199,16 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
         post(session.server(), token, session.sessionId(), json.writeValueAsString(body)), id);
   }
 
+  /**
+   * 发送 MCP HTTP 请求并解析普通或 SSE 响应。
+   * 实现上，先组装协议请求，再通过传输层发送并校验响应。
+   *
+   * @param server 目标 MCP 服务器定义
+   * @param token 用于认证的令牌
+   * @param sessionId session 对应的数据库 ID
+   * @param body 待发送的 HTTP 请求体
+   * @return 处理后的业务结果
+   */
   private RuntimeHttpResponse post(
       RuntimeMcpServerDefinition server, char[] token, String sessionId, String body) {
     Map<String, String> headers = new LinkedHashMap<>();
@@ -195,6 +228,7 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
             MAX_RESPONSE_BYTES));
   }
 
+  // 读取并校验 MCP JSON-RPC 响应。通过 Jackson 完成 JSON 的解析或序列化。
   private JsonNode response(RuntimeHttpResponse raw, String expectedId) throws Exception {
     if (raw.statusCode() / 100 != 2)
       throw failure("MCP_HTTP_" + raw.statusCode(), retryable(raw.statusCode()), null);
@@ -213,6 +247,7 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     throw failure("MCP_JSON_RPC_RESPONSE_MISSING", true, null);
   }
 
+  // 把 SSE 响应拆分为消息列表。通过 Jackson 完成 JSON 的解析或序列化；按长度窗口逐段处理，并保留必要重叠以减少上下文断裂。
   private List<JsonNode> sseMessages(String body) throws Exception {
     List<JsonNode> result = new ArrayList<>();
     StringBuilder data = new StringBuilder();
@@ -231,6 +266,7 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     return result;
   }
 
+  // 校验定义及其关联配置。通过 Jackson 完成 JSON 的解析或序列化。
   private void validateServer(RuntimeMcpServerDefinition server) {
     if (server == null
         || server.transportType() != RuntimeMcpTransportType.STREAMABLE_HTTP
@@ -257,12 +293,14 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     }
   }
 
+  // 提取并限制文本字段。
   private String text(JsonNode node, String field, int max) {
     String value = node.path(field).isTextual() ? node.path(field).textValue() : null;
     if (value != null && value.length() > max) throw failure("MCP_TOOL_LIST_INVALID", false, null);
     return value;
   }
 
+  // 按大小写无关方式读取 HTTP 响应头。利用流式过滤和排序得到符合约束的稳定结果。
   private String header(Map<String, List<String>> headers, String name) {
     return headers.entrySet().stream()
         .filter(entry -> name.equalsIgnoreCase(entry.getKey()))
@@ -279,6 +317,7 @@ public final class StreamableHttpRuntimeMcpTransport implements RuntimeMcpTransp
     return status == 429 || status >= 500;
   }
 
+  // 判断异常链中是否包含超时异常。
   private boolean timeout(Throwable failure) {
     for (Throwable current = failure; current != null; current = current.getCause())
       if (current.getClass().getSimpleName().toLowerCase().contains("timeout")) return true;

@@ -30,6 +30,10 @@ import org.springframework.stereotype.Component;
  *                       ▼
  *                 按路由规则排序
  */
+/**
+ * 根据能力、上下文窗口、模态、工具和凭据来源筛选并排序模型候选项。
+ * 维护入口：路由硬约束和候选排序改这里；最终评分决策改 AiRuntimeRouterService。
+ */
 @Component
 public final class RuntimeProviderMatcher {
   // 能力名称格式：必须以大写字母开头，只允许大写字母、数字和下划线，长度为 2-64

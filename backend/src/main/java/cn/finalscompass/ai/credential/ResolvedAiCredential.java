@@ -2,7 +2,10 @@ package cn.finalscompass.ai.credential;
 
 import java.util.Arrays;
 
-/** Short-lived provider credential whose mutable key buffer is cleared on close. */
+/**
+ * 一次模型调用最终解析出的供应商、模型和 API Key；关闭对象时会擦除内存中的密钥。
+ * 维护入口：凭据选择规则应改 AiCredentialResolver；这里只维护解析结果及敏感数据生命周期。
+ */
 public final class ResolvedAiCredential implements AutoCloseable {
   private final String provider;
   private final String model;
@@ -33,6 +36,7 @@ public final class ResolvedAiCredential implements AutoCloseable {
     return apiKey;
   }
 
+  // 清除内存中的敏感凭据。在结束时主动释放资源或擦除敏感数据。
   @Override
   public void close() {
     Arrays.fill(apiKey, '\0');

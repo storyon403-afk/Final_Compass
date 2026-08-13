@@ -8,11 +8,17 @@ import SafeMarkdown from './SafeMarkdown.vue'
 const emit = defineEmits(['close'])
 const message = ref(''), error = ref('')
 const adminDefaultProvider = ref('deepseek')
-const adminGeminiModel = ref('gemini-3.6-flash'), adminGeminiKey = ref(''), adminGeminiEnabled = ref(true)
-const adminDeepseekModel = ref('deepseek-v4-flash'), adminDeepseekKey = ref(''), adminDeepseekEnabled = ref(true)
+// 平台通道改为数据驱动，后续新增 Provider 只需要增加一项配置和数据库注册。
+const platformForms = ref([
+  { provider: 'gemini', name: 'Gemini', purpose: '视觉识别', model: 'gemini-3.6-flash', key: '', enabled: true },
+  { provider: 'deepseek', name: 'DeepSeek', purpose: '文本推理', model: 'deepseek-v4-pro', key: '', enabled: true },
+  { provider: 'kimi', name: 'Kimi / Moonshot', purpose: '文本推理', model: 'kimi-k3', key: '', enabled: true },
+  { provider: 'qwen', name: 'Qwen / DashScope', purpose: '文本推理', model: 'qwen3.8-max', key: '', enabled: true }
+])
 const adminHermesKey = ref(''), adminHermesEnabled = ref(false)
-const adminReviewProvider = ref('deepseek'), adminReviewModel = ref('deepseek-v4-flash'), adminReviewKey = ref(''), adminReviewEnabled = ref(true)
+const adminReviewProvider = ref('deepseek'), adminReviewModel = ref('deepseek-v4-pro'), adminReviewKey = ref(''), adminReviewEnabled = ref(true)
 const guide = ref(null), vcp = ref(null), editing = ref(''), busy = ref(false)
+const visionFeatures=ref({auxiliaryEnabled:true,ephemeralEnabled:true,storedEnabled:true,defaultVisionProvider:'gemini'})
 
 const platformStatus = id => settings.dashboard.platformProviders?.find(item => item.provider === id)
 
@@ -21,13 +27,12 @@ async function saveDefault() {
   catch (e) { error.value = e.message }
 }
 async function savePlatform(provider) {
-  const gemini = provider === 'gemini', model = gemini ? adminGeminiModel.value : adminDeepseekModel.value
-  const key = gemini ? adminGeminiKey.value : adminDeepseekKey.value
-  const enabled = gemini ? adminGeminiEnabled.value : adminDeepseekEnabled.value
+  const form = platformForms.value.find(item => item.provider === provider)
+  if (!form) { error.value = `不支持的平台 Provider：${provider}`; return }
   try {
-    await aiApi.savePlatformKey(provider, model, key, enabled)
-    if (gemini) adminGeminiKey.value = ''; else adminDeepseekKey.value = ''
-    message.value = `${gemini ? 'Gemini 视觉识别' : 'DeepSeek 解题'}通道已保存。`
+    await aiApi.savePlatformKey(provider, form.model, form.key, form.enabled)
+    form.key = ''
+    message.value = `${form.name} ${form.purpose}通道已保存。`
     await loadAiCenterSettings()
   } catch (e) { error.value = e.message }
 }
@@ -42,6 +47,7 @@ async function saveReviewPlatform() {
   try { await aiApi.savePlatformReviewKey(adminReviewProvider.value, adminReviewModel.value, adminReviewKey.value, adminReviewEnabled.value); adminReviewKey.value = ''; message.value = 'MultiWeb AI 平台审核通道已保存。'; await loadAiCenterSettings() }
   catch (e) { error.value = e.message }
 }
+async function saveVisionFeatures(){try{await aiApi.saveVisionFeatures(visionFeatures.value);message.value='用户视觉辅助开关已保存。';await loadAiCenterSettings()}catch(e){error.value=e.message}}
 async function loadPages() {
   try { [guide.value, vcp.value] = await Promise.all([aiCenterApi.content('USAGE_GUIDE'), aiCenterApi.content('VCP_INTRO')]) }
   catch (e) { error.value = e.message }
@@ -59,7 +65,8 @@ onMounted(async () => {
   if (!settings.loaded) await loadAiCenterSettings()
   adminDefaultProvider.value = settings.dashboard.defaultProvider || 'deepseek'
   const review = settings.dashboard.platformReviewConfig || {}
-  adminReviewProvider.value = review.provider || 'deepseek'; adminReviewModel.value = review.model_name || 'deepseek-v4-flash'; adminReviewEnabled.value = review.enabled !== false
+  const vision=settings.dashboard.visionFeatures||{};visionFeatures.value={auxiliaryEnabled:vision.user_vision_auxiliary_enabled!==false,ephemeralEnabled:vision.user_vision_ephemeral_key_enabled!==false,storedEnabled:vision.user_vision_stored_key_enabled!==false,defaultVisionProvider:vision.default_vision_provider||'gemini'}
+  adminReviewProvider.value = review.provider || 'deepseek'; adminReviewModel.value = review.model_name || 'deepseek-v4-pro'; adminReviewEnabled.value = review.enabled !== false
   await loadPages()
 })
 </script>
@@ -86,19 +93,12 @@ onMounted(async () => {
       <section class="control-center-section">
         <h3>双模型拍题链路</h3>
         <p>图片先由 Gemini 识别题面，再由 DeepSeek 按用户意图分析。两把 Key 分开加密保存。</p>
-        <div class="ai-platform-card">
-          <header><b>① Gemini 视觉识别</b><small>{{ platformStatus('gemini')?.enabled ? '已启用' : '未配置或已停用' }}</small></header>
-          <label>Gemini 模型<input v-model="adminGeminiModel"></label>
-          <label>Google API Key<input v-model="adminGeminiKey" type="password" autocomplete="new-password"></label>
-          <label class="ai-setting-consent"><input v-model="adminGeminiEnabled" type="checkbox">启用视觉识别</label>
-          <button :disabled="!adminGeminiKey || !adminGeminiModel" @click="savePlatform('gemini')">保存 Gemini 配置</button>
-        </div>
-        <div class="ai-platform-card">
-          <header><b>② DeepSeek 解题</b><small>{{ platformStatus('deepseek')?.enabled ? '已启用' : '未配置或已停用' }}</small></header>
-          <label>DeepSeek 模型<input v-model="adminDeepseekModel"></label>
-          <label>DeepSeek API Key<input v-model="adminDeepseekKey" type="password" autocomplete="new-password"></label>
-          <label class="ai-setting-consent"><input v-model="adminDeepseekEnabled" type="checkbox">启用最终分析</label>
-          <button :disabled="!adminDeepseekKey || !adminDeepseekModel" @click="savePlatform('deepseek')">保存 DeepSeek 配置</button>
+        <div v-for="form in platformForms" :key="form.provider" class="ai-platform-card">
+          <header><b>{{ form.name }} · {{ form.purpose }}</b><small>{{ platformStatus(form.provider)?.enabled ? '已启用' : '未配置或已停用' }}</small></header>
+          <label>模型<input v-model="form.model"></label>
+          <label>API Key<input v-model="form.key" type="password" autocomplete="new-password"></label>
+          <label class="ai-setting-consent"><input v-model="form.enabled" type="checkbox">启用此平台通道</label>
+          <button :disabled="!form.key || !form.model" @click="savePlatform(form.provider)">保存 {{ form.name }} 配置</button>
         </div>
       </section>
 
@@ -114,6 +114,7 @@ onMounted(async () => {
           <button :disabled="!adminReviewKey || !adminReviewModel" @click="saveReviewPlatform">保存审核配置</button>
         </div>
       </section>
+      <section class="control-center-section"><h3>用户视觉辅助模型</h3><p>关闭总开关后用户界面不再显示视觉组件，后端同时拒绝视觉调用；已保存 Key 不会删除。</p><label class="ai-setting-consent"><input v-model="visionFeatures.auxiliaryEnabled" type="checkbox">允许用户配置独立视觉模型</label><label class="ai-setting-consent"><input v-model="visionFeatures.ephemeralEnabled" type="checkbox">允许临时视觉 Key</label><label class="ai-setting-consent"><input v-model="visionFeatures.storedEnabled" type="checkbox">允许保存视觉 Key</label><label>默认视觉 Provider<select v-model="visionFeatures.defaultVisionProvider"><option value="gemini">Gemini</option><option value="doubao">Doubao</option></select></label><button @click="saveVisionFeatures">保存视觉功能开关</button></section>
 
       <section class="control-center-section">
         <h3>Hermes Agent Runtime</h3>

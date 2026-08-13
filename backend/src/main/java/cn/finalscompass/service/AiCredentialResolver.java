@@ -222,6 +222,18 @@ WHERE s.id=1 AND c.enabled=TRUE
     return new ResolvedAiCredential(provider, model, source, ephemeral.toCharArray());
   }
 
+  /** 解析用户独立视觉链路凭据；平台凭据继续走现有平台视觉通道。 */
+  public ResolvedAiCredential resolveUserVision(long userId,String providerValue,String modelValue,AiCredentialSource source,String ephemeral){
+    String provider=providers.require(providerValue),model=validateModel(provider,modelValue);
+    if(source==AiCredentialSource.PLATFORM)return resolvePlatformAuxiliary(userId,provider);
+    if(source==AiCredentialSource.STORED_BYOK){
+      UserSecretRow row=jdbc.sql("SELECT provider,encrypted_key,encryption_iv FROM user_ai_vision_secret WHERE user_id=:user AND provider=:provider").param("user",userId).param("provider",provider).query(UserSecretRow.class).optional().orElseThrow(()->new ResponseStatusException(HttpStatus.BAD_REQUEST,"尚未保存该视觉 Provider 的 API Key"));
+      return new ResolvedAiCredential(provider,model,source,cipher.decrypt(row.encryptedKey(),row.encryptionIv()));
+    }
+    if(ephemeral==null||ephemeral.length()<8||ephemeral.length()>500)throw new IllegalArgumentException("请输入本次视觉请求使用的 API Key");
+    return new ResolvedAiCredential(provider,model,source,ephemeral.toCharArray());
+  }
+
   private record SecretRow(
       String provider, String modelName, String encryptedKey, String encryptionIv) {}
 

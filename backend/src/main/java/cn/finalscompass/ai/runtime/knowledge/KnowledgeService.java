@@ -11,6 +11,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 // RAG 知识库引擎：知识入库-->切块-->向量化-->存储-->按权限检索-->语义+关键词混合排序
 // 1.ingestApproved()把审核通过的资料（markdown）入库 2.search()根据用户问题，从知识库里找最相关的内容
+// 维护入口：入库链路改 ingestApproved，召回与混排改 search，分块和向量协议分别改 Chunker/EmbeddingGateway。
 @Service
 public final class KnowledgeService {
   // 声明

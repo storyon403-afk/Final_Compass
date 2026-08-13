@@ -16,6 +16,10 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
+/**
+ * 把统一模型命令适配为 OpenAI Responses 兼容 API，并解析文本、用量和工具调用。
+ * 维护入口：Responses 协议字段改这里；通用回退与工具循环不要放这里，应改 ModelClientGateway。
+ */
 @Component
 public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProviderProtocolClient {
   private static final String ADAPTER_KEY = "openai-responses-v1";
@@ -32,6 +36,15 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     return ADAPTER_KEY;
   }
 
+  /**
+   * 调用外部服务并解析返回结果。
+   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化。
+   *
+   * @param command 已经归一化的执行命令
+   * @param credential 本次调用使用的凭据
+   * @param binaryInput 可选的图片等二进制输入
+   * @return 处理后的业务结果
+   */
   @Override
   public RuntimeProviderClientResult invoke(
       RuntimeModelInvocationCommand command,
@@ -78,6 +91,15 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     }
   }
 
+  /**
+   * 把工具执行结果提交给模型并继续上一轮响应。
+   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化。
+   *
+   * @param command 已经归一化的执行命令
+   * @param credential 本次调用使用的凭据
+   * @param continuation 上一轮模型响应及工具结果
+   * @return 处理后的业务结果
+   */
   @Override
   public RuntimeProviderClientResult continueWithToolResults(
       RuntimeModelInvocationCommand command,
@@ -139,6 +161,15 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     }
   }
 
+  /**
+   * 把统一调用命令转换为供应商协议请求体。
+   * 实现上，在结束时主动释放资源或擦除敏感数据；通过摘要或 Base64 编码生成稳定且可传输的标识。
+   *
+   * @param command 已经归一化的执行命令
+   * @param binaryInput 可选的图片等二进制输入
+   * @param outputSchema 结构化输出约束
+   * @return 处理后的业务结果
+   */
   private Map<String, Object> requestBody(
       RuntimeModelInvocationCommand command,
       RuntimeBinaryInput binaryInput,
@@ -190,6 +221,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     return body;
   }
 
+  // 把内部工具定义转换为供应商协议格式。
   private List<Map<String, Object>> toolDeclarations(RuntimeModelInvocationCommand command) {
     return command.toolSpecifications().stream()
         .map(
@@ -208,6 +240,14 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
         .toList();
   }
 
+  /**
+   * 校验定义及其关联配置。
+   *
+   * @param command 已经归一化的执行命令
+   * @param credential 本次调用使用的凭据
+   * @param binaryInput 可选的图片等二进制输入
+   * @param continuation 上一轮模型响应及工具结果
+   */
   private void validate(
       RuntimeModelInvocationCommand command,
       ResolvedAiCredential credential,
@@ -232,6 +272,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
       throw new IllegalArgumentException("OpenAI Runtime accepts image binary input only");
   }
 
+  // 校验定义及其关联配置。
   private void validateTools(RuntimeModelInvocationCommand command) {
     if (command.allowedTools().size() != command.toolSpecifications().size()
         || !command.toolSpecifications().stream()
@@ -242,6 +283,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
           "OpenAI Runtime Tool specifications do not match allowlist");
   }
 
+  // 解析工具参数 Schema。通过 Jackson 完成 JSON 的解析或序列化。
   private JsonNode schema(String value) {
     try {
       JsonNode schema = json.readTree(value);
@@ -252,6 +294,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     }
   }
 
+  // 解析并校验结构化输出 Schema。通过 Jackson 完成 JSON 的解析或序列化。
   private JsonNode outputSchema(RuntimeModelInvocationCommand command) {
     try {
       JsonNode schema = json.readTree(command.outputSchemaJson());
@@ -265,6 +308,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     }
   }
 
+  // 规范化并校验供应商接口地址。
   private URI endpoint(String value) {
     URI base = URI.create(value);
     if (!"https".equalsIgnoreCase(base.getScheme())
@@ -276,6 +320,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     return URI.create(base.toString().replaceAll("/+$", "") + "/v1/responses");
   }
 
+  // 从供应商响应中提取最终文本。
   private String content(JsonNode parsed, List<RuntimeToolCall> toolCalls) {
     String direct = parsed.path("output_text").asText("");
     if (!direct.isBlank()) return direct;
@@ -287,6 +332,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     throw failure("OPENAI_EMPTY", null, false, null);
   }
 
+  // 从供应商响应中提取并校验工具调用。
   private List<RuntimeToolCall> toolCalls(
       JsonNode parsed, List<RuntimeToolSpecification> specifications) {
     Map<String, String> names =
@@ -306,6 +352,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     return List.copyOf(result);
   }
 
+  // 提取后续调用需要的响应 ID。
   private String responseId(JsonNode parsed) {
     String id = parsed.path("id").asText("");
     if (id.isBlank() || id.length() > 512)
@@ -318,6 +365,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     return value.substring(0, Math.min(value.length(), 64));
   }
 
+  // 从响应头提取链路追踪 ID。利用流式过滤和排序得到符合约束的稳定结果。
   private String requestId(Map<String, List<String>> headers) {
     return headers.entrySet().stream()
         .filter(entry -> "x-request-id".equalsIgnoreCase(entry.getKey()))
@@ -331,6 +379,7 @@ public final class OpenAiResponsesRuntimeProviderClient implements RuntimeProvid
     return status == 429 || status >= 500;
   }
 
+  // 判断异常链中是否包含超时异常。
   private boolean timeout(Throwable failure) {
     for (Throwable current = failure; current != null; current = current.getCause())
       if (current.getClass().getSimpleName().toLowerCase().contains("timeout")) return true;

@@ -82,13 +82,27 @@ async function stopRuntime(){
 }
 async function newConversation(){
   if(activeRunKey.value){try{await aiCenterApi.cancelDispatch(activeRunKey.value)}catch{}activeRunKey.value=''}
-  sessionStorage.removeItem("finals-compass.multiweb-run");releaseConversationDownloads();messages.value=[];chatSessionKey.value='';settings.ephemeralApiKey='';settings.reviewEphemeralApiKey='';
+  sessionStorage.removeItem("finals-compass.multiweb-run");releaseConversationDownloads();messages.value=[];chatSessionKey.value='';settings.ephemeralApiKey='';settings.reviewEphemeralApiKey='';settings.visionEphemeralApiKey='';
 }
 async function convert(content, pending) {
   const converted = [];
   for (const item of pending) {
-    const doc = await aiApi.convertAttachment(item.file);
-    converted.push(`\n\n## 附件：${doc.fileName}\n\n${doc.markdown}`);
+    if(item.file.type.startsWith('image/')){
+      let visionFields;
+      if(settings.credentialSource==='PLATFORM'){
+        const platformVision=settings.dashboard.platformProviders?.find(item=>item.provider==='gemini'&&item.enabled);
+        if(!platformVision)throw new Error('管理员尚未启用平台视觉识别通道。');
+        visionFields={provider:'gemini',model:platformVision.model_name,credentialSource:'PLATFORM',ephemeralApiKey:null};
+      }else if(settings.credentialSource==='EPHEMERAL_BYOK'){
+        if(!settings.visionEnabled)throw new Error('图片需要视觉能力。请在“仅本次使用”中启用 Gemini 或 Doubao 视觉辅助。');
+        visionFields={provider:settings.visionProvider,model:settings.visionModel,credentialSource:settings.visionCredentialSource,ephemeralApiKey:settings.visionCredentialSource==='EPHEMERAL_BYOK'?settings.visionEphemeralApiKey:null};
+      }else throw new Error('已保存主 Key 暂未绑定独立视觉链路。请改用平台额度，或选择“仅本次使用”并启用视觉辅助。');
+      const vision=await aiApi.analyzeVision(item.file,visionFields);
+      converted.push(`\n\n## 图片识别：${vision.fileName}\n\n${vision.markdown}`);
+    }else{
+      const doc = await aiApi.convertAttachment(item.file);
+      converted.push(`\n\n## 附件：${doc.fileName}\n\n${doc.markdown}`);
+    }
   }
   return `${content || "请分析附件"}${converted.join("")}`;
 }

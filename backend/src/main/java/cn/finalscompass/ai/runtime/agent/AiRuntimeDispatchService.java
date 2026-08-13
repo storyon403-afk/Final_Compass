@@ -10,6 +10,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
+/*
+ * 维护流程图：
+ *   start --> 写入 ai_runtime_run --> [AGENT] 调外部 Agent
+ *                              \--> [MULTI_WEB_AGENT] 等待浏览器扩展
+ *   回调/浏览器结果 --> updateStatus + addArtifact --> view 返回完整任务
+ */
+/**
+ * 智能体运行入口，负责创建任务、调用外部 Agent、接收回调并维护任务产物。
+ * 维护入口：任务生命周期改这里；模型选择改 provider/model；浏览器通信改 BrowserGatewayService。
+ */
 @Service
 public class AiRuntimeDispatchService {
   private final JdbcClient jdbc;
@@ -33,6 +43,7 @@ public class AiRuntimeDispatchService {
     this.callbackBase = callbackBase;
   }
 
+  // 启动一次智能体任务；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public Run start(long user, Start r) {
     if (r == null
         || r.goal() == null
@@ -75,6 +86,16 @@ public class AiRuntimeDispatchService {
     return view(user, key);
   }
 
+  /**
+   * 调用外部智能体服务
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；先组装协议请求，再通过传输层发送并校验响应
+   *
+   * @param user 用户 ID
+   * @param key 业务唯一键
+   * @param r 本次操作的请求 DTO
+   * @param token 用于认证的令牌
+   * @return 处理后的业务结果
+   */
   private Run invokeAgent(long user, String key, Start r, String token) {
     try {
       String url =
@@ -126,6 +147,7 @@ public class AiRuntimeDispatchService {
     return view(user, key);
   }
 
+  // 检索资料并整理为智能体上下文。局部失败会降级为空结果，不让辅助能力中断主流程
   private String knowledgeContext(long user, String goal) {
     try {
       List<KnowledgeService.SearchResult> items = knowledge.search(user, null, goal, 5);
@@ -145,6 +167,7 @@ public class AiRuntimeDispatchService {
     }
   }
 
+  // 校验智能体回调令牌并返回任务 ID。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public long authenticateCallback(String runKey, String token) {
     if (runKey == null || token == null || token.isBlank())
       throw new SecurityException("Callback credential is missing");
@@ -158,6 +181,15 @@ public class AiRuntimeDispatchService {
         .orElseThrow(() -> new SecurityException("Callback credential is invalid"));
   }
 
+  /**
+   * 更新任务状态及失败信息
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+   *
+   * @param runId 智能体任务 ID
+   * @param status 目标状态
+   * @param summary 任务执行摘要
+   * @param errorCode 失败时记录的业务错误码
+   */
   public void updateStatus(long runId, String status, String summary, String errorCode) {
     if (!Set.of("RUNNING", "COMPLETED", "FAILED", "WAITING_LOGIN").contains(status))
       throw new IllegalArgumentException("Callback status is invalid");
@@ -190,6 +222,17 @@ public class AiRuntimeDispatchService {
         .update();
   }
 
+  /**
+   * 登记智能体任务生成的文件
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+   *
+   * @param runId 智能体任务 ID
+   * @param fileName 文件名
+   * @param contentType 内容 MIME 类型
+   * @param storagePath 文件存储位置
+   * @param size 文件字节数
+   * @return 处理后的业务结果
+   */
   public long addArtifact(
       long runId, String fileName, String contentType, String storagePath, long size) {
     jdbc.sql(
@@ -209,6 +252,7 @@ public class AiRuntimeDispatchService {
         .single();
   }
 
+  // 查询任务所属用户。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   public long ownerUserId(long runId) {
     return jdbc.sql("SELECT user_id FROM ai_runtime_run WHERE id=:run")
         .param("run", runId)
@@ -216,6 +260,7 @@ public class AiRuntimeDispatchService {
         .single();
   }
 
+  // 查询任务产生的全部文件。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   public List<Map<String, Object>> artifacts(long user, String key) {
     return jdbc.sql(
             "SELECT a.id,a.file_name,a.content_type,a.size_bytes,a.created_at FROM"
@@ -227,6 +272,7 @@ public class AiRuntimeDispatchService {
         .listOfRows();
   }
 
+  // 查询单个任务产物。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public Map<String, Object> artifact(long user, String key, long artifactId) {
     return jdbc.sql(
             "SELECT a.id,a.file_name,a.content_type,a.storage_path,a.size_bytes FROM"
@@ -239,6 +285,8 @@ public class AiRuntimeDispatchService {
         .singleRow();
   }
 
+  // 取消仍在运行的任务。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；先组装协议请求，再通过传输层发送并校验响应
+  // 可升级：可增加结构化日志或监控指标，避免异常被完全吞掉
   public Run cancel(long user, String key) {
     Map<String, Object> row =
         jdbc.sql(
@@ -277,6 +325,7 @@ public class AiRuntimeDispatchService {
     return view(user, key);
   }
 
+  // 为执行链路写入初始参与节点。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   private void seedParticipants(String key, List<String> providers) {
     List<String> values =
         providers == null || providers.isEmpty() ? List.of("KIMI", "DEEPSEEK", "QWEN") : providers;
@@ -295,6 +344,7 @@ public class AiRuntimeDispatchService {
           .update();
   }
 
+  // 读取任务的完整运行视图。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public Run view(long user, String key) {
     Map<String, Object> row =
         jdbc.sql(
@@ -316,6 +366,16 @@ public class AiRuntimeDispatchService {
     return new Run(row, parts);
   }
 
+  /**
+   * 组装 MCP 发现报告
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
+   *
+   * @param user 用户 ID
+   * @param key 业务唯一键
+   * @param r 本次操作的请求 DTO
+   * @return 处理后的业务结果
+   */
   public Run report(long user, String key, Report r) {
     long run =
         jdbc.sql(
@@ -388,6 +448,7 @@ public class AiRuntimeDispatchService {
     return view(user, key);
   }
 
+  // 把对象序列化为 JSON。通过 Jackson 完成 JSON 的解析或序列化
   private String write(Object v) {
     try {
       return json.writeValueAsString(v);

@@ -3,11 +3,18 @@ package cn.finalscompass.ai.runtime.knowledge;
 import java.util.*;
 import org.springframework.stereotype.Component;
 
-// 待优化：知识 chunk 的分割策略，当前是按字符数分割，可能会切断段落或句子
+/*
+ * 维护流程图：文档正文 --> 清洗换行 --> 滑动窗口切片 --> 保留重叠上下文 --> Chunk 列表
+ */
+/**
+ * 把知识文档切成带重叠窗口的片段，兼顾向量检索粒度和上下文连续性。
+ * 维护入口：分块大小和重叠率改这里；可升级为按标题、段落或语义边界切分，减少句子被截断。
+ */
 @Component
 public final class KnowledgeChunker {
   private static final int TARGET = 1800;
 
+  // 将文档内容切分为可检索片段。按长度窗口逐段处理，并保留必要重叠以减少上下文断裂。
   public List<Chunk> chunk(String markdown) {
     if (markdown == null || markdown.isBlank())
       throw new IllegalArgumentException("Knowledge Markdown is empty");

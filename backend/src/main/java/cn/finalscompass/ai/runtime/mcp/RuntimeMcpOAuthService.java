@@ -22,6 +22,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
+/**
+ * 完成 MCP OAuth 配置读取、授权地址生成、授权码交换和令牌解析。
+ * 维护入口：授权流程或令牌存储方式改这里；平台/用户凭据选择改对应 CredentialResolver。
+ */
 @Service
 public final class RuntimeMcpOAuthService {
   private final JdbcClient jdbc;
@@ -50,6 +54,7 @@ public final class RuntimeMcpOAuthService {
     this.statePrefix = "fc:" + environment + ":mcp-oauth:";
   }
 
+  // 构造 MCP OAuth 授权地址。通过 Jackson 完成 JSON 的解析或序列化；通过摘要或 Base64 编码生成稳定且可传输的标识。
   public String authorizationUrl(long adminId, String serverKey) {
     OAuthConfig config = config(serverKey);
     if (config.authMode() != RuntimeMcpAuthMode.PLATFORM_OAUTH
@@ -95,6 +100,7 @@ public final class RuntimeMcpOAuthService {
         + enc(config.endpointUri());
   }
 
+  // 完成 OAuth 授权码交换并保存凭据。通过 Jackson 完成 JSON 的解析或序列化。
   public String complete(String code, String state) {
     if (code == null || code.isBlank() || state == null || state.isBlank())
       throw new IllegalArgumentException("MCP OAuth callback is invalid");
@@ -127,6 +133,7 @@ public final class RuntimeMcpOAuthService {
     }
   }
 
+  // 解析本次调用应使用的凭据或组件。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；在结束时主动释放资源或擦除敏感数据。
   public RuntimeMcpCredential resolve(RuntimeMcpServerDefinition server, long userId) {
     long subject = server.authMode() == RuntimeMcpAuthMode.PLATFORM_OAUTH ? 0 : userId;
     TokenRow row =
@@ -156,12 +163,14 @@ WHERE server_id=:serverId AND user_id=:userId AND status='CONNECTED'
     }
   }
 
+  // 注销已经断开的浏览器连接。
   public void disconnect(String serverKey, long adminId) {
     OAuthConfig config = config(serverKey);
     long subject = config.authMode() == RuntimeMcpAuthMode.PLATFORM_OAUTH ? 0 : adminId;
     disconnect(config.id(), subject);
   }
 
+  // 注销已经断开的浏览器连接。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private void disconnect(long serverId, long userId) {
     jdbc.sql(
             "UPDATE ai_runtime_mcp_oauth_connection SET status='REVOKED' WHERE server_id=:server"
@@ -171,6 +180,7 @@ WHERE server_id=:serverId AND user_id=:userId AND status='CONNECTED'
         .update();
   }
 
+  // 刷新远端配置或发现结果。在结束时主动释放资源或擦除敏感数据。
   private void refresh(long serverId, long subject, TokenRow row) {
     char[] refresh = cipher.decrypt(row.encryptedRefreshToken(), row.refreshTokenIv());
     try {
@@ -184,6 +194,15 @@ WHERE server_id=:serverId AND user_id=:userId AND status='CONNECTED'
     }
   }
 
+  /**
+   * 保存业务数据。
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；在结束时主动释放资源或擦除敏感数据。
+   *
+   * @param config OAuth 客户端及端点配置
+   * @param subject 凭据归属主体
+   * @param adminId admin 对应的数据库 ID
+   * @param token 用于认证的令牌
+   */
   private void save(OAuthConfig config, long subject, long adminId, Map<String, Object> token) {
     char[] access = required(token, "access_token").toCharArray();
     char[] refresh =
@@ -225,6 +244,7 @@ ON DUPLICATE KEY UPDATE encrypted_access_token=:access,access_token_iv=:accessIv
     }
   }
 
+  // 读取已保存的 OAuth 访问令牌。先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化。
   private Map<String, Object> token(OAuthConfig config, Map<String, String> fields) {
     try {
       Map<String, String> form = new LinkedHashMap<>(fields);
@@ -253,6 +273,7 @@ ON DUPLICATE KEY UPDATE encrypted_access_token=:access,access_token_iv=:accessIv
     }
   }
 
+  // 读取并校验 MCP OAuth 配置。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private OAuthConfig config(String key) {
     return jdbc.sql(
             """
@@ -266,6 +287,7 @@ ON DUPLICATE KEY UPDATE encrypted_access_token=:access,access_token_iv=:accessIv
         .orElseThrow(() -> new IllegalStateException("MCP OAuth Server is unavailable"));
   }
 
+  // 读取并校验 MCP OAuth 配置。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   private OAuthConfig config(long id) {
     return jdbc.sql(
             """
@@ -278,6 +300,7 @@ ON DUPLICATE KEY UPDATE encrypted_access_token=:access,access_token_iv=:accessIv
         .single();
   }
 
+  // 读取并校验必填文本。
   private String required(Map<String, Object> token, String field) {
     Object value = token.get(field);
     if (value == null || String.valueOf(value).isBlank())
@@ -285,12 +308,14 @@ ON DUPLICATE KEY UPDATE encrypted_access_token=:access,access_token_iv=:accessIv
     return String.valueOf(value);
   }
 
+  // 从多个端点中随机选择一个地址。通过摘要或 Base64 编码生成稳定且可传输的标识。
   private String randomUrl(int bytes) {
     byte[] value = new byte[bytes];
     random.nextBytes(value);
     return Base64.getUrlEncoder().withoutPadding().encodeToString(value);
   }
 
+  // 对 URL 计算 SHA-256 摘要。通过摘要或 Base64 编码生成稳定且可传输的标识。
   private String sha256Url(String value) {
     try {
       return Base64.getUrlEncoder()

@@ -2,6 +2,10 @@ package cn.finalscompass.ai.runtime.mcp;
 
 import org.springframework.stereotype.Component;
 
+/**
+ * 按用户解析其独立授权的 MCP OAuth 凭据。
+ * 维护入口：用户凭据归属规则改这里；授权流程改 RuntimeMcpOAuthService。
+ */
 @Component
 public final class UserRuntimeMcpOAuthCredentialResolver implements RuntimeMcpCredentialResolver {
   private final RuntimeMcpOAuthService oauth;

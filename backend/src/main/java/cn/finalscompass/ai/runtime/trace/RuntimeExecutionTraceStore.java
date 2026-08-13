@@ -1,5 +1,9 @@
 package cn.finalscompass.ai.runtime.trace;
 
+/**
+ * 运行时执行追踪存储的抽象契约，用于隔离业务编排与具体实现。
+ * 维护入口：执行链路、状态和审计字段变化时修改这里。
+ */
 public interface RuntimeExecutionTraceStore {
   long createExecution(CreateRuntimeExecution command);
 

@@ -5,6 +5,10 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+/**
+ * JDBC运行时MCP服务器仓储，负责数据库查询、映射和持久化。
+ * 维护入口：MCP 协议、发现、凭据或治理规则变化时修改这里。
+ */
 @Repository
 public class JdbcRuntimeMcpServerRepository implements RuntimeMcpServerRepository {
   private final JdbcClient jdbc;
@@ -13,6 +17,7 @@ public class JdbcRuntimeMcpServerRepository implements RuntimeMcpServerRepositor
     this.jdbc = jdbc;
   }
 
+  // 查询业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   @Override
   public Optional<RuntimeMcpServerDefinition> findActiveByKey(String serverKey) {
     if (serverKey == null || !serverKey.matches("[a-z][a-z0-9]*(?:-[a-z0-9]+)*"))
@@ -48,6 +53,7 @@ public class JdbcRuntimeMcpServerRepository implements RuntimeMcpServerRepositor
         .optional();
   }
 
+  // 校验定义及其关联配置。
   private void validateEndpoint(String value) {
     URI uri = URI.create(value);
     if (!"https".equalsIgnoreCase(uri.getScheme())

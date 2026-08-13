@@ -1,0 +1,2 @@
+<script setup>defineProps({setting:{type:Object,required:true}})</script>
+<template><main class="module-maintenance page-width"><span class="eyebrow">{{setting.moduleKey}}</span><h1>{{setting.maintenanceTitle}}</h1><p>{{setting.maintenanceContent}}</p><small v-if="setting.estimatedRecoveryAt">预计恢复：{{new Date(setting.estimatedRecoveryAt).toLocaleString('zh-CN')}}</small><button type="button" @click="$router.go(0)">重新检查</button></main></template>

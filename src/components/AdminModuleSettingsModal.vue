@@ -1,0 +1,9 @@
+<script setup>
+import{onMounted,ref}from'vue';import{systemApi}from'../api';
+const emit=defineEmits(['close','updated']),items=ref([]),error=ref(''),busy=ref(false);
+const names={COURSE_NAVIGATION:'课程导航',AI_CENTER:'AI Center',CET_PRACTICE:'CET 练习'};
+async function load(){try{items.value=(await systemApi.modules()).map(item=>({...item,maintenance:item.status==='MAINTENANCE',estimatedRecoveryAt:item.estimatedRecoveryAt?item.estimatedRecoveryAt.slice(0,16):''}))}catch(e){error.value=e.message}}
+async function save(item){busy.value=true;error.value='';try{await systemApi.updateModule(item.moduleKey,{maintenance:item.maintenance,title:item.maintenanceTitle,content:item.maintenanceContent,estimatedRecoveryAt:item.estimatedRecoveryAt?new Date(item.estimatedRecoveryAt).toISOString():null});await load();emit('updated')}catch(e){error.value=e.message}finally{busy.value=false}}
+onMounted(load)
+</script>
+<template><div class="modal-backdrop module-admin-backdrop" @click.self="emit('close')"><section class="upload-modal control-center-modal" role="dialog" aria-modal="true"><button class="modal-close" @click="emit('close')">×</button><span class="eyebrow">系统管理</span><h2>模块开放与维护</h2><p>入口保持可见；维护期间普通用户会看到管理员填写的说明。</p><p v-if="error" class="form-error">{{error}}</p><section v-for="item in items" :key="item.moduleKey" class="control-center-section"><h3>{{names[item.moduleKey]}}</h3><label class="ai-setting-consent"><input v-model="item.maintenance" type="checkbox">进入维护状态</label><label>维护标题<input v-model="item.maintenanceTitle" maxlength="200"></label><label>维护说明<textarea v-model="item.maintenanceContent" rows="4"></textarea></label><label>预计恢复时间（可选）<input v-model="item.estimatedRecoveryAt" type="datetime-local"></label><button :disabled="busy" @click="save(item)">保存 {{names[item.moduleKey]}}</button></section></section></div></template>

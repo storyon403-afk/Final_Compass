@@ -8,6 +8,7 @@ const sections = [
   { key: 'mcp', title: 'MCP 管理中心', description: '管理 MCP 服务器连接与工具配置。' },
   { key: 'ai-feedback', title: 'AI Skill 优化', description: '查看用户对 AI 能力的反馈并跟进优化。' },
   { key: 'announcement', title: '公告管理', description: '编辑登录公告内容，控制是否向用户展示。' },
+  { key: 'modules', title: '模块开放与维护', description: '临时关闭课程导航、AI Center 或 CET，并编辑用户看到的维护说明。' },
   { key: 'suspend', title: '暂挂体验管理', description: '管理暂挂名单与恢复体验操作。' },
   { key: 'survey', title: '调查问卷管理', description: '维护问卷题目并查看回收结果。' }
 ]

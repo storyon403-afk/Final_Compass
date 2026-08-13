@@ -7,12 +7,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
   private final cn.finalscompass.service.AuthService auth;
+  private final cn.finalscompass.service.SystemModuleService modules;
+  private final com.fasterxml.jackson.databind.ObjectMapper json;
 
   /**
    * @param auth 注入给登录拦截器的认证服务
    */
-  public WebConfig(cn.finalscompass.service.AuthService auth) {
+  public WebConfig(cn.finalscompass.service.AuthService auth,cn.finalscompass.service.SystemModuleService modules,com.fasterxml.jackson.databind.ObjectMapper json) {
     this.auth = auth;
+    this.modules=modules;this.json=json;
   }
 
   /** 注册全局 API 登录拦截规则。 */
@@ -28,5 +31,6 @@ public class WebConfig implements WebMvcConfigurer {
             "/api/auth/beta-access/**",
             "/api/system/health",
             "/api/ai-center/external-agent/**");
+    registry.addInterceptor(new ModuleMaintenanceInterceptor(auth,modules,json)).addPathPatterns("/api/**").excludePathPatterns("/api/system/modules/**","/api/system/health","/api/ai-center/external-agent/**");
   }
 }

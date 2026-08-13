@@ -14,12 +14,14 @@ public class AiAnalysisController {
   private final AuthService auth;
   private final AiAnalysisService ai;
   private final AiDocumentConversionService documents;
+  private final cn.finalscompass.service.AiVisionService vision;
 
   public AiAnalysisController(
-      AuthService auth, AiAnalysisService ai, AiDocumentConversionService documents) {
+      AuthService auth, AiAnalysisService ai, AiDocumentConversionService documents,cn.finalscompass.service.AiVisionService vision) {
     this.auth = auth;
     this.ai = ai;
     this.documents = documents;
+    this.vision=vision;
   }
 
   @GetMapping("/dashboard")
@@ -44,6 +46,10 @@ public class AiAnalysisController {
       HttpServletRequest request, @RequestBody AiAnalysisService.SaveUserKey body) {
     return ai.saveUserReviewKey(auth.current(request).id(), body);
   }
+
+  @PutMapping("/vision-byok") public Map<String,Object> saveVisionByok(HttpServletRequest request,@RequestBody AiAnalysisService.SaveUserKey body){return ai.saveUserVisionKey(auth.current(request).id(),body);}
+  @DeleteMapping("/vision-byok/{provider}") @ResponseStatus(HttpStatus.NO_CONTENT) public void deleteVisionByok(HttpServletRequest request,@PathVariable String provider){ai.deleteUserVisionKey(auth.current(request).id(),provider);}
+  @PutMapping("/admin/vision-features") public Map<String,Object> updateVisionFeatures(HttpServletRequest request,@RequestBody AiAnalysisService.VisionFeatureUpdate body){return ai.updateVisionFeatures(auth.requireAdmin(request).id(),body);}
 
   @PutMapping("/admin/platform-key")
   public Map<String, Object> savePlatformKey(
@@ -72,4 +78,6 @@ public class AiAnalysisController {
     auth.current(request);
     return documents.convert(file);
   }
+  @PostMapping(value="/vision/analyze",consumes=org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+  public cn.finalscompass.service.AiVisionService.VisionResult analyzeVision(HttpServletRequest request,@RequestPart org.springframework.web.multipart.MultipartFile file,@RequestParam String provider,@RequestParam String model,@RequestParam String credentialSource,@RequestParam(required=false) String ephemeralApiKey){return vision.analyze(auth.current(request).id(),file,provider,model,credentialSource,ephemeralApiKey);}
 }

@@ -9,6 +9,10 @@ import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+/**
+ * 从数据库加载完整供应商定义，并组装模型、端点和凭据来源。
+ * 维护入口：表结构或定义聚合方式变化时改这里；业务合法性由 Validator 负责。
+ */
 @Repository
 public class JdbcRuntimeProviderDefinitionRepository
     implements RuntimeProviderDefinitionRepository {
@@ -28,6 +32,7 @@ public class JdbcRuntimeProviderDefinitionRepository
     this.validator = validator;
   }
 
+  // 查询业务数据。
   @Override
   public List<RuntimeProviderDefinition> findRoutable() {
     return jdbc
@@ -39,6 +44,7 @@ public class JdbcRuntimeProviderDefinitionRepository
         .toList();
   }
 
+  // 查询业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
   @Override
   public Optional<RuntimeProviderDefinition> findRoutableByKey(String providerKey) {
     if (providerKey == null || providerKey.isBlank()) return Optional.empty();
@@ -49,6 +55,8 @@ public class JdbcRuntimeProviderDefinitionRepository
         .map(this::assemble);
   }
 
+  // 组合供应商、模型和端点记录形成完整定义。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
   private RuntimeProviderDefinition assemble(ProviderRow row) {
     try {
       List<RuntimeProviderEndpoint> endpoints =
@@ -143,6 +151,7 @@ ORDER BY c.capability_key
     }
   }
 
+  // 解析供应商允许使用的凭据来源。通过 Jackson 完成 JSON 的解析或序列化。
   private Set<String> credentialSources(String value) throws Exception {
     JsonNode sources = json.readTree(value).path("supportedSources");
     if (!sources.isArray()) throw new IllegalArgumentException("missing supportedSources");
@@ -157,6 +166,7 @@ ORDER BY c.capability_key
     return Enum.valueOf(type, value);
   }
 
+  // 读取允许为空的整数字段。
   private Integer nullableInteger(java.sql.ResultSet result, String column)
       throws java.sql.SQLException {
     int value = result.getInt(column);

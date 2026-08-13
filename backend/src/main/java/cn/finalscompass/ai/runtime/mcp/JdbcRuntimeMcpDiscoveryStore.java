@@ -4,6 +4,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/**
+ * JDBC运行时MCP发现存储，负责数据库查询、映射和持久化。
+ * 维护入口：MCP 协议、发现、凭据或治理规则变化时修改这里。
+ */
 @Repository
 public class JdbcRuntimeMcpDiscoveryStore implements RuntimeMcpDiscoveryStore {
   private final JdbcClient jdbc;
@@ -14,6 +18,7 @@ public class JdbcRuntimeMcpDiscoveryStore implements RuntimeMcpDiscoveryStore {
     this.transactions = transactions;
   }
 
+  // 保存业务数据。在事务边界内完成相关写操作，避免只更新部分数据。
   @Override
   public RuntimeMcpDiscoveryPersistResult saveCurrent(RuntimeMcpDiscoverySnapshot snapshot) {
     RuntimeMcpDiscoveryPersistResult result = transactions.execute(status -> save(snapshot));
@@ -22,6 +27,8 @@ public class JdbcRuntimeMcpDiscoveryStore implements RuntimeMcpDiscoveryStore {
     return result;
   }
 
+  // 保存业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
   private RuntimeMcpDiscoveryPersistResult save(RuntimeMcpDiscoverySnapshot snapshot) {
     jdbc.sql(
             """
