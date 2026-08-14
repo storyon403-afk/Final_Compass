@@ -5,6 +5,7 @@ import cn.finalscompass.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
+/** 提供 AI 中心内容查询，并限制内容维护操作仅管理员可用。 */
 @RestController
 @RequestMapping("/api/ai-center/content")
 public final class AiCenterContentController {

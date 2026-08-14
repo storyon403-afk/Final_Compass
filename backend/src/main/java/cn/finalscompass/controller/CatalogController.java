@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+/** 提供课程、学院和教师目录查询，以及对应的管理员维护入口。 */
 @RestController
 @RequestMapping("/api/courses")
 public class CatalogController {

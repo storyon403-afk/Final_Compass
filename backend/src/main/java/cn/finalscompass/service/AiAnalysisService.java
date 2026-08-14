@@ -73,6 +73,15 @@ public class AiAnalysisService {
             .query(String.class)
             .optional()
             .orElse(null);
+    boolean internalTestOpen =
+        jdbc.sql("SELECT internal_test_open FROM platform_ai_setting WHERE id=1")
+            .query(Boolean.class)
+            .optional()
+            .orElse(false);
+    Map<String,Object> usagePolicy = jdbc.sql("""
+        SELECT qualified_user_limits_enabled,calls_per_minute,platform_daily_calls,
+               platform_monthly_tokens FROM platform_ai_setting WHERE id=1
+        """).query().singleRow();
     boolean platformDefaultAvailable =
         configuredDefault != null
             && jdbc.sql("SELECT enabled FROM platform_ai_config WHERE provider=:provider")
@@ -111,7 +120,7 @@ SELECT provider,model_name,enabled,key_fingerprint,updated_at FROM platform_ai_r
     return new Dashboard(
         YearMonth.now().toString(),
         activity.currentMonthScore(userId),
-        activity.hasPlatformEntitlement(userId),
+        admin || internalTestOpen || activity.hasPlatformEntitlement(userId),
         activity.currentMonthLeaderboard(),
         skills,
         providers.availableModelProviders(),
@@ -122,6 +131,8 @@ SELECT provider,model_name,enabled,key_fingerprint,updated_at FROM platform_ai_r
         visionFeatures,
         cipher.available(),
         admin ? configuredDefault : null,
+        internalTestOpen,
+        usagePolicy,
         platformDefaultAvailable,
         hermesPlatformAvailable,
         reviewConfig);
@@ -276,6 +287,34 @@ ON DUPLICATE KEY UPDATE encrypted_key=:encrypted,encryption_iv=:iv,key_fingerpri
   }
 
   @Transactional
+  public Map<String, Object> updateInternalTestAccess(
+      long adminId, InternalTestAccessRequest request) {
+    jdbc.sql(
+            "UPDATE platform_ai_setting SET internal_test_open=:enabled,updated_by=:admin WHERE id=1")
+        .param("enabled", request.enabled())
+        .param("admin", adminId)
+        .update();
+    return Map.of("internalTestOpen", request.enabled());
+  }
+
+  @Transactional
+  public Map<String,Object> updateUsagePolicy(long adminId, UsagePolicyRequest request) {
+    if (request.callsPerMinute() < 1 || request.callsPerMinute() > 600
+        || request.platformDailyCalls() < 1 || request.platformDailyCalls() > 100000
+        || request.platformMonthlyTokens() < 1000 || request.platformMonthlyTokens() > 1000000000)
+      throw new IllegalArgumentException("AI 用量限制超出允许范围");
+    jdbc.sql("""
+        UPDATE platform_ai_setting SET internal_test_open=:open,
+          qualified_user_limits_enabled=:limited,calls_per_minute=:minute,
+          platform_daily_calls=:daily,platform_monthly_tokens=:monthly,updated_by=:admin
+        WHERE id=1
+        """).param("open",request.internalTestOpen()).param("limited",request.limitsEnabled())
+        .param("minute",request.callsPerMinute()).param("daily",request.platformDailyCalls())
+        .param("monthly",request.platformMonthlyTokens()).param("admin",adminId).update();
+    return Map.of("updated",true);
+  }
+
+  @Transactional
   public Map<String, Object> savePlatformReviewKey(long adminId, SavePlatformKey request) {
     String provider = providers.require(request.provider());
     if (!cipher.available())
@@ -378,6 +417,8 @@ WHERE provider.provider_key=:provider AND model.model_key=:model
       Map<String,Object> visionFeatures,
       boolean encryptedStorageAvailable,
       String defaultProvider,
+      boolean internalTestOpen,
+      Map<String,Object> usagePolicy,
       boolean platformDefaultAvailable,
       boolean hermesPlatformAvailable,
       Map<String, Object> platformReviewConfig) {}
@@ -387,5 +428,8 @@ WHERE provider.provider_key=:provider AND model.model_key=:model
   public record SavePlatformKey(String provider, String model, String apiKey, boolean enabled) {}
 
   public record PlatformDefaultRequest(String provider) {}
+  public record InternalTestAccessRequest(boolean enabled) {}
+  public record UsagePolicyRequest(boolean internalTestOpen, boolean limitsEnabled,
+      int callsPerMinute, int platformDailyCalls, int platformMonthlyTokens) {}
   public record VisionFeatureUpdate(boolean auxiliaryEnabled,boolean ephemeralEnabled,boolean storedEnabled,String defaultVisionProvider){}
 }

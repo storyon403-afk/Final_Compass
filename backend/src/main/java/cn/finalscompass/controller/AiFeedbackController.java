@@ -7,6 +7,7 @@ import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+/** 接收用户 AI 反馈，并提供反馈优化建议的管理员审核入口。 */
 @RestController
 public final class AiFeedbackController {
   private final AuthService auth;

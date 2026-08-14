@@ -5,6 +5,8 @@ import cn.finalscompass.ai.runtime.provider.RuntimeProviderCandidate;
 import cn.finalscompass.ai.runtime.provider.RuntimeProviderMatcher;
 import cn.finalscompass.ai.runtime.provider.RuntimeProviderType;
 import cn.finalscompass.service.AiCredentialResolver;
+import cn.finalscompass.service.AiUsageGuardService;
+import cn.finalscompass.ai.credential.AiCredentialSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Set;
@@ -45,17 +47,36 @@ public final class RuntimeEmbeddingGateway {
   private final RuntimeEmbeddingClientRegistry clients;
   private final AiCredentialResolver credentials;
   private final ObjectMapper json;
+  private final AiUsageGuardService usage;
 
   // 注入
   public RuntimeEmbeddingGateway(
       RuntimeProviderMatcher providers,
       RuntimeEmbeddingClientRegistry clients,
       AiCredentialResolver credentials,
-      ObjectMapper json) {
+      ObjectMapper json,
+      AiUsageGuardService usage) {
     this.providers = providers;
     this.clients = clients;
     this.credentials = credentials;
     this.json = json;
+    this.usage = usage;
+  }
+
+  /** User-triggered embedding calls participate in the same platform-key policy. */
+  public EmbeddingBatch embed(long userId, List<String> inputs) {
+    usage.check(userId, AiCredentialSource.PLATFORM);
+    try {
+      EmbeddingBatch result = embed(inputs);
+      int estimatedInputUnits = inputs.stream().mapToInt(value -> Math.max(1, value.length() / 4)).sum();
+      usage.record(userId,result.providerKey(),result.modelKey(),"EMBEDDING",
+          AiCredentialSource.PLATFORM,true,estimatedInputUnits,0,null,null);
+      return result;
+    } catch (RuntimeException failure) {
+      usage.record(userId,"embedding",null,"EMBEDDING",AiCredentialSource.PLATFORM,false,
+          0,0,failure.getClass().getSimpleName(),null);
+      throw failure;
+    }
   }
 
   // 整个类真正的入口：匹配可用的 Embedding 模型，依次尝试调用，直到有候选成功返回向量

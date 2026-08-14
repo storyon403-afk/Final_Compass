@@ -16,6 +16,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Validated
+/** 提供问卷读取与提交，以及问卷题目的管理员配置入口。 */
 @RestController
 @RequestMapping("/api/survey")
 public class SurveyController {

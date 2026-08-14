@@ -16,8 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
 /** 执行独立视觉预处理，将图片转换成可安全交给主回答模型的结构化文本。 */
 @Service
 public class AiVisionService {
-  private final org.springframework.jdbc.core.simple.JdbcClient jdbc;private final AiCredentialResolver credentials;private final RuntimeProviderDefinitionRepository providers;private final RuntimeProviderClientRegistry clients;
-  public AiVisionService(org.springframework.jdbc.core.simple.JdbcClient jdbc,AiCredentialResolver credentials,RuntimeProviderDefinitionRepository providers,RuntimeProviderClientRegistry clients){this.jdbc=jdbc;this.credentials=credentials;this.providers=providers;this.clients=clients;}
+  private final org.springframework.jdbc.core.simple.JdbcClient jdbc;private final AiCredentialResolver credentials;private final RuntimeProviderDefinitionRepository providers;private final RuntimeProviderClientRegistry clients;private final AiUsageGuardService usage;
+  public AiVisionService(org.springframework.jdbc.core.simple.JdbcClient jdbc,AiCredentialResolver credentials,RuntimeProviderDefinitionRepository providers,RuntimeProviderClientRegistry clients,AiUsageGuardService usage){this.jdbc=jdbc;this.credentials=credentials;this.providers=providers;this.clients=clients;this.usage=usage;}
   public VisionResult analyze(long userId,MultipartFile file,String providerValue,String modelValue,String sourceValue,String ephemeral){
     if(file==null||file.isEmpty()||file.getSize()>10*1024*1024||file.getContentType()==null||!file.getContentType().startsWith("image/"))throw new IllegalArgumentException("请选择 10MB 以内的图片");
     AiCredentialSource source;try{source=AiCredentialSource.valueOf(sourceValue);}catch(Exception e){throw new IllegalArgumentException("视觉凭据来源不合法");}
@@ -28,7 +28,8 @@ public class AiVisionService {
     var model=provider.models().stream().filter(item->item.key().equals(modelValue)&&item.capabilities().contains("VISION")).findFirst().orElseThrow(()->new IllegalArgumentException("所选模型未注册视觉能力"));
     var endpoint=provider.endpoints().getFirst();
     var command=new RuntimeModelInvocationCommand(provider.id(),provider.key(),provider.type(),provider.adapterKey(),model.id(),model.key(),endpoint.id(),endpoint.key(),endpoint.baseUrl(),source.name(),"user-image-analysis","1.0.0","你是严谨的图片识别模型。完整提取图片中的文字、公式、表格、条件和问题，标记不确定区域；使用 Markdown 输出，不要解答题目。","请识别这张图片。","{}","MARKDOWN","{}",Set.of(),List.of(),Set.of("TEXT","IMAGE"),false,BigDecimal.ZERO,BigDecimal.ZERO,"CNY",endpoint.connectTimeoutMs(),endpoint.requestTimeoutMs());
-    try(var credential=credentials.resolveUserVision(userId,provider.key(),model.key(),source,ephemeral);var binary=new RuntimeBinaryInput(file.getContentType(),file.getBytes())){var result=clients.require(provider.adapterKey()).invoke(command,credential,binary);return new VisionResult(file.getOriginalFilename(),provider.key(),model.key(),result.content());}catch(java.io.IOException e){throw new IllegalArgumentException("无法读取图片",e);}
+    usage.check(userId,source);
+    try(var credential=credentials.resolveUserVision(userId,provider.key(),model.key(),source,ephemeral);var binary=new RuntimeBinaryInput(file.getContentType(),file.getBytes())){var result=clients.require(provider.adapterKey()).invoke(command,credential,binary);usage.record(userId,provider.key(),model.key(),"VISION",source,true,result.inputUnits(),result.outputUnits(),null,null);return new VisionResult(file.getOriginalFilename(),provider.key(),model.key(),result.content());}catch(java.io.IOException e){usage.record(userId,provider.key(),model.key(),"VISION",source,false,0,0,"IMAGE_READ_FAILED",null);throw new IllegalArgumentException("无法读取图片",e);}catch(RuntimeException e){usage.record(userId,provider.key(),model.key(),"VISION",source,false,0,0,e.getClass().getSimpleName(),null);throw e;}
   }
   public record VisionResult(String fileName,String provider,String model,String markdown){}
 }

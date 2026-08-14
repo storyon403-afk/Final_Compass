@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+/** 接收 AI 对话请求，负责创建会话并以流式响应返回模型输出。 */
 @RestController
 @RequestMapping("/api/ai-center/chat")
 public final class AiChatController {

@@ -41,7 +41,12 @@ public class AiCredentialResolver {
               .query(Boolean.class)
               .optional()
               .orElse(false);
-      if (!admin && !activity.hasPlatformEntitlement(userId)) {
+      boolean internalTestOpen =
+          jdbc.sql("SELECT internal_test_open FROM platform_ai_setting WHERE id=1")
+              .query(Boolean.class)
+              .optional()
+              .orElse(false);
+      if (!admin && !internalTestOpen && !activity.hasPlatformEntitlement(userId)) {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "本月暂无平台 AI 免费资格，可使用自己的 API Key");
       }
       SecretRow row =

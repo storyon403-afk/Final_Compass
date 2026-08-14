@@ -52,7 +52,7 @@ app:
       url: ${PDF_RENDERER_URL:http://127.0.0.1:8787}
       token: ${PDF_RENDERER_TOKEN:}
     agent-gateway:
-      url: ${AGENT_GATEWAY_URL:http://127.0.0.1:8642}
+      url: ${AGENT_GATEWAY_URL:http://127.0.0.1:8642}cd
   bootstrap-admin:
     username: ${APP_ADMIN_USERNAME:}
     password: ${APP_ADMIN_PASSWORD:}

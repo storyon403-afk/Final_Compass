@@ -35,6 +35,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * 提供指定课程与教师圈子的资源、讨论和攻略功能。
+ * 普通用户可贡献内容，攻略维护与投稿审核仅向管理员开放。
+ */
 @RestController
 @RequestMapping("/api/circles/{courseSlug}/{teacherSlug}")
 public class CircleController {

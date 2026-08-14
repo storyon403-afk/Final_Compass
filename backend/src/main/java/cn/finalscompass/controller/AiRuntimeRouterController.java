@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 暴露可用 AI 运行时，并根据请求能力选择合适的执行路由。 */
 @RestController
 @RequestMapping("/api/ai-center")
 public final class AiRuntimeRouterController {

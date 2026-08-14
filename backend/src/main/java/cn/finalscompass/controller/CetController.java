@@ -26,6 +26,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * 提供 CET 试卷、题目和音频资料访问，以及受管理员权限保护的内容维护接口。
+ * 上传文件始终限制在配置的上传目录内，避免客户端输入造成路径越界。
+ */
 @RestController
 @RequestMapping("/api/cet")
 public class CetController {

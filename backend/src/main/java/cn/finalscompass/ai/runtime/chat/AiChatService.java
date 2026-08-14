@@ -17,6 +17,7 @@ import cn.finalscompass.ai.runtime.trace.RuntimeExecutionStatus;
 import cn.finalscompass.ai.runtime.trace.RuntimeExecutionTraceStore;
 import cn.finalscompass.ai.runtime.trace.RuntimeType;
 import cn.finalscompass.service.AiCredentialResolver;
+import cn.finalscompass.service.AiUsageGuardService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -72,6 +73,7 @@ public final class AiChatService {
   private final RuntimeExecutionTraceStore traces;
   private final StringRedisTemplate redis;
   private final ObjectMapper json;
+  private final AiUsageGuardService usage;
 
   // 注入
   public AiChatService(
@@ -81,7 +83,8 @@ public final class AiChatService {
       RuntimeModelClientGateway models,
       RuntimeExecutionTraceStore traces,
       StringRedisTemplate redis,
-      ObjectMapper json) {
+      ObjectMapper json,
+      AiUsageGuardService usage) {
     this.knowledge = knowledge;
     this.matcher = matcher;
     this.credentials = credentials;
@@ -89,6 +92,7 @@ public final class AiChatService {
     this.traces = traces;
     this.redis = redis;
     this.json = json;
+    this.usage = usage;
   }
 
   // 创建一个聊天 Session ID
@@ -122,7 +126,10 @@ public final class AiChatService {
     AiCredentialSource source = parseSource(request.credentialSource());
     long executionId = 0;
     long nodeId = 0;
+    boolean checked = false;
     try {
+      usage.check(userId, source);
+      checked = true;
       boolean internalMultiWeb =
           request.credentialPurpose() != null
               && request.credentialPurpose().startsWith("MULTIWEB_");
@@ -266,12 +273,16 @@ public final class AiChatService {
               result.outputUnits()));
       // 保存历史
       appendHistory(userId, sessionKey, message, answer);
+      usage.record(userId, result.providerKey(), result.modelKey(), "CHAT", source, true,
+          result.inputUnits(), result.outputUnits(), null, String.valueOf(executionId));
       // 更新 Trace
       traces.transitionNode(nodeId, RuntimeExecutionNodeStatus.SUCCEEDED, null, null, null, null);
       traces.transitionExecution(executionId, RuntimeExecutionStatus.SUCCEEDED, null, null, null);
       // 完成 SSE
       emitter.complete();
     } catch (Exception failure) {
+      if (checked) usage.record(userId, request.provider(), request.model(), "CHAT", source, false,
+          0, 0, failure.getClass().getSimpleName(), executionId > 0 ? String.valueOf(executionId) : null);
       // 更新 Trace
       if (nodeId > 0) safeTransitionNode(nodeId);
       if (executionId > 0)

@@ -18,6 +18,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 提供暂停页配置和视频读取，并限制配置及媒体维护操作仅管理员可用。
+ * 媒体文件只允许从专用暂停页目录写入和读取。
+ */
 @RestController
 @RequestMapping("/api/suspend")
 public class SuspendController {

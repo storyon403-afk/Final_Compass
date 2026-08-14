@@ -174,7 +174,7 @@ public final class KnowledgeService {
     // 语义搜索失败时自动降级为 lexical search
     RuntimeEmbeddingGateway.EmbeddingBatch queryVector = null;
     try {
-      queryVector = embeddings.embed(List.of(query.trim()));
+      queryVector = embeddings.embed(userId, List.of(query.trim()));
     } catch (RuntimeException ignored) {
     }
     // 不是让数据库做向量近邻检索，先取最多 1000 个 Chunk，待优化升级;SQL 查询结果被包装为：private record SearchRow(...)

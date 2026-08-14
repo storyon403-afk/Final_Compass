@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+/** 提供知识库内容导入和检索验证等管理员工具。 */
 @RestController
 @RequestMapping("/api/system/knowledge")
 public final class KnowledgeAdminController {

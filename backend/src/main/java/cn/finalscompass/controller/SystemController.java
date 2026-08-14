@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+/** 提供系统健康与公告信息，以及审核、指标和内测申请等管理员功能。 */
 @RestController
 @RequestMapping("/api/system")
 public class SystemController {

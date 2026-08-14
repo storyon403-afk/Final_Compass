@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+/** 提供 AI 演进报告刷新和建议审核等管理员操作。 */
 @RestController
 @RequestMapping("/api/system/ai-evolution")
 public final class AiEvolutionAdminController {
