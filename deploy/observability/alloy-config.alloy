@@ -1,0 +1,44 @@
+discovery.docker "finals_compass" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+}
+
+discovery.relabel "finals_compass" {
+  targets = discovery.docker.finals_compass.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/finals-compass-(.+)"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/finals-compass-(.+)"
+    target_label  = "container"
+    replacement   = "$1"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "finals-compass"
+  }
+}
+
+loki.source.docker "finals_compass" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.finals_compass.output
+  forward_to    = [loki.write.local.receiver]
+  refresh_interval = "5s"
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

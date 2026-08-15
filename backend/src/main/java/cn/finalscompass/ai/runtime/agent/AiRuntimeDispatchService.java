@@ -1,6 +1,7 @@
 package cn.finalscompass.ai.runtime.agent;
 
 import cn.finalscompass.ai.runtime.knowledge.KnowledgeService;
+import cn.finalscompass.config.TraceContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.*;
@@ -60,9 +61,10 @@ public class AiRuntimeDispatchService {
     String token = "AGENT".equals(r.runtimeType()) ? UUID.randomUUID().toString() : null;
     jdbc.sql(
             "INSERT INTO"
-                + " ai_runtime_run(run_key,user_id,runtime_type,goal,status,callback_token,request_payload)"
-                + " VALUES(:key,:user,:type,:goal,:status,:token,CAST(:payload AS JSON))")
+                + " ai_runtime_run(run_key,http_trace_id,user_id,runtime_type,goal,status,callback_token,request_payload)"
+                + " VALUES(:key,:httpTraceId,:user,:type,:goal,:status,:token,CAST(:payload AS JSON))")
         .param("key", key)
+        .param("httpTraceId", TraceContext.currentTraceId())
         .param("user", user)
         .param("type", r.runtimeType())
         .param("goal", r.goal())

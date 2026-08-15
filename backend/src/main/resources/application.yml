@@ -3,8 +3,8 @@ spring:
     name: finals-compass-api
   datasource:
     url: ${DB_URL}
-    username: ${DB_USER:finals}
-    password: ${DB_PASSWORD:change-me}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
   servlet:
     multipart:
       max-file-size: ${MAX_UPLOAD_FILE_SIZE:100MB}
@@ -17,21 +17,21 @@ spring:
       static-locations: ${STATIC_LOCATIONS:classpath:/static/}
   data:
     redis:
-      host: ${REDIS_HOST:127.0.0.1}
-      port: ${REDIS_PORT:6379}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD:}
       connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
       timeout: ${REDIS_COMMAND_TIMEOUT:2s}
 server:
   port: ${SERVER_PORT:8080}
-  address: ${SERVER_ADDRESS:127.0.0.1}
+  address: ${SERVER_ADDRESS}
 app:
   environment: ${APP_ENV:dev}
   mail:
     encryption-key: ${MAIL_SECRET_ENCRYPTION_KEY:}
     verification-pepper: ${EMAIL_CODE_PEPPER:}
-    login-url: ${APP_LOGIN_URL:http://127.0.0.1:5173}
-    frontend-url: ${APP_FRONTEND_URL:http://127.0.0.1:5173}
+    login-url: ${APP_LOGIN_URL}
+    frontend-url: ${APP_FRONTEND_URL}
     microsoft:
       client-id: ${MICROSOFT_MAIL_CLIENT_ID:}
       client-secret: ${MICROSOFT_MAIL_CLIENT_SECRET:}
@@ -49,10 +49,10 @@ app:
       token: ${MARKITDOWN_WORKER_TOKEN:}
       timeout: ${MARKITDOWN_WORKER_TIMEOUT:60s}
     pdf-renderer:
-      url: ${PDF_RENDERER_URL:http://127.0.0.1:8787}
+      url: ${PDF_RENDERER_URL:}
       token: ${PDF_RENDERER_TOKEN:}
     agent-gateway:
-      url: ${AGENT_GATEWAY_URL:http://127.0.0.1:8642}cd
+      url: ${AGENT_GATEWAY_URL:}
   bootstrap-admin:
     username: ${APP_ADMIN_USERNAME:}
     password: ${APP_ADMIN_PASSWORD:}

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * ApiMolels 是一个数据模型容器，集中存放了Final Compass后端跨Controller使用的不可变API数据传输对象（DTO）：请求和响应数据结构。
+ * ApiMolels 是一个数据模型容器，集中存放了Finals Compass后端跨Controller使用的不可变API数据传输对象（DTO）：请求和响应数据结构。
  * record组件名会直接映射JSON字段，参数上的Jakarta Validation注解进入业逻辑前会被Spring Boot自动验证，确保请求数据的完整性和合法性。
  * 该类被设计为不可实例化的工具类（工具类一般没有对象行为，不应该被扩展），所有内部record都是静态的，便于在不同Controller之间共享和使用。通过这种方式，Final
  * Compass后端实现了数据传输对象的统一管理和验证。

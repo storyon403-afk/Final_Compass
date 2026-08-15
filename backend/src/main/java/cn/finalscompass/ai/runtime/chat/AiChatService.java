@@ -16,6 +16,7 @@ import cn.finalscompass.ai.runtime.trace.RuntimeExecutionNodeType;
 import cn.finalscompass.ai.runtime.trace.RuntimeExecutionStatus;
 import cn.finalscompass.ai.runtime.trace.RuntimeExecutionTraceStore;
 import cn.finalscompass.ai.runtime.trace.RuntimeType;
+import cn.finalscompass.config.TraceContext;
 import cn.finalscompass.service.AiCredentialResolver;
 import cn.finalscompass.service.AiUsageGuardService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -27,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -62,6 +66,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @Service
 public final class AiChatService {
+  private static final Logger log = LoggerFactory.getLogger(AiChatService.class);
   private static final int HISTORY_LIMIT = 20;
   private static final Duration HISTORY_TTL = Duration.ofMinutes(120);
 
@@ -126,6 +131,7 @@ public final class AiChatService {
     AiCredentialSource source = parseSource(request.credentialSource());
     long executionId = 0;
     long nodeId = 0;
+    String aiTraceId = null;
     boolean checked = false;
     try {
       usage.check(userId, source);
@@ -153,11 +159,14 @@ public final class AiChatService {
                   .toList()));
 
       // 创建 Trace
+      aiTraceId = UUID.randomUUID().toString();
+      MDC.put(TraceContext.AI_TRACE_ID, aiTraceId);
+      String httpTraceId = TraceContext.currentTraceId();
       executionId =
           traces.createExecution(
               new CreateRuntimeExecution(
                   UUID.randomUUID().toString(),
-                  UUID.randomUUID().toString(),
+                  aiTraceId,
                   null,
                   null,
                   userId,
@@ -167,7 +176,9 @@ public final class AiChatService {
                   null,
                   null,
                   null,
-                  "{}"));
+                  httpTraceId == null
+                      ? "{}"
+                      : json.writeValueAsString(Map.of("httpTraceId", httpTraceId))));
       nodeId =
           traces.createNode(
               new CreateRuntimeExecutionNode(
@@ -263,6 +274,8 @@ public final class AiChatService {
           emitter,
           "done",
           Map.of(
+              "traceId",
+              aiTraceId,
               "provider",
               nullSafe(result.providerKey()),
               "model",
@@ -281,6 +294,7 @@ public final class AiChatService {
       // 完成 SSE
       emitter.complete();
     } catch (Exception failure) {
+      log.error("AI chat execution failed", failure);
       if (checked) usage.record(userId, request.provider(), request.model(), "CHAT", source, false,
           0, 0, failure.getClass().getSimpleName(), executionId > 0 ? String.valueOf(executionId) : null);
       // 更新 Trace
@@ -288,8 +302,16 @@ public final class AiChatService {
       if (executionId > 0)
         traces.transitionExecution(
             executionId, RuntimeExecutionStatus.FAILED, null, "CHAT_FAILED", summarize(failure));
-      send(emitter, "error", Map.of("code", "CHAT_FAILED", "message", summarize(failure)));
+      send(
+          emitter,
+          "error",
+          Map.of(
+              "code", "CHAT_FAILED",
+              "message", summarize(failure),
+              "traceId", nullSafe(aiTraceId)));
       emitter.complete();
+    } finally {
+      MDC.remove(TraceContext.AI_TRACE_ID);
     }
   }
 

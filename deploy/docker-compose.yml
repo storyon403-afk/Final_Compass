@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   mysql:
     image: mysql:8.0
@@ -19,6 +25,7 @@ services:
       start_period: 20s
     networks:
       - app-network
+    logging: *default-logging
 
   backend:
     build:
@@ -34,6 +41,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
@@ -61,12 +69,17 @@ services:
       MARKITDOWN_WORKER_URL: http://markitdown-worker:8090
       MARKITDOWN_WORKER_TOKEN: ${MARKITDOWN_WORKER_TOKEN}
       JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m
+      LOG_DIR: /app/logs
+      LOG_MAX_HISTORY: ${LOG_MAX_HISTORY:-30}
+      LOG_TOTAL_SIZE_CAP: ${LOG_TOTAL_SIZE_CAP:-2GB}
     volumes:
       - uploads:/app/uploads
+      - backend_logs:/app/logs
     ports:
       - "127.0.0.1:8080:8080"
     networks:
       - app-network
+    logging: *default-logging
 
   redis:
     image: redis:7.4-alpine
@@ -82,6 +95,7 @@ services:
       - app-network
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
 
   markitdown-worker:
     build:
@@ -112,6 +126,7 @@ services:
       - /tmp:size=256m,mode=1777
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
 
   frontend:
     profiles:
@@ -127,6 +142,55 @@ services:
       - "80:80"
     networks:
       - app-network
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:3.5.1
+    container_name: finals-compass-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./observability/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    networks:
+      - app-network
+    logging: *default-logging
+
+  alloy:
+    image: grafana/alloy:v1.10.2
+    container_name: finals-compass-alloy
+    restart: unless-stopped
+    command: ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
+    depends_on:
+      - loki
+    volumes:
+      - ./observability/alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy/data
+    networks:
+      - app-network
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    container_name: finals-compass-grafana
+    restart: unless-stopped
+    depends_on:
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - app-network
+    logging: *default-logging
 
 networks:
   app-network:
@@ -135,3 +199,7 @@ networks:
 volumes:
   mysql_data:
   uploads:
+  backend_logs:
+  loki_data:
+  grafana_data:
+  alloy_data:

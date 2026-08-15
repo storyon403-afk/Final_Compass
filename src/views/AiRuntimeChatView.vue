@@ -145,7 +145,8 @@ async function sendChat(goal) {
     if (requestController.signal.aborted) break;
     if (event === "sources") assistant.sources = data.sources || [];
     else if (event === "delta") assistant.content += data.text || "";
-    else if (event === "error") throw new Error(data.message || "Chat 服务返回错误");
+    else if (event === "done") assistant.traceId = data.traceId || "";
+    else if (event === "error") throw new Error(`${data.message || "Chat 服务返回错误"}${data.traceId ? `（AI Trace：${data.traceId}）` : ""}`);
   }
   if (!assistant.content) assistant.content = "（模型没有返回内容）";
 }

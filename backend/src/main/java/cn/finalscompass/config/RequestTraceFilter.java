@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 /** 为每次 HTTP 请求生成追踪号，并记录方法、路径、状态码和耗时。 */
@@ -23,6 +24,7 @@ public class RequestTraceFilter implements Filter {
     String traceId = UUID.randomUUID().toString().substring(0, 12);
     long started = System.nanoTime();
     response.setHeader("X-Trace-Id", traceId);
+    MDC.put(TraceContext.HTTP_TRACE_ID, traceId);
     try {
       chain.doFilter(request, response);
     } finally {
@@ -34,6 +36,8 @@ public class RequestTraceFilter implements Filter {
           request.getRequestURI(),
           response.getStatus(),
           durationMs);
+      MDC.remove(TraceContext.AI_TRACE_ID);
+      MDC.remove(TraceContext.HTTP_TRACE_ID);
     }
   }
 }

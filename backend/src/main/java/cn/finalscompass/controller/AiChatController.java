@@ -1,6 +1,7 @@
 package cn.finalscompass.controller;
 
 import cn.finalscompass.ai.runtime.chat.AiChatService;
+import cn.finalscompass.config.TraceContext;
 import cn.finalscompass.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -39,9 +40,13 @@ public final class AiChatController {
       @RequestBody AiChatService.ChatRequest body) {
     AuthService.CurrentUser user = auth.current(request);
     SseEmitter emitter = new SseEmitter(5 * 60 * 1000L);
+    Map<String, String> traceContext = TraceContext.capture();
     Thread.ofVirtual()
         .name("ai-chat-" + sessionKey)
-        .start(() -> chat.answer(user.id(), sessionKey, body, emitter));
+        .start(
+            () ->
+                TraceContext.runWith(
+                    traceContext, () -> chat.answer(user.id(), sessionKey, body, emitter)));
     return emitter;
   }
 }

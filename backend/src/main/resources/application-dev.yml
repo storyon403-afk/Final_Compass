@@ -1,0 +1,29 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+
+server:
+  address: 127.0.0.1
+  port: 8080
+
+app:
+  environment: dev
+
+  mail:
+    login-url: http://127.0.0.1:5173
+    frontend-url: http://127.0.0.1:5173
+
+  upload-dir: ../uploads
+
+  ai:
+    pdf-renderer:
+      url: http://127.0.0.1:8787
+
+    agent-gateway:
+      url: http://127.0.0.1:8642

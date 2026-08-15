@@ -4,6 +4,13 @@ target/
 .idea/
 .vscode/
 .DS_Store
+
+#Local environment variables/secrets
+.env
+.env.*
+!.env.example
+
+#Uploads
 uploads/*
 !uploads/.gitkeep
 backend/uploads/

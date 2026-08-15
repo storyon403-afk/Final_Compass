@@ -146,6 +146,9 @@ mvn test
 
 ## Docker Compose
 
+日志滚动、HTTP/AI Trace 关联以及 Loki + Grafana 的使用方式见
+[`docs/日志与Trace运维指南.md`](docs/日志与Trace运维指南.md)。
+
 ```bash
 cd deploy
 cp .env.example .env
