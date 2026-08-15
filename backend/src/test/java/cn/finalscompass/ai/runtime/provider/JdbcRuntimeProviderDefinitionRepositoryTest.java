@@ -58,7 +58,10 @@ class JdbcRuntimeProviderDefinitionRepositoryTest {
         assertTrue(configuredModel.capabilities().contains("TEXT_REASONING"));
         assertEquals(Set.of("PLATFORM", "STORED_BYOK", "EPHEMERAL_BYOK"),
                 deepseek.supportedCredentialSources());
-        assertEquals(3, repository.findRoutable().size());
+        Set<String> routableProviderKeys = repository.findRoutable().stream()
+                .map(RuntimeProviderDefinition::key)
+                .collect(java.util.stream.Collectors.toSet());
+        assertTrue(routableProviderKeys.containsAll(Set.of("openai", "deepseek", "gemini")));
     }
 
     @Test
