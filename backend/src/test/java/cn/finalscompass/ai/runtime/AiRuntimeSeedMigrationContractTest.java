@@ -51,6 +51,18 @@ class AiRuntimeSeedMigrationContractTest {
         assertTrue(migration.contains("SET s.current_version_id=v.id"));
     }
 
+    @Test
+    void everyTemporarySeedTableUsesTheRuntimeTableCollation() throws IOException {
+        assertTemporaryTableCollations(migration("V29__seed_ai_runtime_skills.sql"), 1);
+        assertTemporaryTableCollations(migration("V31__seed_ai_runtime_workflows.sql"), 2);
+    }
+
+    private void assertTemporaryTableCollations(String migration, int expectedTables) {
+        assertTrue(migration.split("CREATE TEMPORARY TABLE", -1).length - 1 == expectedTables);
+        assertTrue(migration.split("COLLATE=utf8mb4_unicode_ci", -1).length - 1 == expectedTables,
+                "every temporary seed table must use the same collation as its runtime table");
+    }
+
     private String migration(String name) throws IOException {
         try (var stream = getClass().getResourceAsStream("/db/migration/" + name)) {
             assertNotNull(stream, name + " must be packaged");

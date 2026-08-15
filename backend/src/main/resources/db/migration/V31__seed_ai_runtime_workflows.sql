@@ -3,7 +3,9 @@ CREATE TEMPORARY TABLE ai_runtime_workflow_seed (
   name VARCHAR(120) NOT NULL,
   description VARCHAR(1000) NOT NULL,
   learning_task_type VARCHAR(64) NOT NULL
-);
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
 
 CREATE TEMPORARY TABLE ai_runtime_workflow_step_seed (
   workflow_key VARCHAR(100) NOT NULL,
@@ -13,7 +15,9 @@ CREATE TEMPORARY TABLE ai_runtime_workflow_step_seed (
   next_node_key VARCHAR(100) NOT NULL,
   PRIMARY KEY (workflow_key, step_order),
   UNIQUE (workflow_key, skill_key)
-);
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO ai_runtime_workflow_seed VALUES
   ('exam-preparation','考试复习规划','分析课程资料与教师信息，生成可执行的考试复习计划。','EXAM_PREPARATION'),
