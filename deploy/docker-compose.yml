@@ -11,6 +11,12 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     networks:
       - app-network
 
@@ -21,9 +27,12 @@ services:
     container_name: finals-compass-backend
     restart: unless-stopped
     depends_on:
-      - mysql
-      - markitdown-worker
-      - redis
+      mysql:
+        condition: service_healthy
+      markitdown-worker:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
       DB_USER: ${MYSQL_USER}
@@ -64,6 +73,11 @@ services:
     container_name: finals-compass-redis
     restart: unless-stopped
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - app-network
     security_opt:
@@ -85,6 +99,12 @@ services:
       MARKITDOWN_MAX_ARCHIVE_ENTRIES: 2000
       MARKITDOWN_MAX_UNPACKED_BYTES: 104857600
       MARKITDOWN_MAX_COMPRESSION_RATIO: 200
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - app-network
     read_only: true

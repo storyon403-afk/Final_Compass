@@ -19,12 +19,21 @@ const adminHermesKey = ref(''), adminHermesEnabled = ref(false)
 const adminReviewProvider = ref('deepseek'), adminReviewModel = ref('deepseek-v4-pro'), adminReviewKey = ref(''), adminReviewEnabled = ref(true)
 const guide = ref(null), vcp = ref(null), editing = ref(''), busy = ref(false)
 const visionFeatures=ref({auxiliaryEnabled:true,ephemeralEnabled:true,storedEnabled:true,defaultVisionProvider:'gemini'})
+const internalTestOpen = ref(false)
+const usagePolicy = ref({ limitsEnabled: true, callsPerMinute: 6, platformDailyCalls: 20, platformMonthlyTokens: 100000 })
 
 const platformStatus = id => settings.dashboard.platformProviders?.find(item => item.provider === id)
 
 async function saveDefault() {
   try { await aiApi.savePlatformDefault(adminDefaultProvider.value); message.value = '平台默认 Provider 已更新。'; await loadAiCenterSettings() }
   catch (e) { error.value = e.message }
+}
+async function saveUsagePolicy() {
+  try {
+    await aiApi.saveUsagePolicy({ internalTestOpen: internalTestOpen.value, ...usagePolicy.value })
+    message.value = '平台 API Key 使用控制已更新。'
+    await loadAiCenterSettings()
+  } catch (e) { error.value = e.message }
 }
 async function savePlatform(provider) {
   const form = platformForms.value.find(item => item.provider === provider)
@@ -64,6 +73,8 @@ async function savePage(key, page) {
 onMounted(async () => {
   if (!settings.loaded) await loadAiCenterSettings()
   adminDefaultProvider.value = settings.dashboard.defaultProvider || 'deepseek'
+  internalTestOpen.value = settings.dashboard.internalTestOpen === true
+  const policy=settings.dashboard.usagePolicy||{};usagePolicy.value={limitsEnabled:policy.qualified_user_limits_enabled!==false,callsPerMinute:Number(policy.calls_per_minute||6),platformDailyCalls:Number(policy.platform_daily_calls||20),platformMonthlyTokens:Number(policy.platform_monthly_tokens||100000)}
   const review = settings.dashboard.platformReviewConfig || {}
   const vision=settings.dashboard.visionFeatures||{};visionFeatures.value={auxiliaryEnabled:vision.user_vision_auxiliary_enabled!==false,ephemeralEnabled:vision.user_vision_ephemeral_key_enabled!==false,storedEnabled:vision.user_vision_stored_key_enabled!==false,defaultVisionProvider:vision.default_vision_provider||'gemini'}
   adminReviewProvider.value = review.provider || 'deepseek'; adminReviewModel.value = review.model_name || 'deepseek-v4-pro'; adminReviewEnabled.value = review.enabled !== false
@@ -79,6 +90,26 @@ onMounted(async () => {
       <p>集中管理平台模型通道、Agent Runtime 与页面内容；普通用户看不到这些选项。</p>
       <p v-if="error" class="form-error">{{ error }}</p>
       <p v-if="message" class="form-success">{{ message }}</p>
+
+      <section class="control-center-section ai-key-usage-control">
+        <h3>API Key 使用控制</h3>
+        <p>按“使用资格 → 请求频率 → 平台额度”三层控制平台付费 Key；管理员不受限，用户自己的 Key 仅受频率层控制。</p>
+        <div class="ai-platform-card">
+          <header><b>第一层 · 使用资格</b><small>{{ internalTestOpen ? '全体登录用户' : '按月度资格' }}</small></header>
+          <label class="ai-setting-consent"><input v-model="internalTestOpen" type="checkbox">全体用户开放平台 AI</label>
+          <p>关闭后恢复按活跃度排名发放资格；开启后所有已登录用户获得资格。</p>
+        </div>
+        <div class="ai-platform-card">
+          <header><b>第二、三层 · 有资格用户用量</b><small>{{ usagePolicy.limitsEnabled ? '执行限额' : '不限额模式' }}</small></header>
+          <label class="ai-setting-consent"><input v-model="usagePolicy.limitsEnabled" type="checkbox">对有资格的普通用户启用限额</label>
+          <template v-if="usagePolicy.limitsEnabled">
+            <label>每分钟请求次数<input v-model.number="usagePolicy.callsPerMinute" type="number" min="1" max="600"></label>
+            <label>每用户每日平台调用次数<input v-model.number="usagePolicy.platformDailyCalls" type="number" min="1" max="100000"></label>
+            <label>每用户每月平台 Token<input v-model.number="usagePolicy.platformMonthlyTokens" type="number" min="1000" max="1000000000"></label>
+          </template>
+        </div>
+        <div class="ai-setting-actions"><button type="button" @click="saveUsagePolicy">应用平台控制模式</button></div>
+      </section>
 
       <section class="control-center-section">
         <h3>平台默认模型</h3>

@@ -949,3 +949,64 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .ai-guide-backdrop{z-index:1200}.ai-guide-modal{width:min(820px,100%);padding:34px}.ai-guide-modal>h2{margin:6px 0 10px;font:500 32px "Kaiti SC",STKaiti,KaiTi,serif}.ai-guide-modal>p{margin:0 0 22px;color:var(--text-3);font-size:12px;line-height:1.7}.ai-guide-modal .ai-guide-render{padding:24px 0 0;border:0;border-top:1px solid var(--border)}.ai-guide-modal .safe-markdown{font-size:14px;line-height:1.85}
 .module-admin-backdrop{z-index:1200}.control-center-section textarea{width:100%;padding:10px;border:1px solid var(--border-strong);border-radius:9px;background:var(--surface);color:var(--text);font:inherit}.module-maintenance{min-height:calc(100vh - 58px);display:grid;place-content:center;justify-items:start;max-width:760px}.module-maintenance h1{margin:12px 0;font:500 clamp(42px,7vw,72px) "Kaiti SC",STKaiti,KaiTi,serif}.module-maintenance p{max-width:650px;white-space:pre-wrap;color:var(--text-2);font-size:15px;line-height:1.9}.module-maintenance small{color:var(--text-3)}.module-maintenance button{margin-top:28px;padding:10px 16px;border:1px solid var(--text);background:var(--surface);color:var(--text);cursor:pointer}
 .global-control-center{z-index:90}.global-control-center-list{display:grid;gap:10px;margin-top:18px}.global-control-center-list button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 15px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s}.global-control-center-list button:hover{border-color:var(--text);box-shadow:3px 3px 0 var(--border)}.global-control-center-list button>span{display:grid;gap:3px}.global-control-center-list button b{font-size:13px;font-weight:600}.global-control-center-list button small{color:var(--text-3);font-size:10px;line-height:1.6}.global-control-center-list button i{font-style:normal;color:var(--text-3);font-size:16px}.account-menu button.control-center-entry{font-weight:600}.account-menu button.control-center-entry span{font-size:13px}
+
+/* Keep editable AI Center content inside both the preview and admin dialog. */
+.safe-html {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+}
+
+.safe-html img {
+  display: block !important;
+  width: min(100%, 720px) !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 18px auto 28px !important;
+  object-fit: contain;
+  box-sizing: border-box;
+}
+
+.ai-guide-modal,
+.control-center-modal,
+.control-center-section,
+.ai-content-preview,
+.ai-guide-render,
+.ai-content-editor,
+.ai-content-editor label {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.control-center-modal,
+.ai-content-preview,
+.ai-guide-render {
+  overflow-x: hidden;
+}
+
+.ai-content-editor input,
+.ai-content-editor textarea,
+.ai-content-editor select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-content-editor textarea {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .ai-guide-modal,
+  .control-center-modal {
+    width: calc(100vw - 20px);
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

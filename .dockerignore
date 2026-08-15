@@ -3,6 +3,10 @@
 node_modules
 dist
 backend/target
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.py[cod]
 .env
 .env.*
 !.env.example

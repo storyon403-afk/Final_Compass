@@ -222,6 +222,12 @@ export const aiApi = {
   savePlatformDefault: (provider) => request('/ai/admin/platform-default', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider })
   }),
+  saveInternalTestAccess: (enabled) => request('/ai/admin/internal-test-access', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled })
+  }),
+  saveUsagePolicy: (fields) => request('/ai/admin/usage-policy', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
+  }),
   savePlatformReviewKey: (provider, model, apiKey, enabled) => request('/ai/admin/platform-review-key', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider, model, apiKey, enabled })
