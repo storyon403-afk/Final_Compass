@@ -45,6 +45,9 @@ class AiRuntimeSeedMigrationContractTest {
         assertTrue(migration.contains("('solution-review','LEARNING',JSON_ARRAY('TEXT','IMAGE')"));
         assertTrue(migration.contains("只有工具实际返回的已审核资料才能作为校内课程依据"));
         assertTrue(migration.contains("\\\\int_0^1 f(x)dx"));
+        assertTrue(migration.contains("CREATE TEMPORARY TABLE ai_runtime_skill_seed"));
+        assertTrue(migration.contains("DEFAULT CHARSET=utf8mb4\n  COLLATE=utf8mb4_unicode_ci"),
+                "temporary seed table must use the same collation as ai_runtime_skill");
         assertTrue(migration.contains("SET s.current_version_id=v.id"));
     }
 

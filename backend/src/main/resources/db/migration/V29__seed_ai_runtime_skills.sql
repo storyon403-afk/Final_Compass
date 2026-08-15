@@ -21,7 +21,9 @@ CREATE TEMPORARY TABLE ai_runtime_skill_seed (
   permission_policy JSON NOT NULL,
   allowed_tools JSON NOT NULL,
   max_input_units INT NOT NULL
-);
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO ai_runtime_skill_seed VALUES
 ('math-problem-image-analysis','VISION',JSON_ARRAY('TEXT','IMAGE'),
