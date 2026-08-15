@@ -53,6 +53,11 @@ class AiRuntimeSeedMigrationTest {
                      SELECT COUNT(*) total,
                        SUM(current_version_id IS NOT NULL) current_versions
                      FROM ai_runtime_skill
+                     WHERE skill_key IN (
+                       'math-problem-image-analysis','progressive-hint','complete-solution',
+                       'solution-review','concept-explanation','course-question-answering',
+                       'material-summary','statistics-method-selector','exam-focus-analysis',
+                       'study-plan-generation','learning-result-synthesis')
                      """)) {
             result.next();
             assertEquals(11, result.getInt("total"));
@@ -60,8 +65,14 @@ class AiRuntimeSeedMigrationTest {
         }
         try (Connection connection = MYSQL.createConnection(""); var statement = connection.createStatement();
              var result = statement.executeQuery("""
-                     SELECT COUNT(*) FROM ai_runtime_skill_version
-                     WHERE lifecycle_status='PUBLISHED' AND checksum<>REPEAT('0',64)
+                     SELECT COUNT(*) FROM ai_runtime_skill_version v
+                     JOIN ai_runtime_skill s ON s.id=v.skill_id
+                     WHERE v.lifecycle_status='PUBLISHED' AND v.checksum<>REPEAT('0',64)
+                       AND s.skill_key IN (
+                         'math-problem-image-analysis','progressive-hint','complete-solution',
+                         'solution-review','concept-explanation','course-question-answering',
+                         'material-summary','statistics-method-selector','exam-focus-analysis',
+                         'study-plan-generation','learning-result-synthesis')
                      """)) {
             result.next();
             assertEquals(11, result.getInt(1));

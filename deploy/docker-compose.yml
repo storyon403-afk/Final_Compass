@@ -9,6 +9,7 @@ services:
     image: mysql:8.0
     container_name: finals-compass-mysql
     restart: unless-stopped
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     env_file: .env
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}

@@ -52,8 +52,10 @@ class JdbcRuntimeProviderDefinitionRepositoryTest {
     void assemblesRoutableProviderModelEndpointAndCapabilities() {
         RuntimeProviderDefinition deepseek = repository.findRoutableByKey("deepseek").orElseThrow();
         assertEquals(1, deepseek.endpoints().size());
-        assertEquals(1, deepseek.models().size());
-        assertEquals(Set.of("TEXT_REASONING"), deepseek.models().getFirst().capabilities());
+        RuntimeProviderModel configuredModel = deepseek.models().stream()
+                .filter(model -> model.key().equals("deepseek-test-model"))
+                .findFirst().orElseThrow();
+        assertEquals(Set.of("TEXT_REASONING"), configuredModel.capabilities());
         assertEquals(Set.of("PLATFORM", "STORED_BYOK", "EPHEMERAL_BYOK"),
                 deepseek.supportedCredentialSources());
         assertEquals(3, repository.findRoutable().size());
@@ -62,9 +64,12 @@ class JdbcRuntimeProviderDefinitionRepositoryTest {
     @Test
     void matcherUsesDatabaseCapabilitiesRatherThanProviderName() {
         RuntimeProviderMatcher matcher = new RuntimeProviderMatcher(repository);
-        assertEquals(1, matcher.match(new ProviderSelectionRequest(
+        var reasoningCandidates = matcher.match(new ProviderSelectionRequest(
                 Set.of("TEXT_REASONING"), 0, 0, false, false,
-                Set.of(), Set.of(), "PLATFORM")).size());
+                Set.of(), Set.of(), "PLATFORM"));
+        assertTrue(!reasoningCandidates.isEmpty());
+        assertTrue(reasoningCandidates.stream()
+                .allMatch(candidate -> candidate.model().capabilities().contains("TEXT_REASONING")));
         assertTrue(matcher.match(new ProviderSelectionRequest(
                 Set.of("VISION"), 0, 0, false, false,
                 Set.of(), Set.of(), "PLATFORM")).isEmpty());

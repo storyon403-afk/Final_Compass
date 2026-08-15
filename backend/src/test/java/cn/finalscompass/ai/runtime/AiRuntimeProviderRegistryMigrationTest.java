@@ -60,7 +60,7 @@ class AiRuntimeProviderRegistryMigrationTest {
         try (Connection connection = MYSQL.createConnection("")) {
             long provider = insertProvider(connection, "migration-provider", "API", "openai-responses-v1");
             long model = insertModel(connection, provider, "migration-model");
-            long capability = insertCapability(connection, "TEXT_REASONING");
+            long capability = insertCapability(connection, "MIGRATION_TEST");
 
             try (var statement = connection.prepareStatement("""
                     INSERT INTO ai_runtime_provider_model_capability(
