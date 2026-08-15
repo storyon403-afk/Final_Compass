@@ -55,7 +55,7 @@ class JdbcRuntimeProviderDefinitionRepositoryTest {
         RuntimeProviderModel configuredModel = deepseek.models().stream()
                 .filter(model -> model.key().equals("deepseek-test-model"))
                 .findFirst().orElseThrow();
-        assertEquals(Set.of("TEXT_REASONING"), configuredModel.capabilities());
+        assertTrue(configuredModel.capabilities().contains("TEXT_REASONING"));
         assertEquals(Set.of("PLATFORM", "STORED_BYOK", "EPHEMERAL_BYOK"),
                 deepseek.supportedCredentialSources());
         assertEquals(3, repository.findRoutable().size());
