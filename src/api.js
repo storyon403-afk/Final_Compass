@@ -83,6 +83,10 @@ export const authApi = {
   }
 }
 
+export const browserBridgeApi = {
+  bind: () => request('/browser-bridge/bindings', { method: 'POST' })
+}
+
 export async function initIdentity() {
   try {
     const identity = await request('/identity/anonymous', { method: 'POST' })

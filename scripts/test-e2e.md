@@ -42,11 +42,8 @@ curl -N -X POST "http://127.0.0.1:8080/api/ai-center/chat/sessions/$SESSION/mess
 ## 4. 加载浏览器扩展，确认 WS 连接
 
 1. Chrome 打开 `chrome://extensions`，开发者模式，加载已解压扩展：`Final_Compass/browser-extension`。
-2. 点击扩展图标，在弹窗中填入：
-   - Bridge URL：`ws://127.0.0.1:8080/ws/browser-bridge`
-   - Token：第 2 步的 `$TOKEN`
-   - 勾选启用，点击保存。
-3. 预期状态显示已连接；后端日志出现 browser-bridge handshake 成功。
+2. 登录 AI Center，打开“AI 菜单”，点击一次“绑定此浏览器扩展”。
+3. 扩展自动保存独立机器绑定凭证，并为每次连接换取两分钟、单次有效的票据。预期弹窗状态显示已连接；URL 与浏览器存储中均不出现登录 Token。
 
 ## 5. Agent 任务：驱动浏览器并产出 artifact
 

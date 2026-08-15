@@ -29,6 +29,7 @@ public class WebConfig implements WebMvcConfigurer {
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/beta-access/**",
+            "/api/browser-bridge/tickets",
             "/api/system/health",
             "/api/ai-center/external-agent/**");
     registry.addInterceptor(new ModuleMaintenanceInterceptor(auth,modules,json)).addPathPatterns("/api/**").excludePathPatterns("/api/system/modules/**","/api/system/health","/api/ai-center/external-agent/**");

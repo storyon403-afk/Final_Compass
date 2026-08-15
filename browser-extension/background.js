@@ -12,10 +12,27 @@ let platformTabId = null
 
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === 'REGISTER_PLATFORM_TAB' && sender.tab?.id) platformTabId = sender.tab.id
+  if (message?.type === 'BIND_BROWSER_BRIDGE') bindBrowserBridge(message, sender.tab?.id).catch(error => {
+    notifyBridgeBinding(sender.tab?.id, 'FAILED', error.message)
+  })
   if (message?.type === 'START_RUN') run(message, sender.tab?.id).catch(error => notify(sender.tab?.id, { provider: 'PLATFORM', status: 'FAILED', errorCode: 'EXTENSION_ERROR', message: error.message }))
   if (message?.type === 'STOP_RUN') cancelMultiWebRun(message.runKey).catch(() => {})
   if (message?.type === 'START_AGENT_BROWSER') agentResearch(message, sender.tab?.id).catch(error => notifyAgent(sender.tab?.id, { requestId: message.requestId, status: 'FAILED', message: error.message }))
 })
+
+async function bindBrowserBridge(message, tabId) {
+  if (!message.bindingSecret || !message.bridgeUrl) throw new Error('绑定信息不完整')
+  await chrome.storage.local.set({
+    bridgeConfig: { url: message.bridgeUrl, bindingSecret: message.bindingSecret },
+    bridgeEnabled: true
+  })
+  notifyBridgeBinding(tabId, 'BOUND', '扩展已绑定，后续凭证将自动换取')
+  await scheduleBridge(true)
+}
+
+function notifyBridgeBinding(tabId, status, detail) {
+  if (tabId) chrome.tabs.sendMessage(tabId, { type: 'BRIDGE_BINDING_STATUS', status, detail }).catch(() => {})
+}
 
 async function cancelMultiWebRun(runKey) {
   cancelledRuns.add(runKey)
@@ -247,21 +264,40 @@ chrome.alarms.onAlarm.addListener(alarm => {
 
 async function bridgeConfig() {
   const { bridgeConfig: config, bridgeEnabled } = await chrome.storage.local.get(['bridgeConfig', 'bridgeEnabled'])
-  return { enabled: Boolean(bridgeEnabled), url: config?.url || BRIDGE_DEFAULT_URL, token: config?.token || '' }
+  return { enabled: Boolean(bridgeEnabled), url: config?.url || BRIDGE_DEFAULT_URL, bindingSecret: config?.bindingSecret || '' }
 }
 
 async function scheduleBridge(restart) {
   const config = await bridgeConfig()
-  if (!config.enabled || !config.token) { await setBridgeStatus('IDLE', '未启用或未配置 Token'); return closeBridge() }
+  if (!config.enabled || !config.bindingSecret) { await setBridgeStatus('IDLE', '等待在 AI Center 完成一次绑定'); return closeBridge() }
   if (bridgeSocket && (bridgeSocket.readyState === WebSocket.OPEN || bridgeSocket.readyState === WebSocket.CONNECTING)) {
     if (!restart) return
     await closeBridge()
   }
-  connectBridge(config)
+  try {
+    const ticket = await exchangeBridgeTicket(config)
+    connectBridge(config, ticket)
+  } catch (error) {
+    await setBridgeStatus('ERROR', error.message)
+    retryBridge()
+  }
 }
 
-function connectBridge(config) {
-  try { bridgeSocket = new WebSocket(`${config.url}?token=${encodeURIComponent(config.token)}`) }
+async function exchangeBridgeTicket(config) {
+  const endpoint = new URL(config.url)
+  endpoint.protocol = endpoint.protocol === 'wss:' ? 'https:' : 'http:'
+  endpoint.pathname = '/api/browser-bridge/tickets'
+  endpoint.search = ''
+  const response = await fetch(endpoint.toString(), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bindingSecret: config.bindingSecret })
+  })
+  if (!response.ok) throw new Error(response.status === 401 ? '扩展绑定已失效，请在 AI Center 重新绑定' : `短时凭证换取失败（${response.status}）`)
+  return (await response.json()).ticket
+}
+
+function connectBridge(config, ticket) {
+  try { bridgeSocket = new WebSocket(config.url, ['finals-compass-bridge-v1', `ticket.${ticket}`]) }
   catch (error) { setBridgeStatus('ERROR', error.message); return retryBridge() }
   bridgeSocket.onopen = () => {
     setBridgeStatus('CONNECTED', '已连接后端')

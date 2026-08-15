@@ -4,15 +4,18 @@ import cn.finalscompass.ai.runtime.agent.BrowserGatewayService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
+import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.SubProtocolCapable;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 /** WebSocket endpoint handler for the Chrome extension browser bridge. */
 @Component
-public final class BrowserBridgeWebSocketHandler extends TextWebSocketHandler {
+public final class BrowserBridgeWebSocketHandler extends TextWebSocketHandler
+    implements SubProtocolCapable {
   public static final String USER_ID_ATTRIBUTE = "browserBridgeUserId";
 
   private final BrowserGatewayService gateway;
@@ -21,6 +24,11 @@ public final class BrowserBridgeWebSocketHandler extends TextWebSocketHandler {
   public BrowserBridgeWebSocketHandler(BrowserGatewayService gateway, ObjectMapper json) {
     this.gateway = gateway;
     this.json = json;
+  }
+
+  @Override
+  public List<String> getSubProtocols() {
+    return List.of("finals-compass-bridge-v1");
   }
 
   @Override

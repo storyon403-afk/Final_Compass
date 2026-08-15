@@ -1,5 +1,5 @@
 <script setup>
-import { ref,watch } from 'vue';import { isAdmin } from '../api';import { AI_VISION_DEFAULT_MODELS,aiCenterSettings as settings,defaultModelFor,deleteAiCenterKey,deleteVisionKey,loadAiCenterSettings,saveAiCenterKey,saveReviewKey,saveVisionKey,selectedSavedKey,selectedReviewSavedKey,selectedVisionSavedKey } from '../aiCenterSettings';import AiCenterContentManager from './AiCenterContentManager.vue';import AdminControlCenter from './AdminControlCenter.vue'
+import { ref,watch } from 'vue';import { browserBridgeApi,isAdmin } from '../api';import { AI_VISION_DEFAULT_MODELS,aiCenterSettings as settings,defaultModelFor,deleteAiCenterKey,deleteVisionKey,loadAiCenterSettings,saveAiCenterKey,saveReviewKey,saveVisionKey,selectedSavedKey,selectedReviewSavedKey,selectedVisionSavedKey } from '../aiCenterSettings';import AiCenterContentManager from './AiCenterContentManager.vue';import AdminControlCenter from './AdminControlCenter.vue'
 const open=ref(false),controlCenter=ref(false),message=ref('')
 watch(open,async v=>{if(v)await loadAiCenterSettings()})
 // 切换 Provider 时清理内存中的 Key，避免把一个供应商的凭据误发给另一个供应商。
@@ -12,9 +12,18 @@ async function save(){try{await saveAiCenterKey();message.value=settings.consent
 async function saveReviewer(){try{await saveReviewKey();message.value=settings.reviewConsentToStore?'MultiWeb AI 审核 Key 已加密保存。':'审核 Key 仅保留在当前页面内存。'}catch(e){settings.error=e.message}}
 async function saveVision(){try{await saveVisionKey();message.value=settings.visionConsentToStore?'视觉 Key 已加密保存。':'视觉 Key 仅保留在当前页面内存。'}catch(e){settings.error=e.message}}
 async function removeVision(){try{await deleteVisionKey();message.value='已删除保存的视觉 Key。'}catch(e){settings.error=e.message}}
+async function bindBrowserBridge(){
+  try {
+    const binding=await browserBridgeApi.bind()
+    const scheme=location.protocol==='https:'?'wss:':'ws:'
+    const authority=location.port==='5173'?`${location.hostname}:8080`:location.host
+    window.postMessage({source:'FINALS_COMPASS_WEBAPP',type:'BIND_BROWSER_BRIDGE',bindingSecret:binding.bindingSecret,bridgeUrl:`${scheme}//${authority}/ws/browser-bridge`},location.origin)
+    message.value='绑定请求已发送到扩展；以后短时凭证由扩展自动换取。'
+  } catch(e) { settings.error=e.message }
+}
 </script>
 <template><button class="ai-center-settings-trigger" @click="open=true">AI 菜单</button><Teleport to="body"><div v-if="open" class="ai-settings-layer" @click.self="open=false"><aside class="ai-settings-panel"><header><div><small>AI CENTER</small><h2>AI 菜单</h2></div><button @click="open=false">×</button></header><p v-if="settings.error" class="form-error">{{settings.error}}</p><p v-if="message" class="form-success">{{message}}</p><AiCenterContentManager/>
-<section><h3>浏览器扩展</h3><p>同一个扩展同时支持 Agent 多页检索与 MultiWeb AI 协作；任务结束后自动关闭任务网页并返回平台。</p><a class="ai-extension-download" href="/downloads/finals-compass-webagent-extension.zip" download>下载浏览器扩展 v0.6.3</a></section>
+<section><h3>浏览器扩展</h3><p>安装后只需人工绑定一次；此后扩展会自动用机器绑定凭证换取两分钟、单次有效的连接票据，不保存登录会话。</p><a class="ai-extension-download" href="/downloads/finals-compass-webagent-extension-v0.7.0.zip" download="finals-compass-webagent-extension-v0.7.0.zip">下载浏览器扩展 v0.7.0</a><div class="ai-setting-actions"><button type="button" @click="bindBrowserBridge">绑定此浏览器扩展</button></div></section>
 <section v-if="isAdmin"><button class="ai-control-center-trigger" type="button" @click="controlCenter=true"><span><b>控制中心</b><small>平台模型通道、Agent Runtime 与页面内容管理</small></span><i>›</i></button></section>
 <section><h3>使用规则</h3><p v-if="settings.dashboard.internalTestOpen">当前处于内测开放期：所有已登录用户均可使用平台 AI。</p><ul class="ai-settings-rules"><li>每日登录只记一次 +1。</li><li>每份资料提交 +2，审核通过再 +5。</li><li>论坛或指南内容审核通过 +2。</li><li>正式开放后，上月活跃度前 20 名获得本月平台 AI 资格。</li><li>自己的 Key 可加密保存，也可仅本次使用。</li></ul></section>
 <section><div class="ai-settings-heading"><h3>本月排行榜</h3><button @click="loadAiCenterSettings">刷新</button></div><div class="ai-settings-score"><span>{{settings.dashboard.month||'本月'}}</span><b>{{settings.dashboard.myScore??0}}</b><small>我的积分</small></div><ol v-if="settings.dashboard.leaderboard?.length" class="ai-settings-ranking"><li v-for="item in settings.dashboard.leaderboard" :key="item.user_id"><b>{{item.ranking_position}}</b><span>{{item.display_name}}</span><small>{{item.score}}</small></li></ol><p v-else>本月还没有积分记录。</p></section>

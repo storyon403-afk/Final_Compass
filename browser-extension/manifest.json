@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Finals Compass AI Runtime Bridge",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "description": "Browser bridge for Agent Runtime research and Multi-WebAgent collaboration.",
   "permissions": ["tabs", "scripting", "storage", "alarms"],
   "host_permissions": [
     "http://localhost:5173/*",
     "http://127.0.0.1:5173/*",
+    "http://localhost:8080/*",
+    "http://127.0.0.1:8080/*",
     "https://kimi.moonshot.cn/*",
     "https://chat.deepseek.com/*",
     "https://www.qianwen.com/*",

@@ -311,7 +311,7 @@ watch(() => authSession.value.mustChangePassword, (required) => { if (required) 
 onMounted(() => {
   mediaQuery.addEventListener('change', handleSystemTheme)
   window.addEventListener('keydown', closeOverlays)
-  if (authenticated.value) initIdentity()
+  if (authenticated.value) initIdentity().catch(() => {})
   if(authenticated.value)systemApi.modules().then(value=>moduleSettings.value=value).catch(()=>{})
 })
 onBeforeUnmount(() => {

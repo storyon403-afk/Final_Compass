@@ -17,21 +17,23 @@ spring:
       static-locations: ${STATIC_LOCATIONS:classpath:/static/}
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
       timeout: ${REDIS_COMMAND_TIMEOUT:2s}
 server:
   port: ${SERVER_PORT:8080}
-  address: ${SERVER_ADDRESS}
+  address: ${SERVER_ADDRESS:127.0.0.1}
 app:
   environment: ${APP_ENV:dev}
+  browser-bridge:
+    allowed-origin-patterns: ${BROWSER_BRIDGE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,chrome-extension://*}
   mail:
     encryption-key: ${MAIL_SECRET_ENCRYPTION_KEY:}
     verification-pepper: ${EMAIL_CODE_PEPPER:}
-    login-url: ${APP_LOGIN_URL}
-    frontend-url: ${APP_FRONTEND_URL}
+    login-url: ${APP_LOGIN_URL:http://localhost:5173}
+    frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
     microsoft:
       client-id: ${MICROSOFT_MAIL_CLIENT_ID:}
       client-secret: ${MICROSOFT_MAIL_CLIENT_SECRET:}
