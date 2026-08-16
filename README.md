@@ -16,7 +16,7 @@ Finals Compass 是一个面向鬼大课程复习与学习协作的开源平台�
 - **AI 凭据边界**：支持平台 Key、加密保存的 BYOK 和仅驻留当前请求的临时 BYOK；模型调用统一通过凭据解析入口取得 Key。
 - **暂挂体验**：提供全局可访问的短暂休息交互，支持视频预加载和管理员配置。
 
-AI Center 当前提供三种对外 Runtime：`CHAT`、`AGENT`、`MULTI_WEB_AGENT`。历史上的硬编码 Skill 编排、Workflow 页面和旧版解题链路已经退出当前入口；数据库仍保留部分注册表和演进基础设施，不能据此判断旧 Runtime 仍可由用户调用。仓库不包含平台生产 API Key，也不捆绑或自动部署本地大模型。
+AI Center 当前提供三种对外 Runtime：`CHAT`、`AGENT`、`MULTI_WEB_AGENT`。历史上的硬编码 Skill 编排、Workflow 页面和旧版解题链路已经退出当前入口；数据库仍保留部分注册表和演进基础设施，但是旧 Runtime 不可由用户调用。仓库不包含平台生产 API Key，也不捆绑或自动部署本地大模型。
 
 ## 技术栈
 

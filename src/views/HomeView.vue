@@ -1,7 +1,10 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { catalogApi, isAdmin } from '../api'
 
+const route = useRoute()
+const router = useRouter()
 const colleges = ref([])
 const courses = ref([])
 const selectedCollege = ref('')
@@ -51,14 +54,34 @@ const programSearchResults = computed(() => {
     && `${course.name} ${course.code || ''}`.toLowerCase().includes(keyword))
 })
 
-function chooseCollege(name) { selectedCollege.value = name; selectedProgram.value = ''; selectedType.value = ''; query.value = '' }
-function chooseProgram(name) { selectedProgram.value = name; selectedType.value = ''; query.value = '' }
-function chooseType(name) { selectedType.value = name }
-function goTo(level) {
-  if (level === 'college') { selectedCollege.value = ''; selectedProgram.value = ''; selectedType.value = '' }
-  if (level === 'program') { selectedProgram.value = ''; selectedType.value = '' }
-  if (level === 'type') selectedType.value = ''
+function navigationQuery(college = '', program = '', type = '') {
+  return {
+    ...(college ? { college } : {}),
+    ...(program ? { program } : {}),
+    ...(type ? { type } : {})
+  }
+}
+
+function syncNavigationFromRoute() {
+  selectedCollege.value = typeof route.query.college === 'string' ? route.query.college : ''
+  selectedProgram.value = selectedCollege.value && typeof route.query.program === 'string' ? route.query.program : ''
+  selectedType.value = selectedProgram.value && typeof route.query.type === 'string' ? route.query.type : ''
   query.value = ''
+}
+
+function chooseCollege(name) {
+  router.push({ path: '/', query: navigationQuery(name) })
+}
+function chooseProgram(name) {
+  router.push({ path: '/', query: navigationQuery(selectedCollege.value, name) })
+}
+function chooseType(name) {
+  router.push({ path: '/', query: navigationQuery(selectedCollege.value, selectedProgram.value, name) })
+}
+function goTo(level) {
+  if (level === 'college') router.push({ path: '/' })
+  if (level === 'program') router.push({ path: '/', query: navigationQuery(selectedCollege.value) })
+  if (level === 'type') router.push({ path: '/', query: navigationQuery(selectedCollege.value, selectedProgram.value) })
 }
 
 async function loadData() {
@@ -95,6 +118,8 @@ function closeModals(event) {
   showAddCollege.value = false
   showAddCourse.value = false
 }
+
+watch(() => route.query, syncNavigationFromRoute, { immediate: true })
 
 onMounted(() => { loadData(); window.addEventListener('keydown', closeModals) })
 onBeforeUnmount(() => window.removeEventListener('keydown', closeModals))
