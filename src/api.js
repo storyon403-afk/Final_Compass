@@ -311,6 +311,9 @@ export const aiEvolutionApi = {
 export const cetApi = {
   papers: (level = '') => request(`/cet/papers${level ? `?level=${encodeURIComponent(level)}` : ''}`),
   items: (level, mode, section = '') => request(`/cet/items?level=${encodeURIComponent(level)}&mode=${encodeURIComponent(mode)}${section ? `&section=${encodeURIComponent(section)}` : ''}`),
+  adminItems: () => request('/cet/admin/items'),
+  adminSections: () => request('/cet/admin/sections'),
+  clearSection: (id) => request(`/cet/admin/sections/${id}/content`, { method: 'DELETE' }),
   createPaper: (fields) => request('/cet/papers', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
   }),
@@ -318,15 +321,17 @@ export const cetApi = {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
   }),
   removePaper: (id) => request(`/cet/papers/${id}`, { method: 'DELETE' }),
-  paperAsset: (id, type) => requestBlob(`/cet/papers/${id}/assets/${type}`),
-  paperAssetUrl: (id, type) => `${API_BASE}/cet/papers/${id}/assets/${type}`,
+  uploadPracticeAudio: (id, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request(`/cet/papers/${id}/practice-audio`, { method: 'POST', body: form })
+  },
   createItem: (fields) => request('/cet/items', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
   }),
   updateItem: (id, fields) => request(`/cet/items/${id}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)
   }),
-  removeItem: (id) => request(`/cet/items/${id}`, { method: 'DELETE' }),
   uploadAudio: (id, file) => {
     const form = new FormData()
     form.append('file', file)

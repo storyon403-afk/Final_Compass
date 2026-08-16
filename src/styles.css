@@ -523,7 +523,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .cet-analysis, .cet-reference, .cet-translation { display: grid; gap: 8px; }
 .cet-analysis b, .cet-reference b, .cet-translation b { font-size: 11px; }
 .cet-analysis p, .cet-reference p, .cet-translation p { margin: 0; color: var(--text-2); line-height: 1.8; white-space: pre-wrap; }
-.cet-admin-modal { width: min(920px, 100%); }
+.cet-admin-modal { width: min(980px, 100%); max-height: 90vh; overflow-y: auto; }
 .cet-admin-modal details { margin-bottom: 28px; padding: 13px 16px; border: 1px solid var(--border); border-radius: 10px; }
 .cet-admin-modal summary { cursor: pointer; font-size: 12px; font-weight: 500; }
 .cet-admin-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 17px; }
@@ -533,6 +533,58 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .cet-admin-form label { display: grid; gap: 7px; font-size: 10px; }
 .cet-admin-form input, .cet-admin-form select, .cet-admin-form textarea { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); outline: 0; }
 .cet-admin-form textarea { resize: vertical; line-height: 1.55; }
+.cet-admin-form label small { color: var(--text-3); line-height: 1.5; }
+.cet-admin-actions { display: flex; align-items: center; gap: 9px; }
+.cet-admin-actions > button:not(.secondary-button) { border: 0; background: transparent; color: var(--text-3); cursor: pointer; }
+.cet-admin-paper-list, .cet-admin-item-list { display: grid; gap: 7px; margin-top: 14px; max-height: 260px; overflow: auto; }
+.cet-admin-paper-list article, .cet-admin-item-list article { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 11px; border-radius: 8px; background: var(--surface-2); }
+.cet-admin-paper-list article div, .cet-admin-item-list article div { min-width: 0; display: grid; gap: 4px; }
+.cet-admin-paper-list b, .cet-admin-item-list b { overflow: hidden; font-size: 11px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+.cet-admin-paper-list small, .cet-admin-item-list small { color: var(--text-3); font-size: 9px; }
+.cet-admin-paper-list article span, .cet-admin-item-list article span { flex: none; display: flex; gap: 7px; }
+.cet-admin-paper-list button, .cet-admin-item-list button { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: 10px; }
+.cet-admin-modal .cet-audio-override { margin: 0; }
+.cet-source-note { min-height: 42px; color: var(--text-3); font-size: 10px; line-height: 1.65; }
+.cet-practice-audio { display: grid; grid-template-columns: 1.2fr 1fr auto; align-items: end; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.cet-practice-audio > div { align-self: center; display: grid; gap: 5px; }
+.cet-practice-audio > div small, .cet-practice-audio > p { color: var(--text-3); font-size: 9px; }
+.cet-practice-audio > p { grid-column: 1 / -1; margin: 0; }
+.cet-admin-tabs { display: flex; gap: 4px; margin: 20px 0; padding: 4px; border-radius: 10px; background: var(--surface-2); }
+.cet-admin-tabs button { flex: 1; padding: 10px; border: 0; border-radius: 7px; background: transparent; color: var(--text-3); cursor: pointer; }
+.cet-admin-tabs button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 5px rgba(0,0,0,.06); }
+.cet-admin-component { display: grid; gap: 20px; }
+.cet-admin-component > header { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.cet-admin-component > header h3, .cet-admin-component > h3 { margin: 0; font-size: 17px; font-weight: 550; }
+.cet-admin-component > header p { margin: 5px 0 0; color: var(--text-3); font-size: 10px; }
+.cet-resource-paper { display: grid; gap: 11px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; }
+.cet-resource-paper > header { display: flex; align-items: center; justify-content: space-between; }
+.cet-resource-paper > header div { display: grid; gap: 4px; }
+.cet-resource-paper > header small, .cet-resource-paper > header span { color: var(--text-3); font-size: 9px; }
+.cet-resource-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.cet-resource-grid button { display: grid; gap: 6px; min-height: 86px; padding: 12px; border: 1px dashed var(--border-strong); border-radius: 9px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.cet-resource-grid button.filled { border-style: solid; background: var(--surface-2); }
+.cet-resource-grid button:hover { border-color: var(--text); }
+.cet-resource-grid button span, .cet-resource-grid button small { color: var(--text-3); font-size: 9px; }
+.cet-resource-grid button b { font-size: 12px; font-weight: 550; }
+.cet-resource-editor-head > button { border: 0; background: transparent; color: var(--text-3); cursor: pointer; }
+.cet-resource-editor-head > div { flex: 1; display: grid; gap: 5px; }
+.cet-resource-editor-head > div small { color: var(--text-3); font-size: 9px; }
+.cet-resource-empty { padding: 30px; border: 1px dashed var(--border-strong); border-radius: 10px; color: var(--text-3); text-align: center; font-size: 11px; }
+.cet-fixed-mapping { display: grid; grid-template-columns: 1.4fr .8fr 1fr; gap: 8px; padding: 12px; border-radius: 9px; background: var(--surface-2); }
+.cet-fixed-mapping span { display: grid; gap: 5px; color: var(--text-3); font-size: 9px; }
+.cet-fixed-mapping strong { color: var(--text); font-size: 10px; font-weight: 550; }
+.cet-admin-item-list article.active { outline: 1px solid var(--text); }
+.cet-paper-search { position: relative; display: grid; gap: 7px; }
+.cet-paper-search > span { font-size: 10px; }
+.cet-paper-search input { width: 100%; min-height: 44px; padding: 10px 70px 10px 12px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface); color: var(--text); outline: 0; }
+.cet-paper-search input:focus { border-color: var(--text); }
+.cet-paper-search small { position: absolute; right: 12px; bottom: 15px; color: var(--text-3); font-size: 9px; pointer-events: none; }
+@media (max-width: 700px) {
+  .cet-resource-grid { grid-template-columns: 1fr; }
+  .cet-fixed-mapping, .cet-practice-audio { grid-template-columns: 1fr; }
+  .cet-practice-audio > p { grid-column: 1; }
+  .cet-resource-editor-head { align-items: flex-start !important; flex-wrap: wrap; }
+}
 
 .auth-page { position: relative; min-height: 100vh; display: grid; align-items: center; overflow: hidden; padding: 30px; background: var(--bg); isolation: isolate; }
 .auth-card { position: relative; z-index: 3; width: min(400px, 100%); padding: 36px; border: 1px solid var(--border); border-radius: 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: 0 8px 30px rgba(0,0,0,.05); backdrop-filter: blur(10px); opacity: 0; animation: auth-card-arrive .7s 2.15s cubic-bezier(.2,.75,.25,1) forwards; }

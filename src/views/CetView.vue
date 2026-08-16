@@ -1,8 +1,7 @@
 <script setup>
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { cetApi, isAdmin } from '../api'
 
-const PdfViewer = defineAsyncComponent(() => import('../components/PdfViewer.vue'))
 const level = ref('')
 const mode = ref('')
 const section = ref('')
@@ -10,6 +9,11 @@ const selectedItem = ref(null)
 const selectedPaperKey = ref('')
 const items = ref([])
 const papers = ref([])
+const adminItems = ref([])
+const adminSections = ref([])
+const adminTab = ref('PAPERS')
+const selectedAdminSectionId = ref(null)
+const adminPaperSearch = ref('')
 const loading = ref(false)
 const error = ref('')
 const answer = ref('')
@@ -21,10 +25,9 @@ const audioLoading = ref(false)
 const showAdmin = ref(false)
 const adminMessage = ref('')
 const editingItemId = ref(null)
+const editingPaperId = ref(null)
 const audioFile = ref(null)
-const paperPreview = ref(null)
-const paperAudio = ref(null)
-const paperAssetLoading = ref('')
+const practiceAudioFile = ref(null)
 const groupAnswers = ref({})
 const groupSubmitted = ref(false)
 const showTranscript = ref(false)
@@ -120,7 +123,8 @@ const matchingParagraphs = computed(() => {
   }).filter((paragraph) => paragraph.text.trim())
 })
 
-const paperForm = ref({ level: 'CET4', examYear: 2026, examMonth: 6, setNumber: 1, title: '' })
+const blankPaper = () => ({ level: 'CET4', examYear: 2026, examMonth: 6, setNumber: 1, title: '', sourceName: '', sourcePageUrl: '', usageNote: '' })
+const paperForm = ref(blankPaper())
 const blankItem = () => ({
   paperId: null, mode: 'PRACTICE', section: 'WRITING', title: '', prompt: '', passage: '',
   translation: '', analysis: '', keySentence: '', answerType: 'CHOICE',
@@ -128,6 +132,36 @@ const blankItem = () => ({
   itemOrder: 10, audioStartMs: null, audioEndMs: null
 })
 const itemForm = ref(blankItem())
+const sectionCatalog = {
+  PRACTICE: practiceSections,
+  INTENSIVE: [
+    { key: 'NEWS', name: '短篇新闻（四级）', note: 'CET4 精听材料' },
+    { key: 'LONG_CONVERSATION', name: '长对话', note: 'CET4 / CET6 精听材料' },
+    { key: 'LISTENING_PASSAGE', name: '听力篇章', note: '分类练习与精听均可使用' },
+    { key: 'LECTURE', name: '讲话／报道／讲座（六级）', note: 'CET6 精听材料' }
+  ]
+}
+const adminItemsForPaper = (paperId) => adminItems.value.filter((item) => item.paperId === paperId)
+const selectedAdminSection = computed(() => adminSections.value.find((entry) => entry.id === selectedAdminSectionId.value) || null)
+const selectedAdminItems = computed(() => {
+  const slot = selectedAdminSection.value
+  return slot ? adminItems.value.filter((item) => item.paperId === slot.paperId && item.mode === slot.mode && item.section === slot.section) : []
+})
+const filteredAdminPapers = computed(() => {
+  const keyword = adminPaperSearch.value.trim().toLocaleLowerCase()
+  if (!keyword) return papers.value
+  const terms = keyword.split(/\s+/).filter(Boolean)
+  return papers.value.filter((paper) => {
+    const searchable = [
+      paper.title, paper.level, paper.level === 'CET4' ? '四级' : '六级',
+      paper.examYear, `${paper.examMonth}月`, paper.setNumber, `第${paper.setNumber}套`, paper.sourceName
+    ].map((value) => String(value ?? '').toLocaleLowerCase()).join(' ')
+    return terms.every((term) => searchable.includes(term))
+  })
+})
+function sectionName(code) {
+  return [...practiceSections, ...sectionCatalog.INTENSIVE].find((entry) => entry.key === code)?.name || code
+}
 
 function chooseLevel(value) { level.value = value; mode.value = ''; section.value = ''; selectedPaperKey.value = ''; selectedItem.value = null }
 async function chooseMode(value) {
@@ -212,41 +246,68 @@ function goBack() {
   level.value = ''
 }
 function submitAnswer() { if (answer.value.trim()) submitted.value = true }
-async function openPaperAsset(paper, type) {
-  paperAssetLoading.value = `${paper.id}-${type}`; error.value = ''
-  try {
-    if (type === 'audio') {
-      await cetApi.prepareAudioStream()
-      paperAudio.value = { paper, url: cetApi.paperAssetUrl(paper.id, type) }
-    } else {
-      const blob = await cetApi.paperAsset(paper.id, type)
-      paperPreview.value = { paper, type, blob }
-    }
-  } catch (reason) { error.value = reason.message }
-  finally { paperAssetLoading.value = '' }
-}
-function closePaperAudio() {
-  if (paperAudio.value?.url?.startsWith('blob:')) URL.revokeObjectURL(paperAudio.value.url)
-  paperAudio.value = null
-}
 async function openAdmin() {
-  showAdmin.value = true; adminMessage.value = ''; editingItemId.value = null; itemForm.value = blankItem()
+  showAdmin.value = true; adminMessage.value = ''; adminTab.value = 'PAPERS'; selectedAdminSectionId.value = null; adminPaperSearch.value = ''
+  editingItemId.value = null; editingPaperId.value = null; itemForm.value = blankItem(); paperForm.value = blankPaper()
   await loadAdminData()
 }
 async function loadAdminData() {
   try {
-    papers.value = await cetApi.papers()
+    ;[papers.value, adminItems.value, adminSections.value] = await Promise.all([cetApi.papers(), cetApi.adminItems(), cetApi.adminSections()])
     if (!itemForm.value.paperId && papers.value.length) itemForm.value.paperId = papers.value[0].id
   } catch (reason) { adminMessage.value = reason.message }
 }
 async function savePaper() {
   adminMessage.value = ''
   try {
-    await cetApi.createPaper(paperForm.value)
-    paperForm.value.title = ''; adminMessage.value = '试卷已添加'; await loadAdminData()
+    if (editingPaperId.value) await cetApi.updatePaper(editingPaperId.value, paperForm.value)
+    else await cetApi.createPaper(paperForm.value)
+    adminMessage.value = editingPaperId.value ? '套卷来源已更新' : '套卷来源已添加'
+    editingPaperId.value = null; paperForm.value = blankPaper(); await loadAdminData()
+  } catch (reason) { adminMessage.value = reason.message }
+}
+function editPaper(paper) {
+  editingPaperId.value = paper.id
+  paperForm.value = {
+    level: paper.level, examYear: paper.examYear, examMonth: paper.examMonth,
+    setNumber: paper.setNumber, title: paper.title, sourceName: paper.sourceName || '',
+    sourcePageUrl: paper.sourcePageUrl || '', usageNote: paper.usageNote || ''
+  }
+}
+async function removePaper(paper) {
+  if (!window.confirm(`确认删除“${paper.title}”及其全部题目吗？此操作不可撤销。`)) return
+  try {
+    await cetApi.removePaper(paper.id)
+    adminMessage.value = '套卷已删除'; await loadAdminData()
+  } catch (reason) { adminMessage.value = reason.message }
+}
+function cancelPaperEdit() { editingPaperId.value = null; paperForm.value = blankPaper() }
+function selectAdminSection(slot) {
+  selectedAdminSectionId.value = slot.id
+  editingItemId.value = null
+  itemForm.value = { ...blankItem(), paperId: slot.paperId, mode: slot.mode, section: slot.section }
+  adminMessage.value = ''
+}
+function backToAdminSections() {
+  selectedAdminSectionId.value = null
+  editingItemId.value = null
+  itemForm.value = blankItem()
+  if (papers.value.length) itemForm.value.paperId = papers.value[0].id
+}
+async function bindPracticeAudio() {
+  if (!itemForm.value.paperId || !practiceAudioFile.value) return
+  adminMessage.value = ''
+  try {
+    await cetApi.uploadPracticeAudio(itemForm.value.paperId, practiceAudioFile.value)
+    practiceAudioFile.value = null
+    adminMessage.value = '分类练习／精听精讲共用音频已绑定'
+    await loadAdminData()
   } catch (reason) { adminMessage.value = reason.message }
 }
 function editItem(item) {
+  const slot = adminSections.value.find((entry) => entry.paperId === item.paperId && entry.mode === item.mode && entry.section === item.section)
+  if (slot) selectedAdminSectionId.value = slot.id
+  adminTab.value = 'ITEMS'
   editingItemId.value = item.id
   itemForm.value = {
     paperId: item.paperId, mode: item.mode, section: item.section, title: item.title,
@@ -265,15 +326,21 @@ async function saveItem() {
       : await cetApi.createItem(itemForm.value)
     if (audioFile.value) await cetApi.uploadAudio(saved.id, audioFile.value)
     adminMessage.value = editingItemId.value ? '题目已更新' : '题目已添加'
-    editingItemId.value = null; audioFile.value = null; itemForm.value = blankItem()
+    editingItemId.value = null; audioFile.value = null
+    const slot = selectedAdminSection.value
+    itemForm.value = slot ? { ...blankItem(), paperId: slot.paperId, mode: slot.mode, section: slot.section } : blankItem()
     await loadAdminData()
     if (section.value) await chooseSection(section.value)
   } catch (reason) { adminMessage.value = reason.message }
 }
-async function removeItem(item) {
-  if (!window.confirm(`确认删除“${item.title}”吗？`)) return
-  try { await cetApi.removeItem(item.id); await chooseSection(section.value) }
-  catch (reason) { error.value = reason.message }
+async function clearAdminSection() {
+  const slot = selectedAdminSection.value
+  if (!slot || !window.confirm(`确认清空“${slot.paperTitle} / ${sectionName(slot.section)}”的全部内容吗？`)) return
+  try {
+    await cetApi.clearSection(slot.id)
+    adminMessage.value = '当前题型内容已清空'; await loadAdminData()
+    if (section.value) await chooseSection(section.value)
+  } catch (reason) { adminMessage.value = reason.message }
 }
 function closeAdmin(event) { if (event.key === 'Escape') showAdmin.value = false }
 
@@ -281,7 +348,6 @@ onMounted(() => window.addEventListener('keydown', closeAdmin))
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', closeAdmin)
   if (audioUrl.value.startsWith('blob:')) URL.revokeObjectURL(audioUrl.value)
-  if (paperAudio.value?.url?.startsWith('blob:')) URL.revokeObjectURL(paperAudio.value.url)
   if (sessionAudioUrl.value.startsWith('blob:')) URL.revokeObjectURL(sessionAudioUrl.value)
 })
 </script>
@@ -321,25 +387,16 @@ onBeforeUnmount(() => {
 
     <div v-else-if="stage === 'paperlist'" class="cet-full-paper-wrap">
       <header class="section-heading">
-        <div><h2>2025 年 12 月完整套卷</h2><p>本地学习试用 · 真题、答案分开查看，提交练习后再核对更有效。</p></div>
-        <span>{{ papers.length }} 套已整理</span>
+        <div><h2>完整套卷下载来源</h2><p>平台不保存或分发完整套卷，只提供管理员核对过的外部来源。</p></div>
+        <span>{{ papers.length }} 个来源已整理</span>
       </header>
       <div v-if="loading" class="empty-state">正在加载套卷…</div>
       <div v-else class="cet-full-paper-grid">
         <article v-for="paper in papers" :key="paper.id">
           <header><time>{{ paper.examYear }}.{{ String(paper.examMonth).padStart(2, '0') }}</time><b>SET {{ String(paper.setNumber).padStart(2, '0') }}</b></header>
           <h3>{{ paper.title }}</h3>
-          <div class="cet-asset-status">
-            <span :class="{ ready: paper.questionAvailable }">真题 PDF</span>
-            <span :class="{ ready: paper.answerAvailable }">答案 PDF</span>
-            <span :class="{ ready: paper.audioAvailable }">{{ paper.audioOriginalName ? '听力音频' : '未提供音频' }}</span>
-          </div>
-          <div class="cet-asset-actions">
-            <button type="button" :disabled="!paper.questionAvailable || paperAssetLoading" @click="openPaperAsset(paper, 'question')">{{ paperAssetLoading === `${paper.id}-question` ? '载入中…' : '查看真题' }}</button>
-            <button type="button" :disabled="!paper.answerAvailable || paperAssetLoading" @click="openPaperAsset(paper, 'answer')">{{ paperAssetLoading === `${paper.id}-answer` ? '载入中…' : '查看答案' }}</button>
-            <button v-if="paper.audioOriginalName" type="button" :disabled="!paper.audioAvailable || paperAssetLoading" @click="openPaperAsset(paper, 'audio')">{{ paperAssetLoading === `${paper.id}-audio` ? '载入中…' : '播放听力' }}</button>
-          </div>
-          <footer><span>来源：{{ paper.sourceName }}</span><a :href="paper.sourcePageUrl" target="_blank" rel="noopener noreferrer">核对来源 ↗</a></footer>
+          <p class="cet-source-note">{{ paper.usageNote || '请前往来源页面核对并下载完整套卷。' }}</p>
+          <footer><span>来源：{{ paper.sourceName || '待管理员核对' }}</span><a v-if="paper.sourcePageUrl" :href="paper.sourcePageUrl" target="_blank" rel="noopener noreferrer">前往下载并核对来源 ↗</a></footer>
         </article>
       </div>
     </div>
@@ -507,7 +564,6 @@ onBeforeUnmount(() => {
             <span><small>{{ item.paperTitle }} · 第 {{ item.setNumber }} 套</small><strong>{{ item.title }}</strong></span>
             <i>开始 →</i>
           </button>
-          <div v-if="isAdmin" class="cet-row-admin"><button type="button" @click="editItem(item)">编辑</button><button type="button" @click="removeItem(item)">删除</button></div>
         </article>
       </div>
     </div>
@@ -567,25 +623,57 @@ onBeforeUnmount(() => {
   <div v-if="showAdmin" class="modal-backdrop" @click.self="showAdmin=false">
     <section class="upload-modal cet-admin-modal">
       <button class="modal-close" type="button" @click="showAdmin=false">×</button>
-      <span class="eyebrow">管理员功能</span><h2>CET 题库录入</h2><p>先创建试卷，再录入题目。真题原文和音频请确认拥有使用权限。</p>
+      <span class="eyebrow">管理员功能</span><h2>CET 题库管理</h2>
+      <nav class="cet-admin-tabs"><button type="button" :class="{ active: adminTab === 'PAPERS' }" @click="adminTab='PAPERS';selectedAdminSectionId=null">套卷管理</button><button type="button" :class="{ active: adminTab === 'ITEMS' }" @click="adminTab='ITEMS'">题目管理</button></nav>
+      <p v-if="adminMessage" class="form-success">{{ adminMessage }}</p>
 
-      <details>
-        <summary>＋ 新建试卷</summary>
+      <section v-if="adminTab === 'PAPERS'" class="cet-admin-component">
+        <header><div><h3>套卷与外部来源</h3><p>新建套卷会自动建立全部合法题型资源槽位。</p></div></header>
         <form class="cet-admin-form compact" @submit.prevent="savePaper">
-          <label>级别<select v-model="paperForm.level"><option>CET4</option><option>CET6</option></select></label>
+          <label>级别<select v-model="paperForm.level" :disabled="editingPaperId"><option>CET4</option><option>CET6</option></select></label>
           <label>年份<input v-model.number="paperForm.examYear" type="number" min="2000" max="2100" required /></label>
           <label>月份<select v-model.number="paperForm.examMonth"><option :value="6">6 月</option><option :value="12">12 月</option></select></label>
           <label>第几套<input v-model.number="paperForm.setNumber" type="number" min="1" max="9" required /></label>
           <label class="full">试卷标题<input v-model="paperForm.title" required placeholder="例如：2026 年 6 月四级 · 第一套" /></label>
-          <button class="secondary-button" type="submit">添加试卷</button>
+          <label>来源名称<input v-model="paperForm.sourceName" required maxlength="120" placeholder="例如：中国教育考试网" /></label>
+          <label class="full">来源核对地址<input v-model="paperForm.sourcePageUrl" type="url" required maxlength="500" placeholder="https://..." /></label>
+          <label class="full">来源／使用说明<textarea v-model="paperForm.usageNote" maxlength="500" rows="2" placeholder="版本、核对日期或使用范围"></textarea></label>
+          <div class="cet-admin-actions full"><button class="secondary-button" type="submit">{{ editingPaperId ? '保存套卷修改' : '添加试卷' }}</button><button v-if="editingPaperId" type="button" @click="cancelPaperEdit">取消编辑</button></div>
         </form>
-      </details>
+        <h3>已有套卷（{{ papers.length }}）</h3>
+        <div class="cet-admin-paper-list">
+          <article v-for="paper in papers" :key="paper.id">
+            <div><b>{{ paper.title }}</b><small>{{ paper.sourceName || '来源待补充' }} · {{ adminItemsForPaper(paper.id).length }} 道练习题</small></div>
+            <span><button type="button" @click="editPaper(paper)">修改</button><button class="danger-link" type="button" @click="removePaper(paper)">删除</button></span>
+          </article>
+        </div>
+      </section>
 
-      <form class="cet-admin-form" @submit.prevent="saveItem">
-        <h3>{{ editingItemId ? '编辑题目' : '录入新题目' }}</h3>
-        <label>所属试卷<select v-model.number="itemForm.paperId" required><option v-for="paper in papers" :key="paper.id" :value="paper.id">{{ paper.title }}</option></select></label>
-        <label>训练方式<select v-model="itemForm.mode"><option value="PRACTICE">真题练习</option><option value="INTENSIVE">精听精读</option></select></label>
-        <label>题型代码<input v-model="itemForm.section" required placeholder="CAREFUL_READING" /></label>
+      <section v-else class="cet-admin-component">
+        <template v-if="!selectedAdminSection">
+          <header><div><h3>选择试卷与题型</h3><p>每张卡片对应唯一资源槽位；空白槽位可以直接开始录入。</p></div></header>
+          <label class="cet-paper-search"><span>按关键词筛选套卷</span><input v-model="adminPaperSearch" type="search" placeholder="例如：2025 四级 第一套" /><small>{{ filteredAdminPapers.length }} / {{ papers.length }} 套</small></label>
+          <div v-if="!filteredAdminPapers.length" class="cet-resource-empty">没有匹配的套卷，请更换关键词。</div>
+          <section v-for="paper in filteredAdminPapers" :key="paper.id" class="cet-resource-paper">
+            <header><div><b>{{ paper.title }}</b><small>{{ paper.level }}</small></div><span>{{ adminItemsForPaper(paper.id).length }} 道题</span></header>
+            <div class="cet-resource-grid">
+              <button v-for="slot in adminSections.filter(entry => entry.paperId === paper.id)" :key="slot.id" type="button" :class="{ filled: slot.itemCount > 0 }" @click="selectAdminSection(slot)">
+                <span>{{ slot.mode === 'PRACTICE' ? '分类练习' : '精听精讲' }}</span><b>{{ sectionName(slot.section) }}</b><small>{{ slot.itemCount ? `${slot.itemCount} 道内容，可修改` : '空白，点击录入' }}</small>
+              </button>
+            </div>
+          </section>
+        </template>
+
+        <template v-else>
+          <header class="cet-resource-editor-head"><button type="button" @click="backToAdminSections">← 返回题型选择</button><div><small>{{ selectedAdminSection.paperTitle }} · {{ selectedAdminSection.mode === 'PRACTICE' ? '分类练习' : '精听精讲' }}</small><h3>{{ sectionName(selectedAdminSection.section) }}</h3></div><button v-if="selectedAdminItems.length" class="danger-link" type="button" @click="clearAdminSection">清空当前题型</button></header>
+          <div v-if="selectedAdminItems.length" class="cet-admin-item-list">
+            <article v-for="item in selectedAdminItems" :key="item.id" :class="{ active: editingItemId === item.id }"><div><b>{{ item.title }}</b><small>排序 {{ item.itemOrder }}</small></div><span><button type="button" @click="editItem(item)">修改</button></span></article>
+          </div>
+          <div v-else class="cet-resource-empty">这个题型还没有内容，使用下方表单录入第一道题。</div>
+
+          <form class="cet-admin-form" @submit.prevent="saveItem">
+            <h3>{{ editingItemId ? '修改当前题目' : '录入题目' }}</h3>
+            <div class="cet-fixed-mapping full"><span>所属试卷<strong>{{ selectedAdminSection.paperTitle }}</strong></span><span>训练方式<strong>{{ selectedAdminSection.mode === 'PRACTICE' ? '分类练习' : '精听精讲' }}</strong></span><span>题型<strong>{{ sectionName(selectedAdminSection.section) }} · {{ selectedAdminSection.section }}</strong></span></div>
         <label>答案类型<select v-model="itemForm.answerType"><option value="CHOICE">选择题</option><option value="TEXT">主观题</option></select></label>
         <label class="full">标题<input v-model="itemForm.title" required /></label>
         <label class="full">题目<textarea v-model="itemForm.prompt" rows="3"></textarea></label>
@@ -596,29 +684,20 @@ onBeforeUnmount(() => {
         <label class="full">解析<textarea v-model="itemForm.analysis" rows="4"></textarea></label>
         <label class="full">译文<textarea v-model="itemForm.translation" rows="4"></textarea></label>
         <label class="full">听力关键句<textarea v-model="itemForm.keySentence" rows="2"></textarea></label>
-        <label>音频起点（毫秒）<input v-model.number="itemForm.audioStartMs" type="number" min="0" /></label>
-        <label>音频终点（毫秒）<input v-model.number="itemForm.audioEndMs" type="number" min="0" /></label>
-        <label class="full">音频文件<input type="file" accept="audio/*" @change="audioFile=$event.target.files[0]" /></label>
-        <p v-if="adminMessage" class="form-success full">{{ adminMessage }}</p>
-        <button class="primary-button full" type="submit">{{ editingItemId ? '保存修改' : '添加题目' }}</button>
-      </form>
+        <label>共用音频起点（毫秒）<input v-model.number="itemForm.audioStartMs" type="number" min="0" /></label>
+        <label>共用音频终点（毫秒）<input v-model.number="itemForm.audioEndMs" type="number" min="0" /></label>
+        <section class="cet-practice-audio full">
+          <div><b>该套练习共用音频</b><small>{{ papers.find(paper => paper.id === itemForm.paperId)?.audioOriginalName || '尚未绑定' }}</small></div>
+          <label>选择整段音频<input type="file" accept="audio/*" @change="practiceAudioFile=$event.target.files[0]" /></label>
+          <button class="secondary-button" type="button" :disabled="!practiceAudioFile" @click="bindPracticeAudio">绑定／替换共用音频</button>
+          <p>仅供分类练习和精听精讲截取时间使用，不会出现在“完整套卷”下载模块。</p>
+        </section>
+        <details class="full cet-audio-override"><summary>特殊情况：为本题覆盖独立音频</summary><label>独立音频文件<input type="file" accept="audio/*" @change="audioFile=$event.target.files[0]" /></label></details>
+            <button class="primary-button full" type="submit">{{ editingItemId ? '保存修改' : '添加到当前题型' }}</button>
+          </form>
+        </template>
+      </section>
     </section>
   </div>
 
-  <PdfViewer
-    v-if="paperPreview"
-    :blob="paperPreview.blob"
-    :title="`${paperPreview.paper.title} · ${paperPreview.type === 'question' ? '真题' : '参考答案'}`"
-    @close="paperPreview=null"
-  />
-
-  <div v-if="paperAudio" class="modal-backdrop" @click.self="closePaperAudio">
-    <section class="cet-paper-audio-modal">
-      <button class="modal-close" type="button" @click="closePaperAudio">×</button>
-      <span class="eyebrow">LISTENING AUDIO</span>
-      <h2>{{ paperAudio.paper.title }}</h2>
-      <p>建议先完整作答，再结合答案 PDF 定位错题。</p>
-      <audio :src="paperAudio.url" controls autoplay preload="metadata"></audio>
-    </section>
-  </div>
 </template>
