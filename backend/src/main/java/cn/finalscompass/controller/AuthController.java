@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -22,10 +23,15 @@ public class AuthController {
   public static final String SESSION_COOKIE = "finals_compass_session";
   private final AuthService auth;
   private final BetaAccessService betaAccess;
+  private final boolean sessionCookieSecure;
 
-  public AuthController(AuthService auth, BetaAccessService betaAccess) {
+  public AuthController(
+      AuthService auth,
+      BetaAccessService betaAccess,
+      @Value("${app.session-cookie-secure:false}") boolean sessionCookieSecure) {
     this.auth = auth;
     this.betaAccess = betaAccess;
+    this.sessionCookieSecure = sessionCookieSecure;
   }
 
   @PostMapping("/beta-access/request")
@@ -42,8 +48,11 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public AuthProfile login(HttpServletResponse response, @Valid @RequestBody LoginRequest request) {
-    AuthProfile profile = auth.login(request);
+  public AuthProfile login(
+      HttpServletRequest servletRequest,
+      HttpServletResponse response,
+      @Valid @RequestBody LoginRequest request) {
+    AuthProfile profile = auth.login(request, clientIp(servletRequest));
     setSessionCookie(response, profile.token(), 7 * 24 * 60 * 60);
     return profile;
   }
@@ -81,6 +90,7 @@ public class AuthController {
         HttpHeaders.SET_COOKIE,
         ResponseCookie.from(SESSION_COOKIE, token)
             .httpOnly(true)
+            .secure(sessionCookieSecure)
             .sameSite("Lax")
             .path("/api")
             .maxAge(maxAge)

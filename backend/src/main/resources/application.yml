@@ -27,6 +27,11 @@ server:
   address: ${SERVER_ADDRESS:127.0.0.1}
 app:
   environment: ${APP_ENV:dev}
+  # Enable only after HTTPS is live; Secure cookies are not sent over plain HTTP.
+  session-cookie-secure: ${SESSION_COOKIE_SECURE:false}
+  auth-throttle:
+    failures-before-lock: ${AUTH_FAILURES_BEFORE_LOCK:5}
+    maximum-lock-seconds: ${AUTH_MAXIMUM_LOCK_SECONDS:900}
   browser-bridge:
     allowed-origin-patterns: ${BROWSER_BRIDGE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,chrome-extension://*}
   mail:

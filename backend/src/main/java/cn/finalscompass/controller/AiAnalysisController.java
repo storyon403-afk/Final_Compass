@@ -9,6 +9,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 
+/**
+ * 在这里介绍一下restController的具体基础设计，后面的类便不再介绍
+ */
+
 //创建spring mvc对象
 @RestController
 //访问路径匹配（请求映射方法）
@@ -16,6 +20,11 @@ import org.springframework.web.bind.annotation.*;
 public class AiAnalysisController {
 
   //声明
+  /**
+   * 1.Makes immutability explicit and compiler-enforced(no accidental field mutation in some later method)
+   * 2.Guarantees safe pubilcation
+   * 3.Forces constructor in jection rather than field/setter injection 
+   */
   private final AuthService auth;
   private final AiAnalysisService ai;
   private final AiDocumentConversionService documents;

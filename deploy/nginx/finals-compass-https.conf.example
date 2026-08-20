@@ -1,21 +1,45 @@
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
+# Host Nginx HTTPS template. Replace __DOMAIN__ after the domain points to the
+# server's current public IP. The public IP is intentionally not embedded here,
+# so a future IP migration only requires a DNS update.
 
-    root /usr/share/nginx/html;
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name __DOMAIN__;
+
+    ssl_certificate /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__DOMAIN__/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:FinalsCompassTLS:10m;
+    ssl_session_tickets off;
+
+    root /var/www/finals-compass;
     index index.html;
     client_max_body_size 42m;
     server_tokens off;
 
+    add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
     add_header Referrer-Policy "same-origin" always;
 
-    # Camera images are request-scoped. Stream this body directly to Spring Boot so
-    # Nginx does not spill it into client_body_temp on disk.
     location = /api/ai/invoke {
-        proxy_pass http://backend:8080;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_request_buffering off;
         proxy_set_header Host $host;
@@ -26,7 +50,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://backend:8080;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -36,7 +60,7 @@ server {
     }
 
     location = /ws/browser-bridge {
-        proxy_pass http://backend:8080;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -51,12 +75,12 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # ES module workers require a JavaScript MIME type; Ubuntu's default
-    # mime.types may not include .mjs.
     location ~* \.mjs$ {
         default_type application/javascript;
         expires 7d;
         add_header Cache-Control "public, immutable";
+        # add_header in a location replaces inherited headers, so repeat them.
+        add_header Strict-Transport-Security "max-age=31536000" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Referrer-Policy "same-origin" always;
@@ -66,6 +90,7 @@ server {
     location ~* \.(?:css|js|jpg|jpeg|png|gif|svg|webp|ico|woff2?)$ {
         expires 7d;
         add_header Cache-Control "public, immutable";
+        add_header Strict-Transport-Security "max-age=31536000" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Referrer-Policy "same-origin" always;

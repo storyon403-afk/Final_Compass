@@ -112,6 +112,10 @@ mvn spring-boot:run
 
 首次启动时 Flyway 创建数据库结构；若同时配置 `APP_ADMIN_USERNAME` 和 `APP_ADMIN_PASSWORD`，应用会在账号不存在时创建管理员。创建后可以移除这两个环境变量，已有账号不会被覆盖。
 
+也可以把上述环境变量写入仓库根目录的本地 `.env`（不得提交），然后从仓库根目录运行 `./scripts/dev.sh`。脚本会检查 JDBC 地址并清理旧构建产物，避免已改名迁移残留在 `target/classes` 中造成版本重复。
+
+如果已有开发数据库明确只报告 V29、V31 的 checksum mismatch，请先备份并核对这两个迁移的数据，再运行 `./scripts/flyway-repair.sh`。不要对未知的校验失败直接执行 repair，也不要修改其他已经发布的迁移文件。
+
 Redis 默认连接 `127.0.0.1:6379`。SMTP 授权码通过管理员界面加密保存，不应写入环境示例、源码或提交记录。AI Provider Key 同样由管理员或用户在运行时提供。
 
 ### 3. 启动前端
@@ -169,6 +173,11 @@ docker compose up -d --build mysql redis markitdown-worker backend
 ```
 
 前端执行 `npm ci && npm run build` 后，将 `dist/` 发布到宿主机 Nginx 的静态目录，并继续把 `/api/` 代理到 `127.0.0.1:8080`。
+
+准备绑定域名和 HTTPS 时，使用 `deploy/nginx/finals-compass-https.conf.example`
+作为宿主机 Nginx 模板，将 `__DOMAIN__` 替换为实际域名。域名 DNS 指向当前公网 IP
+并签发证书后，把 `.env` 中的站点 URL 更新为 HTTPS，同时设置
+`SESSION_COOKIE_SECURE=true`。更换服务器 IP 时只需更新 DNS，不需要修改该 Nginx 配置。
 
 `.env`、数据库卷和上传卷都不应提交到 Git。
 

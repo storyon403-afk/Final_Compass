@@ -19,21 +19,26 @@ public class AuthService {
   public static final String REQUEST_USER = "finalsCompassUser";
   private final JdbcClient jdbc;
   private final ActivityService activity;
+  private final AuthenticationThrottleService throttle;
   private final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder();
 
   @Autowired
-  public AuthService(JdbcClient jdbc, ActivityService activity) {
+  public AuthService(
+      JdbcClient jdbc, ActivityService activity, AuthenticationThrottleService throttle) {
     this.jdbc = jdbc;
     this.activity = activity;
+    this.throttle = throttle;
   }
 
   /** Keeps lightweight test doubles source-compatible without weakening production injection. */
   protected AuthService(JdbcClient jdbc) {
-    this(jdbc, null);
+    this(jdbc, null, null);
   }
 
   @Transactional
-  public AuthProfile login(LoginRequest request) {
+  public AuthProfile login(LoginRequest request, String clientIp) {
+    var throttleKeys = throttle == null ? null : throttle.loginKeys(request.username(), clientIp);
+    if (throttle != null) throttle.check(throttleKeys);
     UserRow user =
         jdbc.sql(
                 "SELECT id,username,password_hash,display_name,role,must_change_password FROM"
@@ -41,8 +46,12 @@ public class AuthService {
             .param("username", request.username().trim())
             .query(UserRow.class)
             .optional()
-            .orElseThrow(this::invalidCredentials);
-    if (!passwords.matches(request.password(), user.passwordHash())) throw invalidCredentials();
+            .orElse(null);
+    if (user == null || !passwords.matches(request.password(), user.passwordHash())) {
+      if (throttle != null) throttle.failed(throttleKeys);
+      throw invalidCredentials();
+    }
+    if (throttle != null) throttle.succeeded(throttleKeys);
     jdbc.sql("DELETE FROM login_session WHERE expires_at <= NOW()").update();
     String token = UUID.randomUUID().toString();
     jdbc.sql("INSERT INTO login_session(user_id,token,expires_at) VALUES (:user,:token,:expires)")
@@ -53,6 +62,11 @@ public class AuthService {
     if (activity != null) activity.recordDailyLogin(user.id());
     return new AuthProfile(
         token, user.username(), user.displayName(), user.role(), user.mustChangePassword());
+  }
+
+  /** Compatibility entry point for lightweight service tests. */
+  public AuthProfile login(LoginRequest request) {
+    return login(request, "unknown");
   }
 
   public Optional<CurrentUser> authenticate(String token) {

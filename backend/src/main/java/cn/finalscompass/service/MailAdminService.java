@@ -24,6 +24,7 @@ public class MailAdminService {
   private final DynamicMailService mail;
   private final TransactionTemplate transactions;
   private final AccountAllocationService accounts;
+  private final AuthenticationThrottleService throttle;
   private final BCryptPasswordEncoder passwords = new BCryptPasswordEncoder();
   private final SecureRandom random = new SecureRandom();
   private final String loginUrl;
@@ -34,12 +35,14 @@ public class MailAdminService {
       DynamicMailService mail,
       TransactionTemplate transactions,
       AccountAllocationService accounts,
+      AuthenticationThrottleService throttle,
       @Value("${app.mail.login-url}") String loginUrl) {
     this.jdbc = jdbc;
     this.cipher = cipher;
     this.mail = mail;
     this.transactions = transactions;
     this.accounts = accounts;
+    this.throttle = throttle;
     this.loginUrl = loginUrl;
   }
 
@@ -265,8 +268,13 @@ VALUES (:request,:user,'ACCOUNT_CREATED',:admin,'SENDING')
   }
 
   private void verifyAdminPassword(AuthService.CurrentUser admin, String password) {
-    if (password == null || !passwords.matches(password, admin.passwordHash()))
+    var keys = throttle.adminKeys(admin.id());
+    throttle.check(keys);
+    if (password == null || !passwords.matches(password, admin.passwordHash())) {
+      throttle.failed(keys);
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "管理员密码验证失败");
+    }
+    throttle.succeeded(keys);
   }
 
   public void verifyPassword(AuthService.CurrentUser admin, String password) {
