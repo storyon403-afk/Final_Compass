@@ -8,6 +8,7 @@ import CetView from './views/CetView.vue'
 import AiCenterView from './views/AiCenterView.vue'
 import AiRuntimeChatView from './views/AiRuntimeChatView.vue'
 import VcpRuntimeView from './views/VcpRuntimeView.vue'
+import LiveDocRuntimeView from './views/LiveDocRuntimeView.vue'
 import './styles.css'
 
 const router = createRouter({
@@ -23,6 +24,7 @@ const router = createRouter({
     { path: '/ai-center/agent', component: AiRuntimeChatView, meta: { runtime: 'AGENT' } },
     { path: '/ai-center/web-agent', component: AiRuntimeChatView, meta: { runtime: 'MULTI_WEB_AGENT' } },
     { path: '/ai-center/vcp', component: VcpRuntimeView },
+    { path: '/ai-center/livedoc', component: LiveDocRuntimeView, meta: { runtime: 'LIVE_DOC' } },
     { path: '/courses/:courseId', component: TeachersView },
     { path: '/courses/:courseId/teachers/:teacherId', component: TeacherCircleView }
   ]

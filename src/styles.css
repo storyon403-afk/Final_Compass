@@ -1,4 +1,12 @@
 .runtime-chat-thinking .runtime-stop{padding:7px 15px;border-radius:999px;transition:.15s}.runtime-chat-thinking .runtime-stop:hover{background:var(--text);color:var(--surface)}.runtime-web-toggle{display:flex;align-items:center;gap:5px;padding:5px 8px;border:1px solid var(--border);border-radius:999px;font-size:9px;cursor:pointer}.runtime-web-toggle input{margin:0}.ai-extension-download{display:inline-flex;padding:9px 12px;border:1px solid var(--text);border-radius:8px;color:var(--text);font-size:10px;text-decoration:none}
+.ai-mode-sketch.livedoc i{left:12%;width:54%}.ai-mode-sketch.livedoc i:nth-child(1){top:26%}.ai-mode-sketch.livedoc i:nth-child(2){top:43%;width:70%}.ai-mode-sketch.livedoc i:nth-child(3){top:60%;width:42%}
+.livedoc-native-host{position:fixed;z-index:900;inset:0;background:#171a1d}.livedoc-native-host iframe{display:block;width:100%;height:100%;border:0}.livedoc-host-active,.livedoc-host-active body,.livedoc-host-active #app{overflow:hidden}
+.livedoc-runtime{height:100vh;min-height:640px;display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden;background:var(--bg);color:var(--text)}
+.livedoc-header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--surface)}.livedoc-header>a{color:var(--text-3);font-size:10px;text-decoration:none}.livedoc-header>div{display:grid;justify-items:center}.livedoc-header small{color:var(--text-3);font:700 8px ui-monospace,monospace;letter-spacing:.14em}.livedoc-header input{width:min(340px,42vw);padding:3px 8px;border:0;border-bottom:1px solid transparent;outline:0;background:transparent;color:var(--text);font:500 20px "Kaiti SC",STKaiti,KaiTi,serif;text-align:center}.livedoc-header input:focus{border-color:var(--border-strong)}.livedoc-header>span{justify-self:end;color:var(--text-3);font-size:9px}
+.livedoc-toolbar{display:flex;align-items:center;gap:5px;overflow-x:auto;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface)}.livedoc-toolbar>button,.livedoc-surface-tabs button{white-space:nowrap;padding:7px 9px;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--text);font:10px inherit;cursor:pointer}.livedoc-toolbar>button:hover,.livedoc-surface-tabs button:hover,.livedoc-surface-tabs button.active{border-color:var(--text);background:var(--surface-2)}.livedoc-toolbar>i{width:1px;height:22px;margin:0 4px;background:var(--border)}.livedoc-surface-tabs{display:flex;gap:4px;margin-left:auto}
+.livedoc-workspace{min-height:0;display:grid;background:var(--surface-2)}.livedoc-workspace.surface-split{grid-template-columns:minmax(300px,.8fr) minmax(420px,1.2fr)}.livedoc-source-pane,.livedoc-preview-pane{min-width:0;min-height:0;display:grid;grid-template-rows:auto 1fr}.livedoc-source-pane>span,.livedoc-preview-pane>span{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text-3);background:var(--surface);font:700 8px ui-monospace,monospace;letter-spacing:.1em}.livedoc-source-pane textarea{width:100%;height:100%;min-height:0;padding:26px;border:0;outline:0;resize:none;background:#201d22;color:#eee8f0;font:13px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2}.livedoc-css-pane textarea{color:#d7c4ea}.livedoc-preview-pane{border-left:1px solid var(--border)}.livedoc-preview-pane iframe{width:100%;height:100%;border:0;background:#fff}
+.livedoc-footer{display:flex;gap:18px;padding:7px 14px;border-top:1px solid var(--border);background:var(--surface);color:var(--text-3);font:8px ui-monospace,monospace}.livedoc-footer span:last-child{margin-left:auto}
+@media(max-width:760px){.livedoc-runtime{height:auto;min-height:100vh;overflow:visible}.livedoc-header{grid-template-columns:auto 1fr}.livedoc-header>span{display:none}.livedoc-header input{width:100%}.livedoc-workspace.surface-split{grid-template-columns:1fr;grid-template-rows:45vh 65vh}.livedoc-preview-pane{border-left:0;border-top:1px solid var(--border)}.livedoc-workspace.surface-source,.livedoc-workspace.surface-css,.livedoc-workspace.surface-read{height:calc(100vh - 150px)}.livedoc-surface-tabs{margin-left:0}.livedoc-toolbar{align-items:stretch}.livedoc-footer span:last-child{display:none}}
 :root {
   color-scheme: light;
   --bg: #ffffff;
@@ -1061,4 +1069,50 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     padding-left: 16px;
     padding-right: 16px;
   }
+}
+
+/* Re-entering AI Center should feel like returning to a place, not swapping a screen. */
+.ai-center-return {
+  position: relative;
+  isolation: isolate;
+  animation: ai-center-surface-in .46s ease-out backwards;
+}
+
+.ai-center-return .ai-mode-bar {
+  animation: ai-center-bar-in .48s cubic-bezier(.22, .8, .26, 1) .04s backwards;
+}
+
+.ai-center-return .ai-mode-slide {
+  animation: ai-center-card-in .62s cubic-bezier(.2, .82, .24, 1) backwards;
+}
+
+.ai-center-return .ai-mode-slide:nth-child(1) { animation-delay: .08s; }
+.ai-center-return .ai-mode-slide:nth-child(2) { animation-delay: .14s; }
+.ai-center-return .ai-mode-slide:nth-child(3) { animation-delay: .20s; }
+.ai-center-return .ai-mode-slide:nth-child(4) { animation-delay: .26s; }
+.ai-center-return .ai-mode-slide:nth-child(5) { animation-delay: .32s; }
+.ai-center-return .ai-mode-scroll-hint { animation: ai-center-hint-in .42s ease-out .44s backwards; }
+
+@keyframes ai-center-surface-in {
+  from { opacity: .3; background: color-mix(in srgb, var(--surface) 82%, transparent); }
+}
+
+@keyframes ai-center-bar-in {
+  from { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes ai-center-card-in {
+  from { opacity: 0; transform: translateY(24px) scale(.985); filter: blur(4px); }
+  60% { filter: blur(0); }
+}
+
+@keyframes ai-center-hint-in {
+  from { opacity: 0; transform: translateY(7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-center-return,
+  .ai-center-return .ai-mode-bar,
+  .ai-center-return .ai-mode-slide,
+  .ai-center-return .ai-mode-scroll-hint { animation: none; }
 }
