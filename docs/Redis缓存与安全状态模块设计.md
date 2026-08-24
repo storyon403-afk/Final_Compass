@@ -285,7 +285,7 @@ V18__mail_delivery_and_account_provisioning.sql
 ```bash
 git fetch origin
 git merge origin/main
-find backend/src/main/resources/db/migration -type f | sort -V
+find services/api/src/main/resources/db/migration -type f | sort -V
 ```
 
 如果另一个分支已经占用V18，并且双方迁移都没有在共享数据库执行，则将后合并的迁移重命名为V19；如果已经在任何共享或生产数据库执行，禁止重命名或修改，改用新的补偿迁移。

@@ -42,7 +42,7 @@ Spring Boot（内嵌 Tomcat，127.0.0.1:8080）
 
 ## 2. 启动入口与 Spring 容器
 
-入口为 `backend/src/main/java/cn/finalscompass/FinalsCompassApplication.java`：
+入口为 `services/api/src/main/java/cn/finalscompass/FinalsCompassApplication.java`：
 
 ```java
 @SpringBootApplication
@@ -74,7 +74,7 @@ public AuthController(AuthService auth, BetaAccessService betaAccess) {
 
 ## 3. Maven 依赖提供什么能力
 
-`backend/pom.xml` 的主要依赖：
+`services/api/pom.xml` 的主要依赖：
 
 - `spring-boot-starter-web`：Spring MVC、Tomcat、JSON。
 - `spring-boot-starter-jdbc`：连接池、事务、`JdbcClient`。
@@ -90,7 +90,7 @@ public AuthController(AuthService auth, BetaAccessService betaAccess) {
 
 ## 4. 配置如何进入程序
 
-`backend/src/main/resources/application.yml` 配置数据库、Flyway、上传大小、静态资源、监听地址和上传目录。
+`services/api/src/main/resources/application.yml` 配置数据库、Flyway、上传大小、静态资源、监听地址和上传目录。
 
 `${DB_URL:默认值}` 表示优先读环境变量，不存在才使用本机默认值。
 
@@ -315,7 +315,7 @@ int changed = jdbc.sql("UPDATE discussion SET status=:status WHERE id=:id")
 
 ## 12. Flyway 管理数据库结构
 
-迁移位于 `backend/src/main/resources/db/migration/`。`V15__...sql` 表示版本 15。
+迁移位于 `services/api/src/main/resources/db/migration/`。`V15__...sql` 表示版本 15。
 
 启动时 Flyway 检查历史表：旧版本不重复执行，新版本按顺序执行，失败时阻止应用在错误结构上启动。已上线迁移不要直接修改，应新增 V16、V17。
 
@@ -356,7 +356,7 @@ cet_paper ──< cet_item
 
 ## 14. 与 Vue 如何交互
 
-前端公共封装位于 `src/api.js`，负责 JSON Header、Bearer token、响应解析和统一错误。组件表达业务意图，不关心数据库。
+前端公共封装位于 `apps/web/src/api.js`，负责 JSON Header、Bearer token、响应解析和统一错误。组件表达业务意图，不关心数据库。
 
 ```text
 点击课程
@@ -396,7 +396,7 @@ cet_paper ──< cet_item
 4. 在合适 Controller 接收 HTTP 参数；可复用复杂逻辑提取到 Service。
 5. 用 `auth.current(request)` 取得用户，不能相信前端传来的 user id。
 6. 用命名参数 SQL，并考虑重复请求的幂等性。
-7. 在 `src/api.js` 加调用，Vue 更新状态。
+7. 在 `apps/web/src/api.js` 加调用，Vue 更新状态。
 8. 增加测试，运行 `mvn test` 和 `npm run build`。
 9. 更新文档和更新日志，生产迁移前备份。
 
@@ -423,6 +423,6 @@ cet_paper ──< cet_item
 7. `SurveyController`：validation、主键和事务。
 8. `BetaAccessService`：行锁和回滚规则。
 9. V1 到 V15 migration：数据模型演进。
-10. 回到 `src/api.js` 和 Vue View，对照一次完整请求。
+10. 回到 `apps/web/src/api.js` 和 Vue View，对照一次完整请求。
 
 一句话总结：**Spring Boot 在这里是一个长期运行的 Java 进程；Tomcat 把 HTTP 请求变成方法调用，Controller/Service 用 JdbcClient 和文件系统完成业务，再把 Java 返回值变成 JSON。**

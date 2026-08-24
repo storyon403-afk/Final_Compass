@@ -2,7 +2,7 @@
 .github
 node_modules
 dist
-backend/target
+services/api/target
 **/.venv
 **/__pycache__
 **/.pytest_cache
@@ -14,6 +14,7 @@ backups
 logs
 uploads/*
 !uploads/.gitkeep
+services/api/uploads
 docs/内测账号清单.md
 docs/第二批内测账号.txt
 .DS_Store

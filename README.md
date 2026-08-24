@@ -97,7 +97,7 @@ GRANT ALL PRIVILEGES ON finals_compass.* TO 'finals'@'localhost';
 ### 2. 启动后端
 
 ```bash
-cd backend
+cd services/api
 export DB_URL='jdbc:mysql://localhost:3306/finals_compass?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false'
 export DB_USER='finals'
 export DB_PASSWORD='change-me'
@@ -144,7 +144,7 @@ Agent 单个生成产物默认最大 100 MB。部署环境可通过 `MAX_UPLOAD_
 ```bash
 npm run build
 
-cd backend
+cd services/api
 mvn test
 ```
 
@@ -185,15 +185,18 @@ docker compose up -d --build mysql redis markitdown-worker backend
 
 ```text
 Final_Compass/
-├── src/                    Vue 前端
-├── backend/                Spring Boot API 与 Flyway 迁移
-├── services/               隔离运行的附件解析等辅助服务
+├── apps/
+│   ├── web/                Vue 主站
+│   └── livedoc/            LiveDoc 独立前端应用
+├── services/
+│   ├── api/                Spring Boot API 与 Flyway 迁移
+│   ├── markitdown-worker/  附件解析服务
+│   └── pdf-renderer/       PDF 渲染服务
 ├── browser-extension/      Agent 搜索与 MultiWeb AI 的 Chrome 桥接扩展
 ├── scripts/                本地启动、Agent Gateway 与端到端测试脚本
-├── public/pdfjs/           PDF.js 运行资源及其许可证
-├── pictures/               已获授权的项目成员开场照片
 ├── deploy/                 通用 Docker / Nginx 模板
 ├── docs/                   架构学习文档
+├── dist/                   可重新生成的组合前端产物
 ├── uploads/.gitkeep        上传目录占位符
 └── .github/workflows/      持续集成
 ```

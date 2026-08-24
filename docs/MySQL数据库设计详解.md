@@ -1,6 +1,6 @@
 # MySQL 数据库设计详解
 
-本文以 `backend/src/main/resources/db/migration/V1__init.sql` 到 `V15__shared_courses_across_programs.sql` 为依据，解释“期末指南”数据库为什么这样拆表、表之间怎样联系、约束如何保证数据正确，以及当前设计距离更严格的数据库规范还有哪些差距。
+本文以 `services/api/src/main/resources/db/migration/V1__init.sql` 到 `V15__shared_courses_across_programs.sql` 为依据，解释“期末指南”数据库为什么这样拆表、表之间怎样联系、约束如何保证数据正确，以及当前设计距离更严格的数据库规范还有哪些差距。
 
 阅读目标不是背 SQL，而是能够回答：
 

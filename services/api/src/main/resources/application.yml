@@ -47,7 +47,7 @@ app:
       client-id: ${MICROSOFT_MAIL_CLIENT_ID:}
       client-secret: ${MICROSOFT_MAIL_CLIENT_SECRET:}
       redirect-uri: ${MICROSOFT_MAIL_REDIRECT_URI:}
-  upload-dir: ${UPLOAD_DIR:../uploads}
+  upload-dir: ${UPLOAD_DIR:../../uploads}
   ai:
     # 32 random bytes encoded with Base64. Keep it outside Git; changing it makes saved API keys unreadable.
     encryption-key: ${AI_SECRET_ENCRYPTION_KEY:}

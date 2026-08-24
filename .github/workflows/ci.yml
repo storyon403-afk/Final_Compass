@@ -30,4 +30,4 @@ jobs:
           java-version: 21
           cache: maven
       - run: mvn --batch-mode test
-        working-directory: backend
+        working-directory: services/api

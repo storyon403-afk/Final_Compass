@@ -36,11 +36,11 @@ Final_Compass/
 │   ├── tests/test_worker.py
 │   ├── pyproject.toml
 │   └── Dockerfile
-├── backend/
-│   └── src/main/java/cn/finalscompass/
+├── services/api/
+│   └── apps/web/src/main/java/cn/finalscompass/
 │       ├── controller/AiAnalysisController.java
 │       └── service/AiDocumentConversionService.java
-├── src/
+├── apps/web/src/
 │   ├── api.js
 │   └── views/AiAnalysisView.vue
 └── deploy/docker-compose.yml

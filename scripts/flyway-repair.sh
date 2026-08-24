@@ -30,8 +30,8 @@ if [[ "$CONFIRMATION" != "REPAIR-V29-V31" ]]; then
   exit 1
 fi
 
-cd "$ROOT_DIR/backend"
-# Flyway Maven 插件原生读取这些环境变量；密码不会出现在进程参数中。
+cd "$ROOT_DIR/services/api"
+# Flyway Maven 插件原生读取这些环境变量，密码不会出现在进程参数中
 export FLYWAY_URL="$DB_URL"
 export FLYWAY_USER="$DB_USER"
 export FLYWAY_PASSWORD="$DB_PASSWORD"

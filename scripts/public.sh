@@ -37,7 +37,7 @@ npm run build
 
 export STATIC_LOCATIONS="file:${ROOT_DIR}/dist/"
 export SERVER_ADDRESS="127.0.0.1"
-(cd "$ROOT_DIR/backend" && mvn spring-boot:run) &
+(cd "$ROOT_DIR/services/api" && mvn spring-boot:run) &
 BACKEND_PID=$!
 caffeinate -i -w "$BACKEND_PID" &
 CAFFEINATE_PID=$!

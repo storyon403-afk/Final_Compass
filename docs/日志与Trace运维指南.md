@@ -11,9 +11,9 @@
 ## 本地查看
 
 ```bash
-tail -f backend/logs/finals-compass-api.log
-rg 'traceId=追踪号' backend/logs/
-rg 'aiTraceId=AI追踪号' backend/logs/
+tail -f services/api/logs/finals-compass-api.log
+rg 'traceId=追踪号' services/api/logs/
+rg 'aiTraceId=AI追踪号' services/api/logs/
 ```
 
 可用 `LOG_DIR`、`LOG_MAX_FILE_SIZE`、`LOG_MAX_HISTORY` 和 `LOG_TOTAL_SIZE_CAP` 调整滚动策略。

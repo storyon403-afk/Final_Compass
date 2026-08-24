@@ -24,12 +24,16 @@ if [[ -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" ]]; then
 fi
 
 echo "启动 Java API：http://localhost:8080"
-# clean 会清除已经改名的迁移在 target/classes 中留下的旧副本，避免 Flyway 误报版本重复。
-(cd "$ROOT_DIR/backend" && mvn clean spring-boot:run) &
+# clean 会清除已经改名的迁移在 target/classes 中留下的旧副本，避免 Flyway 误报版本重复
+(cd "$ROOT_DIR/services/api" && mvn clean spring-boot:run) &
 BACKEND_PID=$!
 
-trap 'kill "$BACKEND_PID" 2>/dev/null || true' EXIT
+echo "启动 LiveDoc：http://localhost:5174"
+(cd "$ROOT_DIR" && npm run dev:livedoc) &
+LIVEDOC_PID=$!
+
+trap 'kill "$BACKEND_PID" "$LIVEDOC_PID" 2>/dev/null || true' EXIT
 
 echo "启动 Vue 前端：http://localhost:5173"
 cd "$ROOT_DIR"
-npm run dev
+npm run dev:web

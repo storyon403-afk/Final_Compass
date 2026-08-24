@@ -23,11 +23,11 @@
 npm ci
 npm run build
 
-cd backend
+cd services/api
 mvn test
 ```
 
-涉及接口字段时，同时检查 `src/api.js`、Vue 使用方、Java DTO 和 SQL 映射。涉及上传功能时，不要把测试文件加入 Git。
+涉及接口字段时，同时检查 `apps/web/src/api.js`、Vue 使用方、Java DTO 和 SQL 映射。涉及上传功能时，不要把测试文件加入 Git。
 
 ## 部署模式
 

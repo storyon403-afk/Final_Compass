@@ -1,7 +1,7 @@
 # Finals Compass AI Center 模块交接文档（Runtime 架构）
 
 > 文档基线：2026-08-11，Flyway 迁移至 V54，分支 `feature/ai-analysis`
-> 代码路径：`backend/src/main/java/cn/finalscompass/`，迁移：`backend/src/main/resources/db/migration/`
+> 代码路径：`services/api/src/main/java/cn/finalscompass/`，迁移：`services/api/src/main/resources/db/migration/`
 
 
 ---
@@ -453,7 +453,7 @@ MCP 凭据按 `authMode` 分发：`NONE`→空凭据；`PLATFORM_OAUTH`→subjec
 1. **`AiUsageGuardService` 是孤儿**：限频（每分钟 6 次）与平台日/月配额已实现，但旧调用方随 agent/task 包删除后**没有任何类调用 `check()`**。当前实际生效的门槛只有"活跃度 Top20 资格"。**请尽早决定是接线到 AiChatService/Dispatch 还是删除。**
 2. **MCP `SERVICE_TOKEN` 模式未实现**：枚举和 DB CHECK 允许，但没有凭据 resolver，真用会抛 "credential resolver is unavailable"。
 3. **LEGACY / WORKFLOW 处于"注册表保留、入口收窄"状态**：表、种子、V40/V41 指标都还在，但 Router 拒绝新请求进入。清理前先确认演进分析不再需要这些数据。
-4. **死引用残留**：`deploy/nginx/finals-compass.conf` 仍有 `location = /api/ai/invoke`；`src/api.js` 仍有 `aiApi.invoke` 指向已删端点。后端该端点已不存在，可清理。
+4. **死引用残留**：`deploy/nginx/finals-compass.conf` 仍有 `location = /api/ai/invoke`；`apps/web/src/api.js` 仍有 `aiApi.invoke` 指向已删端点。后端该端点已不存在，可清理。
 5. **WebSocket 握手**：token 走 URL query 参数，且 `allowedOriginPatterns("*")`，安全评审时留意。
 6. **OAuth callback 端点**不校验管理员身份，仅靠一次性 state（已在拦截器范围内需有效会话）。
 7. **文档生成 / 技能工作台**的表（V37/V38/V41）仍在库中但无 HTTP 入口，属过渡期遗产，别误以为功能还在。

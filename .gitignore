@@ -13,7 +13,7 @@ target/
 #Uploads
 uploads/*
 !uploads/.gitkeep
-backend/uploads/
+services/api/uploads/
 backups/
 *.log
 .env

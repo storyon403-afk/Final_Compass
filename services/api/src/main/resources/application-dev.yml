@@ -19,7 +19,7 @@ app:
     login-url: http://127.0.0.1:5173
     frontend-url: http://127.0.0.1:5173
 
-  upload-dir: ../uploads
+  upload-dir: ../../uploads
 
   ai:
     pdf-renderer:

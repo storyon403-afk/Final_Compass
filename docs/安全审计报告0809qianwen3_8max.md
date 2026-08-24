@@ -17,8 +17,8 @@
 
 ### 审计覆盖范围
 
-- **后端**：`AuthController`、`AiRuntimeDispatchService`、`AiCenterContentService`、`application.yml`、`pom.xml`、`deploy/docker-compose.yml`、`deploy/backend/Dockerfile`
-- **前端**：`src/api.js`、`src/App.vue`、`src/main.js`、`components/SafeHtml.vue`、`components/SafeMarkdown.vue`、`components/AiCenterContentManager.vue`
+- **后端**：`AuthController`、`AiRuntimeDispatchService`、`AiCenterContentService`、`application.yml`、`pom.xml`、`deploy/docker-compose.yml`、`deploy/services/api/Dockerfile`
+- **前端**：`apps/web/src/api.js`、`apps/web/src/App.vue`、`apps/web/src/main.js`、`components/SafeHtml.vue`、`components/SafeMarkdown.vue`、`components/AiCenterContentManager.vue`
 - **浏览器扩展**：`manifest.json`、`background.js`、`bridge.js`
 - **MarkItDown Worker**：`app/main.py`、`app/guards.py`、`Dockerfile`
 - **部署**：`deploy/nginx/finals-compass.conf`、`deploy/docker-compose.yml`、`deploy/.env.example`
@@ -35,17 +35,17 @@
 
 | 编号 | 严重度 | 标题 | 位置 | CWE / OWASP |
 |---|---|---|---|---|
-| FC-SEC-H01 | 高 | 后端容器以 root 运行 | `deploy/backend/Dockerfile` | CWE-250 / OWASP A05 |
+| FC-SEC-H01 | 高 | 后端容器以 root 运行 | `deploy/services/api/Dockerfile` | CWE-250 / OWASP A05 |
 | FC-SEC-H02 | 高 | Nginx 纯 HTTP 且缺安全响应头 | `deploy/nginx/finals-compass.conf` | CWE-319, CWE-1026 / OWASP A02 |
 | FC-SEC-H03 | 高 | 扩展持有 `https://*/*` 全域 host 权限 | `browser-extension/manifest.json` | CWE-732 / OWASP A01 |
-| FC-SEC-M01 | 中 | 会话 Cookie 缺少 Secure 标志 | `backend/.../AuthController.java:74-76` | CWE-614 / OWASP A05 |
-| FC-SEC-M02 | 中 | 盲信 X-Forwarded-For 取客户端 IP | `backend/.../AuthController.java:79-82` | CWE-345 / OWASP A07 |
-| FC-SEC-M03 | 中 | Agent Gateway URL 取自 DB 且无主机白名单（SSRF） | `backend/.../AiRuntimeDispatchService.java:5` | CWE-918 / OWASP A10 |
+| FC-SEC-M01 | 中 | 会话 Cookie 缺少 Secure 标志 | `services/api/.../AuthController.java:74-76` | CWE-614 / OWASP A05 |
+| FC-SEC-M02 | 中 | 盲信 X-Forwarded-For 取客户端 IP | `services/api/.../AuthController.java:79-82` | CWE-345 / OWASP A07 |
+| FC-SEC-M03 | 中 | Agent Gateway URL 取自 DB 且无主机白名单（SSRF） | `services/api/.../AiRuntimeDispatchService.java:5` | CWE-918 / OWASP A10 |
 | FC-SEC-M04 | 中 | MySQL 连接 `useSSL=false` 且 `allowPublicKeyRetrieval=true` | `deploy/docker-compose.yml`（backend env） | CWE-319 / OWASP A02 |
-| FC-SEC-M05 | 中 | 默认弱密钥 / 空密钥（DB 口令与加解密密钥） | `backend/.../application.yml` | CWE-798, CWE-321 / OWASP A07 |
+| FC-SEC-M05 | 中 | 默认弱密钥 / 空密钥（DB 口令与加解密密钥） | `services/api/.../application.yml` | CWE-798, CWE-321 / OWASP A07 |
 | FC-SEC-M06 | 中 | Redis 鉴权口令默认空且前后端默认不一致 | `application.yml` + `docker-compose.yml` | CWE-259 / OWASP A07 |
-| FC-SEC-L01 | 低 | 会话令牌存储于 localStorage | `src/api.js` | CWE-921 / OWASP A04 |
-| FC-SEC-L02 | 低 | 后端 Dockerfile COPY 未 `--chown`（jar 属主 root） | `deploy/backend/Dockerfile` | CWE-250 |
+| FC-SEC-L01 | 低 | 会话令牌存储于 localStorage | `apps/web/src/api.js` | CWE-921 / OWASP A04 |
+| FC-SEC-L02 | 低 | 后端 Dockerfile COPY 未 `--chown`（jar 属主 root） | `deploy/services/api/Dockerfile` | CWE-250 |
 | FC-SEC-L03 | 低 | Nginx 未关闭 `server_tokens` | `deploy/nginx/finals-compass.conf` | CWE-200 |
 | FC-SEC-L04 | 低 | 会话有效期 7 天且无刷新/轮换 | `AuthController.java:43` | CWE-613 |
 | FC-SEC-L05 | 低 | AiCenter 内容后端原文存储 HTML（纵深防御缺口） | `AiCenterContentService.java:3` | CWE-79（残留） |
@@ -61,14 +61,14 @@
 
 ### FC-SEC-H01 · 后端容器以 root 运行
 
-- **位置**：`deploy/backend/Dockerfile`
+- **位置**：`deploy/services/api/Dockerfile`
 - **CWE / OWASP**：CWE-250（执行不必要特权）/ OWASP A05 安全配置错误
 - **描述**：最终镜像 `FROM eclipse-temurin:21-jre` 后未设置 `USER`，容器进程（Java 应用）以 root 身份运行；同时 `COPY --from=build ... app.jar` 未带 `--chown`，jar 文件属主为 root。后端挂载了 `uploads` 卷（见 `docker-compose.yml`），一旦解析链（Apache POI 5.4.1 等第三方库）出现漏洞，攻击者将以容器 root 写入挂载卷与文件系统。
 - **代码片段**：
   ```dockerfile
   FROM eclipse-temurin:21-jre
   WORKDIR /app
-  COPY --from=build /workspace/backend/target/finals-compass-api-0.1.0.jar app.jar
+  COPY --from=build /workspace/services/api/target/finals-compass-api-0.1.0.jar app.jar
   EXPOSE 8080
   ENTRYPOINT ["java", "-jar", "app.jar"]
   ```
@@ -114,7 +114,7 @@
 
 ### FC-SEC-M01 · 会话 Cookie 缺少 Secure 标志
 
-- **位置**：`backend/src/main/java/cn/finalscompass/controller/AuthController.java:74-76`
+- **位置**：`services/api/src/main/java/cn/finalscompass/controller/AuthController.java:74-76`
 - **CWE / OWASP**：CWE-614（未设 Secure 的敏感 Cookie）/ OWASP A05
 - **描述**：`setSessionCookie` 设置了 `httpOnly(true)` 与 `sameSite("Lax")`，但**未设置 `.secure(true)`**。结合 H02（Nginx 纯 HTTP），会话令牌会以明文随请求/Cookie 头在网络中传输，可被中间人窃取后重放。`/stream-cookie` 与 `/logout` 也复用同一方法，问题一致。
 - **代码片段**：
@@ -128,7 +128,7 @@
 
 ### FC-SEC-M02 · 盲信 X-Forwarded-For 取客户端 IP
 
-- **位置**：`backend/src/main/java/cn/finalscompass/controller/AuthController.java:79-82`
+- **位置**：`services/api/src/main/java/cn/finalscompass/controller/AuthController.java:79-82`
 - **CWE / OWASP**：CWE-345（数据真实性验证不足）/ OWASP A07 身份与认证失效
 - **描述**：`clientIp` 直接读取 `X-Forwarded-For` 头并取首个值，无受信代理校验。该方法用于 `beta-access` 流程的客户端标识，攻击者可任意伪造该头以绕过基于 IP 的频控、伪造审计来源，或在风控中嫁祸他人。
 - **代码片段**：
@@ -144,7 +144,7 @@
 
 ### FC-SEC-M03 · Agent Gateway URL 取自 DB 且无主机白名单（SSRF）
 
-- **位置**：`backend/src/main/java/cn/finalscompass/ai/runtime/agent/AiRuntimeDispatchService.java:5`（`invokeAgent`）
+- **位置**：`services/api/src/main/java/cn/finalscompass/ai/runtime/agent/AiRuntimeDispatchService.java:5`（`invokeAgent`）
 - **CWE / OWASP**：CWE-918（服务端请求伪造）/ OWASP A10 SSRF
 - **描述**：`invokeAgent` 从 `ai_agent_definition` 表读取 `gateway_url`，若不存在则回退到 `http://127.0.0.1:8642`。读取的 URL 被直接 `URI.create(url+"/agent-runs")` 后以 `HttpClient` 发起 POST，**未校验协议或主机**。若该表行被具备写权限的账号（或 SQL 注入/迁移失误）改为内网/云元数据地址，后端将代攻击者发起请求（SSRF）。
 - **代码片段**：
@@ -173,7 +173,7 @@
 
 ### FC-SEC-M05 · 默认弱密钥 / 空密钥
 
-- **位置**：`backend/src/main/resources/application.yml`
+- **位置**：`services/api/src/main/resources/application.yml`
 - **CWE / OWASP**：CWE-798（硬编码凭据）/ CWE-321（密钥管理不足）/ OWASP A07
 - **描述**：默认配置含弱值：`DB_PASSWORD=change-me`；`REDIS_PASSWORD` 默认空；`AI_SECRET_ENCRYPTION_KEY`、`MAIL_SECRET_ENCRYPTION_KEY`、`EMAIL_CODE_PEPPER` 均默认空字符串。这些密钥用于 Envelope Encryption（AES-256-GCM 包络加密）与邮箱验证码加盐。若运维以默认值部署，包络加密的外层密钥为空，等价于明文存储；邮箱验证码 pepper 为空则削弱抗预计算能力。
 - **修复建议**：
@@ -193,14 +193,14 @@
 
 ### FC-SEC-L01 · 会话令牌存储于 localStorage
 
-- **位置**：`src/api.js`（`localStorage['finals-compass-session']`）
+- **位置**：`apps/web/src/api.js`（`localStorage['finals-compass-session']`）
 - **CWE / OWASP**：CWE-921（敏感数据存储不当）/ OWASP A04
 - **描述**：会话令牌存于 `localStorage`，可被任何在同源执行的脚本读取。当前前端 XSS 面已收敛于 `SafeHtml`/`SafeMarkdown`（均经 DOMPurify，见 §6 正面发现），故实际可利用性较低；但 localStorage 令牌仍比 HttpOnly Cookie 更易在第三方脚本/依赖被污染时泄露。
 - **修复建议**：鉴权主路径已使用 HttpOnly Cookie（`/api` 路径），建议将流式调用也统一收敛到 Cookie（已存在 `/api/auth/stream-cookie` 端点），逐步淘汰 localStorage 中的令牌明文存储。
 
 ### FC-SEC-L02 · 后端 Dockerfile COPY 未 `--chown`
 
-- **位置**：`deploy/backend/Dockerfile`
+- **位置**：`deploy/services/api/Dockerfile`
 - **CWE / OWASP**：CWE-250
 - **描述**：`COPY --from=build ... app.jar` 未指定 `--chown`，文件属主为 root。与 H01 同源，修复 H01 时一并解决。
 
@@ -220,7 +220,7 @@
 
 ### FC-SEC-L05 · AiCenter 内容后端原文存储 HTML（纵深防御缺口）
 
-- **位置**：`backend/.../AiCenterContentService.java:3`（`update` 直接写 `content_html`）
+- **位置**：`services/api/.../AiCenterContentService.java:3`（`update` 直接写 `content_html`）
 - **CWE / OWASP**：CWE-79（残留）/ OWASP A03
 - **描述**：`update` 将管理员提交的 `contentHtml` 原文写入 `content_html` 列（参数化查询，无 SQL 注入）。**前端经 `SafeHtml`（DOMPurify `USE_PROFILES:{html:true}`）渲染**（见 `components/AiCenterContentManager.vue`），故当前**已缓解**。残留风险在于：后端未做服务端净化，完全依赖前端单一净化点；若未来新增任何直接 `v-html` 该字段的消费方，将立即形成存储型 XSS。
 - **修复建议**：在后端入库前以服务端 HTML 净化（如 OWASP Java HtmlSanitizer）做一次净化，形成纵深防御；维持"仅经 SafeHtml/SafeMarkdown 渲染"的前端约束。

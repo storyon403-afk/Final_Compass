@@ -1,0 +1,22 @@
+{
+  "name": "@finals-compass/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "npm run build"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "6.0.8",
+    "dompurify": "^3.4.13",
+    "katex": "^0.18.1",
+    "marked": "^18.0.9",
+    "pdfjs-dist": "^6.1.200",
+    "vite": "8.1.4",
+    "vue": "3.5.39",
+    "vue-router": "5.2.0"
+  }
+}

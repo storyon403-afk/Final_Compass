@@ -45,7 +45,7 @@
 | H02 | 高 | 登录与管理员二次鉴权无防爆破 | AuthService.java:35-56；MailAdminService.java:267-270 | 暴力破解 |
 | H03 | 高 | 浏览器桥 WS：令牌入 URL query + Origin 通配 | BrowserBridgeWebSocketConfig.java:61-75 | 令牌泄露 |
 | H04 | 高 | 扩展全域 https://*/* 权限 + 任意 selector 命令 | browser-extension/manifest.json:16；background.js:306-431 | 权限过宽 |
-| H05 | 高 | 后端容器以 root 运行、jar 无 chown | deploy/backend/Dockerfile:8-14 | 容器加固缺失 |
+| H05 | 高 | 后端容器以 root 运行、jar 无 chown | deploy/services/api/Dockerfile:8-14 | 容器加固缺失 |
 | M01 | 中 | 会话 Cookie 无 Secure | AuthController.java:78-88 | 明文传输 |
 | M02 | 中 | 盲信 X-Forwarded-For 绕过限流 | AuthController.java:90-95 | IP 伪造 |
 | M03 | 中 | Agent Gateway URL 取自 DB 且无主机白名单 | AiRuntimeDispatchService.java:101-107 | SSRF |
@@ -60,7 +60,7 @@
 | M12 | 中 | 加解密密钥默认空值仍可启动 | application.yml:31,36,42 | 弱默认配置 |
 | M13 | 中 | Nginx 纯 HTTP、无安全响应头、server_tokens | deploy/nginx/finals-compass.conf | 传输/信息泄露 |
 | M14 | 中 | 本机 Agent Gateway 无鉴权 + callbackBase 任意 | scripts/hermes-agent.mjs:43-59,149-156,259 | 本地攻击面 |
-| L01 | 低 | 会话令牌存 localStorage | src/api.js:4-9,44-47 | 敏感信息存储 |
+| L01 | 低 | 会话令牌存 localStorage | apps/web/src/api.js:4-9,44-47 | 敏感信息存储 |
 | L02 | 低 | 会话 7 天、无轮换/吊销列表 | AuthService.java:47-52 | 会话管理 |
 | L03 | 低 | AiCenter HTML 原文入库、依赖前端净化 | AiCenterContentService.java:66-77 | 存储型 XSS 残留 |
 | L04 | 低 | 扩展研究文本入 chrome.storage 无 TTL | browser-extension/background.js（lastStatus 持久化） | 本地明文 |
@@ -81,7 +81,7 @@
 
 ### H01 · AI 用量/成本限制整体失效（守卫死代码）
 
-- **证据**：service/AiUsageGuardService.java:16 定义了 per-minute/日/月三层限流，但全仓 grep（backend/src/main/java）**没有任何类注入或调用它**；AiChatService.answer（chat/AiChatService.java:110）、AiVisionService.analyze（service/AiVisionService.java:21）、AiRuntimeDispatchService.start（agent/AiRuntimeDispatchService.java:47）三个入口均不执行用量检查；ai_usage_log（V17）**没有任何 INSERT**，月度 token 统计（AiUsageGuardService.java:49-63）永远为 0。
+- **证据**：service/AiUsageGuardService.java:16 定义了 per-minute/日/月三层限流，但全仓 grep（services/api/src/main/java）**没有任何类注入或调用它**；AiChatService.answer（chat/AiChatService.java:110）、AiVisionService.analyze（service/AiVisionService.java:21）、AiRuntimeDispatchService.start（agent/AiRuntimeDispatchService.java:47）三个入口均不执行用量检查；ai_usage_log（V17）**没有任何 INSERT**，月度 token 统计（AiUsageGuardService.java:49-63）永远为 0。
 - **影响**：application.yml:44-46 配置的 AI_CALLS_PER_MINUTE=6、平台日 20 次、月 100000 token 全部形同虚设；V58 的 internal_test_open 打开后，任意登录用户可无限调用平台付费 Key（CHAT/AGENT/视觉/审核/embedding），造成直接经济损失与资源耗尽。
 - **放大因素**：AiChatService.java:132 每次 chat answer 都触发平台 embedding（RuntimeEmbeddingGateway → AiCredentialResolver.resolvePlatformService，AiCredentialResolver.java:161 注释“调用者须为可信组件”但实际由任意用户请求触发）——即使平台聊天模型不可用，embedding 额度也可被刷空。
 - **建议**：把 guard 接入 CHAT/AGENT/VISION 入口（含 embedding 计费），或删除死代码并另建统一计量；ai_usage_log 恢复写入。
@@ -106,7 +106,7 @@
 
 ### H05 · 后端容器以 root 运行、jar 无 chown
 
-- **证据**：deploy/backend/Dockerfile:8-14 最终镜像未设 USER，COPY 未带 `--chown`；compose 中 backend 挂载 uploads 卷（docker-compose.yml:55-56），且未加 no-new-privileges（redis/worker 有，backend 无）。
+- **证据**：deploy/services/api/Dockerfile:8-14 最终镜像未设 USER，COPY 未带 `--chown`；compose 中 backend 挂载 uploads 卷（docker-compose.yml:55-56），且未加 no-new-privileges（redis/worker 有，backend 无）。
 - **影响**：文档解析链（POI 5.4.1 等）、SSE/虚拟线程等任一环节出现 RCE 类漏洞时，进程以容器 root 运行，可写挂载卷、进一步横向。历史报告 H01 未修复。
 - **建议**：创建非 root 用户并 `USER` 切换；`COPY --chown`；backend 服务补充 `security_opt: no-new-privileges:true` 与 read_only（uploads 卷单独 rw）。
 
@@ -162,7 +162,7 @@ scripts/hermes-agent.mjs:43-59：POST /agent-runs 无任何鉴权（mock-agent.m
 
 | 编号 | 发现 | 证据 | 建议 |
 | --- | --- | --- | --- |
-| L01 | 会话令牌存 localStorage | src/api.js:4-9,44-47 | 迁移 HttpOnly Cookie，扩展用隔离 token |
+| L01 | 会话令牌存 localStorage | apps/web/src/api.js:4-9,44-47 | 迁移 HttpOnly Cookie，扩展用隔离 token |
 | L02 | 会话 7 天、无轮换/吊销列表 | AuthService.java:47-52,108-111 | 缩短 + 刷新机制 + Redis 吊销集 |
 | L03 | AiCenter HTML 原文入库依赖前端净化 | AiCenterContentService.java:66-77 | 后端入库前服务端净化（纵深防御） |
 | L04 | 扩展研究文本入 chrome.storage 无 TTL | browser-extension/background.js lastStatus | 只存摘要 + 定期清理 |
