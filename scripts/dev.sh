@@ -18,9 +18,12 @@ if [[ "$DB_URL" != jdbc:* ]]; then
   echo "DB_URL 必须是 JDBC 地址，当前值必须以 jdbc: 开头。" >&2
   exit 1
 fi
-if [[ -z "${DB_USER:-}" || -z "${DB_PASSWORD:-}" ]]; then
-  echo "缺少 DB_USER 或 DB_PASSWORD。请在根目录 .env 中配置数据库账号。" >&2
+if [[ -z "${DB_USER:-}" || "${DB_PASSWORD+x}" != "x" ]]; then
+  echo "缺少 DB_USER 或 DB_PASSWORD，请在根目录 .env 中配置数据库账号" >&2
   exit 1
+fi
+if [[ -z "$DB_PASSWORD" ]]; then
+  echo "警告：本地数据库使用空密码，仅允许用于隔离的开发环境"
 fi
 
 echo "启动 Java API：http://localhost:8080"
@@ -28,12 +31,8 @@ echo "启动 Java API：http://localhost:8080"
 (cd "$ROOT_DIR/services/api" && mvn clean spring-boot:run) &
 BACKEND_PID=$!
 
-echo "启动 LiveDoc：http://localhost:5174"
-(cd "$ROOT_DIR" && npm run dev:livedoc) &
-LIVEDOC_PID=$!
+trap 'kill "$BACKEND_PID" 2>/dev/null || true' EXIT
 
-trap 'kill "$BACKEND_PID" "$LIVEDOC_PID" 2>/dev/null || true' EXIT
-
-echo "启动 Vue 前端：http://localhost:5173"
+echo "启动前端应用"
 cd "$ROOT_DIR"
-npm run dev:web
+npm run dev

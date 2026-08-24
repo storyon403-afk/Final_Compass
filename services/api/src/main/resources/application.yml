@@ -1,6 +1,8 @@
 spring:
   application:
     name: finals-compass-api
+  profiles:
+    default: dev
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
@@ -31,7 +33,7 @@ server:
     mime-types: application/json,text/html,text/plain,text/css,text/javascript,application/javascript,image/svg+xml
 app:
   environment: ${APP_ENV:dev}
-  # Enable only after HTTPS is live; Secure cookies are not sent over plain HTTP.
+  # 仅在 HTTPS 上线后启用，安全 Cookie 不会通过普通 HTTP 发送
   session-cookie-secure: ${SESSION_COOKIE_SECURE:false}
   auth-throttle:
     failures-before-lock: ${AUTH_FAILURES_BEFORE_LOCK:5}
@@ -49,7 +51,7 @@ app:
       redirect-uri: ${MICROSOFT_MAIL_REDIRECT_URI:}
   upload-dir: ${UPLOAD_DIR:../../uploads}
   ai:
-    # 32 random bytes encoded with Base64. Keep it outside Git; changing it makes saved API keys unreadable.
+    # 使用 Base64 编码的 32 字节随机值，必须放在 Git 外部，变更后已保存的 API 密钥将无法解密
     encryption-key: ${AI_SECRET_ENCRYPTION_KEY:}
     limits:
       calls-per-minute: ${AI_CALLS_PER_MINUTE:6}

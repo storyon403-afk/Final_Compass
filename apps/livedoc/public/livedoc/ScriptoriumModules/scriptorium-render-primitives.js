@@ -260,7 +260,7 @@ ${markdownBaseCss('.vdoc-runtime')}
             runtime.dataset.sceneKind = String(sceneKind || '');
             runtime.style.setProperty(
                 '--vdoc-zoom',
-                String(Math.max(50, Math.min(200, Number(zoom) || 100)) / 100)
+                String(Math.max(10, Math.min(400, Number(zoom) || 100)) / 100)
             );
             return runtime;
         }
@@ -373,7 +373,7 @@ ${markdownBaseCss('.vdoc-runtime')}
 
         function updateZoomLayout(root, zoom = 100) {
             if (!root) return;
-            const scale = Math.max(50, Math.min(200, Number(zoom) || 100)) / 100;
+            const scale = Math.max(10, Math.min(400, Number(zoom) || 100)) / 100;
             root.querySelectorAll('.vdoc-page').forEach((page) => {
                 const baseHeight = page.offsetHeight;
                 page.style.setProperty(

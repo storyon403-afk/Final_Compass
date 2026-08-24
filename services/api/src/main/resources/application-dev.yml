@@ -3,6 +3,11 @@ spring:
     activate:
       on-profile: dev
 
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/finals_compass_ai_test}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+
   data:
     redis:
       host: 127.0.0.1

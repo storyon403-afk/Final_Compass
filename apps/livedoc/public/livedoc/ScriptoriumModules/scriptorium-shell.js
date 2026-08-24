@@ -11,6 +11,50 @@
         let zoom = 100;
         let focusMode = false;
         let disposed = false;
+        let deckFitFrame = 0;
+        let deckFitTimer = 0;
+
+        function isDeckDocument() {
+            return context.documentPort.document?.()?.manifest?.scene?.kind
+                === context.core.PROJECT_KINDS.SLIDE_DECK;
+        }
+
+        function fitDeckToWorkspace() {
+            if (!isDeckDocument() || mode !== 'edit') return false;
+            const host = elements['render-host'];
+            const root = elements['page-stream']?.shadowRoot;
+            const slide = root?.querySelector('.vdoc-slide-editor-runtime');
+            if (!host || !slide || host.clientWidth <= 0 || host.clientHeight <= 0) {
+                return false;
+            }
+            const baseWidth = slide.offsetWidth;
+            const baseHeight = slide.offsetHeight;
+            if (!baseWidth || !baseHeight) return false;
+
+            const scale = Math.min(
+                Math.max(0.1, host.clientWidth / baseWidth),
+                Math.max(0.1, host.clientHeight / baseHeight)
+            );
+            updateZoom(scale * 100);
+            const horizontalSpace = Math.max(0, (host.clientWidth - baseWidth * scale) / 2);
+            const verticalSpace = Math.max(0, (host.clientHeight - baseHeight * scale) / 2);
+            slide.style.marginLeft = `${horizontalSpace}px`;
+            slide.style.marginRight = `${horizontalSpace}px`;
+            slide.style.marginTop = `${verticalSpace}px`;
+            slide.style.marginBottom = `${verticalSpace}px`;
+            return true;
+        }
+
+        function scheduleDeckFit(afterLayout = false) {
+            window.cancelAnimationFrame(deckFitFrame);
+            window.clearTimeout(deckFitTimer);
+            deckFitFrame = window.requestAnimationFrame(() => {
+                if (!fitDeckToWorkspace() && afterLayout) {
+                    deckFitTimer = window.setTimeout(fitDeckToWorkspace, 40);
+                }
+            });
+            if (afterLayout) deckFitTimer = window.setTimeout(fitDeckToWorkspace, 260);
+        }
 
         function setPanelCollapsed(panel, collapsed, persist = true) {
             const isOutline = panel === 'outline';
@@ -23,6 +67,7 @@
                 try { localStorage.setItem(`scriptorium-${panel}-collapsed`, String(collapsed)); } catch {}
             }
             if (persist) showToast(`${isOutline ? '篇章' : '文脉'}已${collapsed ? '收起' : '展开'}`, 'info', 1200);
+            scheduleDeckFit(true);
         }
 
         function togglePanel(panel) {
@@ -82,6 +127,10 @@
         function updateDocumentStatus() {
             updateIdentity();
             updateMetrics();
+            const wasDeck = document.body.classList.contains('deck-document');
+            const deck = isDeckDocument();
+            document.body.classList.toggle('deck-document', deck);
+            if (deck && !wasDeck) scheduleDeckFit(true);
         }
 
         function updateIdentity() {
@@ -237,9 +286,12 @@
                 button?.classList.toggle('active', active);
                 button?.setAttribute('aria-pressed', String(active));
             });
-            if (edit) context.renderPort.renderEdit({
-                force: options.force === true,
-            });
+            if (edit) {
+                context.renderPort.renderEdit({
+                    force: options.force === true,
+                });
+                scheduleDeckFit(true);
+            }
             else if (read) context.renderPort.renderRead({
                 force: options.force === true,
             });
@@ -257,7 +309,7 @@
                 elements['zoom-range'].value = String(zoom);
             }
             if (elements['zoom-value']) {
-                elements['zoom-value'].textContent = `${zoom}%`;
+                elements['zoom-value'].textContent = `${Math.round(zoom * 10) / 10}%`;
             }
             return zoom;
         }
@@ -411,6 +463,7 @@
                     context.stylePort?.close?.();
                 }
             }, options);
+            window.addEventListener('resize', () => scheduleDeckFit(), options);
         }
 
         async function initialize() {
@@ -453,6 +506,8 @@
             documentDisposer?.();
             themeDisposer?.();
             abortController = null;
+            window.cancelAnimationFrame(deckFitFrame);
+            window.clearTimeout(deckFitTimer);
             documentDisposer = null;
             themeDisposer = null;
             [...controllers].reverse().forEach((controller) => {

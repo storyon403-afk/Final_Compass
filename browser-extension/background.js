@@ -278,6 +278,15 @@ async function scheduleBridge(restart) {
     const ticket = await exchangeBridgeTicket(config)
     connectBridge(config, ticket)
   } catch (error) {
+    if (error.code === 'BINDING_INVALID') {
+      await chrome.storage.local.set({
+        bridgeConfig: { url: config.url, bindingSecret: '' },
+        bridgeEnabled: false
+      })
+      await closeBridge()
+      await setBridgeStatus('IDLE', '扩展绑定已失效，请在 AI Center 重新绑定')
+      return
+    }
     await setBridgeStatus('ERROR', error.message)
     retryBridge()
   }
@@ -292,7 +301,11 @@ async function exchangeBridgeTicket(config) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ bindingSecret: config.bindingSecret })
   })
-  if (!response.ok) throw new Error(response.status === 401 ? '扩展绑定已失效，请在 AI Center 重新绑定' : `短时凭证换取失败（${response.status}）`)
+  if (!response.ok) {
+    const error = new Error(response.status === 401 ? '扩展绑定已失效，请在 AI Center 重新绑定' : `短时凭证换取失败（${response.status}）`)
+    if (response.status === 401) error.code = 'BINDING_INVALID'
+    throw error
+  }
   return (await response.json()).ticket
 }
 

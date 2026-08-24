@@ -62,7 +62,7 @@
 
         function setZoom(value) {
             assertActive();
-            state.zoom = Math.max(50, Math.min(200, Number(value) || 100));
+            state.zoom = Math.max(10, Math.min(400, Number(value) || 100));
             const editRoot = state.editSurface?.root;
             const readRoot = state.readSurface?.root;
             context.primitives?.updateZoomLayout?.(editRoot, state.zoom);

@@ -2918,6 +2918,17 @@ body.focus-mode .chamber-aura {
     user-select: text;
 }
 
+/* VPPTX uses a presentation viewport: the slide keeps its authored ratio and
+ * the unused editor area becomes letterbox space, just like exported HTML. */
+body.deck-document #render-host {
+    overflow: auto;
+    background: #090b0c;
+}
+
+body.deck-document .document-workspace::before {
+    display: none;
+}
+
 .page-stream {
     display: block;
     min-height: 100%;

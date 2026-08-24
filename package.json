@@ -7,6 +7,7 @@
     "apps/livedoc"
   ],
   "scripts": {
+    "dev": "bash scripts/dev-frontends.sh",
     "dev:web": "npm run dev --workspace @finals-compass/web",
     "dev:livedoc": "npm run dev --workspace @finals-compass/livedoc",
     "build:web": "npm run build --workspace @finals-compass/web",

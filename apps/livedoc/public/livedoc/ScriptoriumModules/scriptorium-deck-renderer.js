@@ -31,14 +31,14 @@
     display: grid;
     width: var(--vdoc-page-width);
     height: var(--vdoc-page-height);
-    margin: 32px auto 88px;
+    margin: var(--vdoc-deck-margin-top, 32px) auto var(--vdoc-deck-margin-bottom, 88px);
     overflow: hidden;
     place-items: stretch;
     color: #1d2421;
     background: #fffdf8;
     box-shadow: 0 18px 55px rgba(0, 0, 0, .34);
     transform: scale(var(--vdoc-zoom, 1));
-    transform-origin: top center;
+    transform-origin: top left;
 }
 .vdoc-slide-editor-runtime > .vdoc-slide-scene,
 .vdoc-slide-editor-runtime > [data-vdoc-slide] {
