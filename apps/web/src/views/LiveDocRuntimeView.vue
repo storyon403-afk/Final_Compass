@@ -7,9 +7,11 @@ const frameReady = ref(false)
 const transitionVisible = ref(true)
 const transitionLeaving = ref(false)
 const backPosition = ref(null)
+const notePosition = ref(null)
 const phoneBlocked = ref(false)
 const router = useRouter()
 let backDrag
+let noteDrag
 let suppressBackClick = false
 let timer
 let revealTimer
@@ -77,6 +79,26 @@ function finishBackDrag(event) {
   backDrag = null
   if (backPosition.value) localStorage.setItem('final-compass:livedoc-back-position', JSON.stringify(backPosition.value))
 }
+function startNoteDrag(event) {
+  if (event.button !== 0) return
+  const rect = event.currentTarget.getBoundingClientRect()
+  noteDrag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top }
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+  event.preventDefault()
+}
+function moveNote(event) {
+  if (!noteDrag || noteDrag.id !== event.pointerId) return
+  const rect = event.currentTarget.getBoundingClientRect()
+  notePosition.value = {
+    left: Math.max(8, Math.min(noteDrag.left + event.clientX - noteDrag.x, window.innerWidth - rect.width - 8)),
+    top: Math.max(8, Math.min(noteDrag.top + event.clientY - noteDrag.y, window.innerHeight - rect.height - 8))
+  }
+}
+function finishNoteDrag(event) {
+  if (!noteDrag || noteDrag.id !== event.pointerId) return
+  noteDrag = null
+  if (notePosition.value) localStorage.setItem('final-compass:livedoc-note-position', JSON.stringify(notePosition.value))
+}
 function leaveLiveDoc() {
   if (suppressBackClick) { suppressBackClick = false; return }
   router.replace('/ai-center')
@@ -92,6 +114,8 @@ onMounted(() => {
   try {
     const saved = JSON.parse(localStorage.getItem('final-compass:livedoc-back-position') || 'null')
     if (Number.isFinite(saved?.left) && Number.isFinite(saved?.top)) backPosition.value = saved
+    const savedNote = JSON.parse(localStorage.getItem('final-compass:livedoc-note-position') || 'null')
+    if (Number.isFinite(savedNote?.left) && Number.isFinite(savedNote?.top)) notePosition.value = savedNote
   } catch {}
 })
 onBeforeUnmount(() => {
@@ -148,8 +172,17 @@ onBeforeUnmount(() => {
       <span>返回 AI Center</span>
     </button>
     <output v-if="status" class="livedoc-host-status">{{ status }}</output>
-    <aside v-if="!phoneBlocked && frameReady" class="livedoc-local-note">
-      草稿仅缓存在当前设备，请随时将工程保存到本地
+    <aside
+      v-if="!phoneBlocked && frameReady"
+      class="livedoc-local-note"
+      title="拖动调整位置"
+      :style="notePosition ? { left: `${notePosition.left}px`, top: `${notePosition.top}px`, right: 'auto', bottom: 'auto' } : null"
+      @pointerdown="startNoteDrag"
+      @pointermove="moveNote"
+      @pointerup="finishNoteDrag"
+      @pointercancel="finishNoteDrag"
+    >
+      草稿仅缓存在当前设备，请随时将文档（vdocx、vpptx）保存到本地
     </aside>
     <iframe
       v-if="!phoneBlocked"
@@ -182,7 +215,8 @@ onBeforeUnmount(() => {
 .livedoc-phone-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
 .livedoc-phone-actions button, .livedoc-phone-actions a { padding: 11px 17px; border: 1px solid #526b63; border-radius: 9px; color: #dce8e4; background: transparent; font: 600 13px/1 system-ui; text-decoration: none; }
 .livedoc-phone-actions button.primary { border-color: #82aa9d; color: #12201b; background: #a9c9be; }
-.livedoc-local-note { position: fixed; z-index: 19; left: 18px; bottom: 16px; max-width: min(360px, calc(100vw - 36px)); padding: 9px 13px; border: 1px solid rgb(151 183 172 / 28%); border-radius: 999px; color: #b6c9c3; background: rgb(16 24 22 / 82%); box-shadow: 0 8px 28px rgb(0 0 0 / 22%); backdrop-filter: blur(12px); font: 11px/1.4 system-ui, sans-serif; pointer-events: none; }
+.livedoc-local-note { position: fixed; z-index: 19; left: 18px; bottom: 16px; max-width: min(420px, calc(100vw - 36px)); padding: 9px 13px; border: 1px solid rgb(224 108 95 / 32%); border-radius: 999px; color: #e06c5f; background: transparent; box-shadow: none; font: 11px/1.4 system-ui, sans-serif; cursor: grab; touch-action: none; user-select: none; }
+.livedoc-local-note:active { cursor: grabbing; }
 .livedoc-host-status {
   position: fixed;
   z-index: 20;
@@ -190,7 +224,7 @@ onBeforeUnmount(() => {
   left: 50%;
   transform: translateX(-50%);
   padding: 9px 16px;
-  border: 1px solid rgb(255 255 255 / 18%);
+  border: 1px solid #3b4449;
   border-radius: 999px;
   color: #f8fafc;
   background: rgb(15 23 42 / 88%);
@@ -317,21 +351,23 @@ onBeforeUnmount(() => {
   border: 1px solid rgb(255 255 255 / 18%);
   border-radius: 999px;
   color: #f8fafc;
-  background: rgb(15 23 42 / 86%);
+  background: rgb(32 37 42 / 92%);
   box-shadow: 0 12px 35px rgb(0 0 0 / 28%);
   backdrop-filter: blur(14px);
   cursor: pointer;
   touch-action: none;
   user-select: none;
   font: 600 13px/1 system-ui, sans-serif;
-  transition: transform .18s ease, background .18s ease;
+  transition: transform .18s ease, color .18s ease, border-color .18s ease, background .18s ease;
 }
 .livedoc-host-back:hover {
   transform: translateY(-2px);
-  background: rgb(30 41 59 / 94%);
+  color: #f2a900;
+  border-color: rgb(242 169 0 / 58%);
+  background: rgb(42 48 53 / 96%);
 }
 .livedoc-host-back:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid #f2a900;
   outline-offset: 3px;
 }
 @media (max-width: 640px) {
