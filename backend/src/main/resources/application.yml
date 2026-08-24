@@ -25,6 +25,10 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
   address: ${SERVER_ADDRESS:127.0.0.1}
+  compression:
+    enabled: ${SERVER_COMPRESSION_ENABLED:true}
+    min-response-size: ${SERVER_COMPRESSION_MIN_SIZE:2KB}
+    mime-types: application/json,text/html,text/plain,text/css,text/javascript,application/javascript,image/svg+xml
 app:
   environment: ${APP_ENV:dev}
   # Enable only after HTTPS is live; Secure cookies are not sent over plain HTTP.

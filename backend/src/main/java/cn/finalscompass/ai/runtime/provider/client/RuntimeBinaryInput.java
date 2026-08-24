@@ -3,8 +3,8 @@ package cn.finalscompass.ai.runtime.provider.client;
 import java.util.Arrays;
 
 /**
- * 封装模型调用携带的二进制内容，并通过复制与擦除降低敏感数据残留风险。
- * 维护入口：新增媒体类型或调整大小限制时修改这里及各供应商客户端。
+ * 封装模型调用携带的二进制内容，并通过复制与擦除降低敏感数据残留风险
+ * 维护入口：新增媒体类型或调整大小限制时修改这里及各供应商客户端
  */
 public final class RuntimeBinaryInput implements AutoCloseable {
   private final String mediaType;
@@ -31,7 +31,7 @@ public final class RuntimeBinaryInput implements AutoCloseable {
     return Arrays.copyOf(bytes, bytes.length);
   }
 
-  // 清除内存中的敏感凭据。在结束时主动释放资源或擦除敏感数据。
+  // 清除内存中的敏感凭据。在结束时主动释放资源或擦除敏感数据
   @Override
   public void close() {
     Arrays.fill(bytes, (byte) 0);

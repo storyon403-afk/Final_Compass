@@ -11,7 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** 管理 MCP 服务配置、能力发现、变更审批和 OAuth 连接。 */
+/** 管理 MCP 服务配置、能力发现、变更审批和 OAuth 连接 */
 @RestController
 @RequestMapping("/api/system/mcp")
 public final class RuntimeMcpAdminController {

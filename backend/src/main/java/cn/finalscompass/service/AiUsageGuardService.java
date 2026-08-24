@@ -10,7 +10,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Enforces request frequency and platform-funded usage before external API calls. */
+/** 调用外部 API 前执行请求频率和平台额度限制 */
 @Service
 public class AiUsageGuardService {
   private final StringRedisTemplate redis;

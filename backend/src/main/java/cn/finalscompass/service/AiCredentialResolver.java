@@ -8,7 +8,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Resolves platform, stored-BYOK, and ephemeral-BYOK credentials behind one boundary. */
+/** 在统一边界内解析平台、持久化 BYOK 与临时 BYOK 凭据 */
 @Component
 public class AiCredentialResolver {
   private final JdbcClient jdbc;
@@ -123,7 +123,7 @@ WHERE s.id=1 AND c.enabled=TRUE
     return model;
   }
 
-  /** Resolves a platform-owned auxiliary model used inside an authorized multi-stage invocation. */
+  /** 解析授权多阶段调用中使用的平台辅助模型 */
   public ResolvedAiCredential resolvePlatformAuxiliary(long userId, String providerValue) {
     String provider = providers.require(providerValue);
     boolean admin =
@@ -156,7 +156,7 @@ WHERE s.id=1 AND c.enabled=TRUE
   }
 
   /**
-   * Platform-owned infrastructure credential; callers must already be trusted service components.
+   * 平台拥有的基础设施凭据，调用方必须已经是可信服务组件
    */
   public ResolvedAiCredential resolvePlatformService(String providerValue, String modelValue) {
     String provider = providers.require(providerValue);
@@ -227,7 +227,7 @@ WHERE s.id=1 AND c.enabled=TRUE
     return new ResolvedAiCredential(provider, model, source, ephemeral.toCharArray());
   }
 
-  /** 解析用户独立视觉链路凭据；平台凭据继续走现有平台视觉通道。 */
+  /** 解析用户独立视觉链路凭据；平台凭据继续走现有平台视觉通道 */
   public ResolvedAiCredential resolveUserVision(long userId,String providerValue,String modelValue,AiCredentialSource source,String ephemeral){
     String provider=providers.require(providerValue),model=validateModel(provider,modelValue);
     if(source==AiCredentialSource.PLATFORM)return resolvePlatformAuxiliary(userId,provider);

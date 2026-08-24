@@ -16,8 +16,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *   所有状态更新 --> RuntimeTraceStateMachine 校验 --> 事务写入
  */
 /**
- * 把执行、节点、供应商调用和事件日志写入数据库，并通过状态机保证流转合法。
- * 维护入口：追踪字段和事务写入改这里；允许的状态转换改 RuntimeTraceStateMachine。
+ * 把执行、节点、供应商调用和事件日志写入数据库，并通过状态机保证流转合法
+ * 维护入口：追踪字段和事务写入改这里；允许的状态转换改 RuntimeTraceStateMachine
  */
 @Repository
 public class JdbcRuntimeExecutionTraceStore implements RuntimeExecutionTraceStore {
@@ -55,7 +55,7 @@ public class JdbcRuntimeExecutionTraceStore implements RuntimeExecutionTraceStor
     this.states = states;
   }
 
-  // 创建一次运行时执行记录。在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 创建一次运行时执行记录。在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   @Override
   public long createExecution(CreateRuntimeExecution command) {
     validate(command);
@@ -103,7 +103,7 @@ VALUES (:externalId,:traceId,:parentId,:legacyTaskId,:userId,:sessionId,
     return id;
   }
 
-  // 创建执行链路节点。在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 创建执行链路节点。在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   @Override
   public long createNode(CreateRuntimeExecutionNode command) {
     validate(command);
@@ -154,8 +154,8 @@ WHERE execution_id=:executionId AND node_key=:nodeKey AND attempt=:attempt
     return id;
   }
 
-  // 创建业务对象。在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
-  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+  // 创建业务对象。在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
   @Override
   public long createProviderInvocation(CreateRuntimeProviderInvocation command) {
     validate(command);
@@ -217,8 +217,8 @@ SELECT id FROM ai_runtime_provider_invocation WHERE invocation_id=:invocationId
   }
 
   /**
-   * 更新执行记录状态。
-   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 更新执行记录状态
+   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param executionId 执行记录 ID
    * @param target 准备流转到的目标状态
@@ -269,8 +269,8 @@ WHERE id=:id
   }
 
   /**
-   * 更新执行节点状态。
-   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 更新执行节点状态
+   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param nodeId 执行节点 ID
    * @param target 准备流转到的目标状态
@@ -331,9 +331,9 @@ WHERE id=:id
   }
 
   /**
-   * 更新供应商调用状态。
-   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
-   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+   * 更新供应商调用状态
+   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
    *
    * @param invocationId invocation 对应的数据库 ID
    * @param target 准备流转到的目标状态
@@ -399,8 +399,8 @@ WHERE id=:id
   }
 
   /**
-   * 在独立事务中追加执行追踪事件。
-   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据。
+   * 在独立事务中追加执行追踪事件
+   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据
    *
    * @param executionId 执行记录 ID
    * @param nodeId 执行节点 ID
@@ -419,8 +419,8 @@ WHERE id=:id
   }
 
   /**
-   * 使用现有事务写入追踪事件。
-   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 使用现有事务写入追踪事件
+   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param executionId 执行记录 ID
    * @param nodeId 执行节点 ID
@@ -460,7 +460,7 @@ WHERE id=:id
     return sequence;
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validate(CreateRuntimeExecution command) {
     if (command == null
         || !externalId(command.executionId(), 64)
@@ -476,7 +476,7 @@ WHERE id=:id
     object(command.metadataJson(), "metadata");
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validate(CreateRuntimeExecutionNode command) {
     if (command == null
         || command.executionId() <= 0
@@ -502,7 +502,7 @@ WHERE id=:id
     object(command.metadataJson(), "metadata");
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validate(CreateRuntimeProviderInvocation command) {
     if (command == null
         || !externalId(command.invocationId(), 64)
@@ -519,7 +519,7 @@ WHERE id=:id
     object(command.metadataJson(), "metadata");
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validate(RuntimeProviderInvocationResult result) {
     if (result.inputUnits() < 0
         || result.outputUnits() < 0
@@ -538,8 +538,8 @@ WHERE id=:id
   }
 
   /**
-   * 校验定义及其关联配置。
-   * 实现上，状态变化先经过状态机约束，阻止非法跳转。
+   * 校验定义及其关联配置
+   * 实现上，状态变化先经过状态机约束，阻止非法跳转
    *
    * @param target 准备流转到的目标状态
    * @param reference 结果或输出的外部引用
@@ -560,14 +560,14 @@ WHERE id=:id
     digest(digest);
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validateEvent(String eventType, String payloadJson) {
     if (eventType == null || !EVENT_TYPE.matcher(eventType).matches())
       throw new IllegalArgumentException("Event type is invalid");
     object(payloadJson, "event payload");
   }
 
-  // 把 JSON 文本解析为对象节点。通过 Jackson 完成 JSON 的解析或序列化。
+  // 把 JSON 文本解析为对象节点。通过 Jackson 完成 JSON 的解析或序列化
   private void object(String value, String field) {
     try {
       JsonNode node = json.readTree(value);
@@ -581,7 +581,7 @@ WHERE id=:id
     }
   }
 
-  // 递归拒绝参数中的敏感字段。
+  // 递归拒绝参数中的敏感字段
   private void rejectSensitiveFields(JsonNode node, String field) {
     if (node.isObject())
       node.properties()
@@ -597,8 +597,8 @@ WHERE id=:id
   }
 
   /**
-   * 把 JSON 文本解析为对象节点。
-   * 实现上，通过 Jackson 完成 JSON 的解析或序列化。
+   * 把 JSON 文本解析为对象节点
+   * 实现上，通过 Jackson 完成 JSON 的解析或序列化
    *
    * @param firstKey first 的业务唯一键
    * @param firstValue 合并时优先采用的值

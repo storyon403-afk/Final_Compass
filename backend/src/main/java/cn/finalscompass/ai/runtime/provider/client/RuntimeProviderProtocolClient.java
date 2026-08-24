@@ -4,8 +4,8 @@ import cn.finalscompass.ai.credential.ResolvedAiCredential;
 import cn.finalscompass.ai.runtime.model.RuntimeModelInvocationCommand;
 
 /**
- * 运行时供应商Protocol客户端的抽象契约，用于隔离业务编排与具体实现。
- * 维护入口：供应商 HTTP 协议、错误映射或工具调用格式变化时修改这里。
+ * 运行时供应商Protocol客户端的抽象契约，用于隔离业务编排与具体实现
+ * 维护入口：供应商 HTTP 协议、错误映射或工具调用格式变化时修改这里
  */
 public interface RuntimeProviderProtocolClient {
   String adapterKey();

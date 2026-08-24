@@ -66,8 +66,8 @@ class AiDocumentConversionServiceTest {
 
             assertEquals("HTTP/1.1", requestProtocol.get());
             assertEquals("worker-secret", workerToken.get());
-            // The internal boundary intentionally receives a neutral filename;
-            // the original user filename is only returned by the Java layer.
+            // 内部边界有意接收中性文件名，
+            // 原始用户文件名仅由 Java 层返回
             assertTrue(requestBody.get().contains("filename=\"attachment.md\""));
             assertTrue(requestBody.get().contains("中心极限定理"));
             assertEquals("# Parsed\n\n内容", result.markdown());

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Proxies validated attachments to the isolated MarkItDown worker. */
+/** 将校验后的附件代理到隔离的 MarkItDown 工作进程 */
 @Service
 public class AiDocumentConversionService {
   private static final long MAX_BYTES = 20L * 1024 * 1024;

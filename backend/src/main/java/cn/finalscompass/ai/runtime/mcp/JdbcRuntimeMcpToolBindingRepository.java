@@ -6,8 +6,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
- * JDBC运行时MCP工具绑定仓储，负责数据库查询、映射和持久化。
- * 维护入口：MCP 协议、发现、凭据或治理规则变化时修改这里。
+ * JDBC运行时MCP工具绑定仓储，负责数据库查询、映射和持久化
+ * 维护入口：MCP 协议、发现、凭据或治理规则变化时修改这里
  */
 @Repository
 public class JdbcRuntimeMcpToolBindingRepository implements RuntimeMcpToolBindingRepository {
@@ -17,7 +17,7 @@ public class JdbcRuntimeMcpToolBindingRepository implements RuntimeMcpToolBindin
     this.jdbc = jdbc;
   }
 
-  // 查询业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 查询业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   @Override
   public Optional<RuntimeMcpToolBinding> findActive(String toolKey, String toolVersion) {
     if (toolKey == null || toolVersion == null || toolKey.isBlank() || toolVersion.isBlank())
@@ -65,7 +65,7 @@ public class JdbcRuntimeMcpToolBindingRepository implements RuntimeMcpToolBindin
         .optional();
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validateEndpoint(RuntimeMcpTransportType transport, String value) {
     if (transport == RuntimeMcpTransportType.STDIO) {
       if (value != null)

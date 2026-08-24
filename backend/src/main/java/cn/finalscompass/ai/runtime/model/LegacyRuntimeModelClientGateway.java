@@ -30,8 +30,8 @@ import org.springframework.stereotype.Component;
  *        \------------------> ExecutionResult + Trace
  */
 /**
- * 统一编排模型调用、供应商回退、工具多轮执行、用量成本和追踪记录。
- * 维护入口：调用主流程与回退改这里；供应商报文改 client；工具安全契约改 RuntimeToolExecutor。
+ * 统一编排模型调用、供应商回退、工具多轮执行、用量成本和追踪记录
+ * 维护入口：调用主流程与回退改这里；供应商报文改 client；工具安全契约改 RuntimeToolExecutor
  */
 @Component
 public final class LegacyRuntimeModelClientGateway implements RuntimeModelClientGateway {
@@ -55,7 +55,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
   }
 
   /**
-   * 执行一次运行时调用。
+   * 执行一次运行时调用
    *
    * @param executionNodeId executionNode 对应的数据库 ID
    * @param dispatch 包含主命令和备用命令的调度计划
@@ -73,7 +73,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
   }
 
   /**
-   * 执行一次运行时调用。
+   * 执行一次运行时调用
    *
    * @param executionNodeId executionNode 对应的数据库 ID
    * @param dispatch 包含主命令和备用命令的调度计划
@@ -96,7 +96,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
   }
 
   /**
-   * 执行一次运行时调用。
+   * 执行一次运行时调用
    *
    * @param dispatch 包含主命令和备用命令的调度计划
    * @param credentials 按候选模型动态解析凭据的回调
@@ -125,9 +125,9 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
   }
 
   /**
-   * 执行一次运行时调用。
-   * 实现上，主路径不可用时按候选顺序尝试备用项，提高调用成功率；状态变化先经过状态机约束，阻止非法跳转。
-   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+   * 执行一次运行时调用
+   * 实现上，主路径不可用时按候选顺序尝试备用项，提高调用成功率；状态变化先经过状态机约束，阻止非法跳转
+   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
    *
    * @param executionNodeId executionNode 对应的数据库 ID
    * @param dispatch 包含主命令和备用命令的调度计划
@@ -228,9 +228,9 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
   }
 
   /**
-   * 调用外部服务并解析返回结果。
-   * 实现上，局部失败会降级为空结果，不让辅助能力中断主流程。
-   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+   * 调用外部服务并解析返回结果
+   * 实现上，局部失败会降级为空结果，不让辅助能力中断主流程
+   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
    *
    * @param command 已经归一化的执行命令
    * @param credential 本次调用使用的凭据
@@ -318,7 +318,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
     }
   }
 
-  // 把供应商响应转换为统一客户端结果。
+  // 把供应商响应转换为统一客户端结果
   private ClientResult clientResult(RuntimeProviderClientResult result) {
     return new ClientResult(
         result.content(),
@@ -329,7 +329,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         result.toolCalls());
   }
 
-  // 把客户端结果转换为追踪记录。
+  // 把客户端结果转换为追踪记录
   private RuntimeProviderInvocationResult invocationResult(
       RuntimeModelInvocationCommand command, ClientResult result, long latencyMs) {
     BigDecimal cost = cost(command, result.inputUnits(), result.outputUnits());
@@ -345,7 +345,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         "{}");
   }
 
-  // 根据输入输出用量计算本次调用成本。
+  // 根据输入输出用量计算本次调用成本
   private BigDecimal cost(
       RuntimeModelInvocationCommand command, long inputUnits, long outputUnits) {
     if (command.inputUnitPrice() == null && command.outputUnitPrice() == null) return null;
@@ -358,7 +358,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
         .add(output.multiply(BigDecimal.valueOf(outputUnits)));
   }
 
-  // 校验凭据与候选供应商是否匹配。
+  // 校验凭据与候选供应商是否匹配
   private void requireMatchingCredential(
       RuntimeModelInvocationCommand command, ResolvedAiCredential credential) {
     if (credential == null
@@ -369,7 +369,7 @@ public final class LegacyRuntimeModelClientGateway implements RuntimeModelClient
           "Resolved credential does not match the selected Provider candidate");
   }
 
-  // 判断异常链中是否包含超时异常。
+  // 判断异常链中是否包含超时异常
   private boolean timeout(Throwable failure) {
     for (Throwable current = failure; current != null; current = current.getCause())
       if (current.getClass().getSimpleName().toLowerCase().contains("timeout")

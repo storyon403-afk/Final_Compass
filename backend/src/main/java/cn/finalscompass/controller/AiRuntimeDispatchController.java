@@ -13,7 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** 管理 AI 运行任务的派发、参与者和产物访问。 */
+/** 管理 AI 运行任务的派发、参与者和产物访问 */
 @RestController
 @RequestMapping("/api/ai-center/dispatch")
 public final class AiRuntimeDispatchController {

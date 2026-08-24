@@ -15,7 +15,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Automated SMTP verification backed by Redis secrets and MySQL audit state. */
+/** 由 Redis 密钥和 MySQL 审计状态支持的自动 SMTP 验证 */
 @Service
 public class BetaAccessService {
   private static final Logger log = LoggerFactory.getLogger(BetaAccessService.class);
@@ -89,8 +89,8 @@ public class BetaAccessService {
             .optional()
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "验证请求不存在，请重新申请"));
-    // A successful verification is idempotent. This also covers the rare case where the
-    // client lost the first response or account reservation was temporarily unavailable.
+    // 成功验证具有幂等性，同时覆盖以下少见情况：
+    // 客户端丢失首次响应，或账号预留暂时不可用
     if ("EMAIL_VERIFIED".equals(row.status())) {
       reserveEventually(row.id());
       return verified(email);
@@ -111,8 +111,8 @@ public class BetaAccessService {
                     + " id=:id AND status='CODE_SENT'")
             .param("id", row.id())
             .update();
-        // Email ownership is already proven. Reservation is recoverable and must not
-        // turn a valid code into an apparent verification failure.
+        // 邮箱所有权已经验证，账号预留可以恢复，不能
+        // 将有效验证码表现为验证失败
         reserveEventually(row.id());
         return verified(email);
       }

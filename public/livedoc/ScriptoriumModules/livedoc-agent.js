@@ -21,6 +21,8 @@
         const form = panel.querySelector('form');
         const input = panel.querySelector('textarea');
         const submit = form.querySelector('button');
+        makeDraggable(trigger, trigger, 'livedoc-agent-trigger-position');
+        makeDraggable(panel, panel.querySelector('header'), 'livedoc-agent-panel-position');
         trigger.addEventListener('click', () => { panel.hidden = false; input.focus(); });
         panel.querySelector('header button').addEventListener('click', () => { panel.hidden = true; });
         form.addEventListener('submit', async (event) => {
@@ -44,6 +46,61 @@
         host.appendChild(item);
         host.scrollTop = host.scrollHeight;
         return item;
+    }
+
+    function makeDraggable(element, handle, storageKey) {
+        let drag = null;
+        let suppressClick = false;
+        try {
+            const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+            if (Number.isFinite(saved?.left) && Number.isFinite(saved?.top)) {
+                element.style.left = `${Math.max(8, Math.min(saved.left, window.innerWidth - 80))}px`;
+                element.style.top = `${Math.max(8, Math.min(saved.top, window.innerHeight - 48))}px`;
+                element.style.right = 'auto';
+                element.style.bottom = 'auto';
+            }
+        } catch {}
+        handle.classList.add('livedoc-drag-handle');
+        handle.addEventListener('pointerdown', (event) => {
+            const interactive = event.target.closest('button, input, textarea, select, a');
+            if (event.button !== 0 || (interactive && interactive !== handle)) return;
+            const rect = element.getBoundingClientRect();
+            drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moved: false };
+            element.style.left = `${rect.left}px`;
+            element.style.top = `${rect.top}px`;
+            element.style.right = 'auto';
+            element.style.bottom = 'auto';
+            handle.setPointerCapture?.(event.pointerId);
+            element.classList.add('is-dragging');
+            event.preventDefault();
+        });
+        handle.addEventListener('pointermove', (event) => {
+            if (!drag || drag.pointerId !== event.pointerId) return;
+            const dx = event.clientX - drag.x;
+            const dy = event.clientY - drag.y;
+            if (Math.hypot(dx, dy) > 4) drag.moved = true;
+            const rect = element.getBoundingClientRect();
+            const left = Math.max(8, Math.min(drag.left + dx, window.innerWidth - rect.width - 8));
+            const top = Math.max(8, Math.min(drag.top + dy, window.innerHeight - rect.height - 8));
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
+        });
+        const finish = (event) => {
+            if (!drag || drag.pointerId !== event.pointerId) return;
+            suppressClick = drag.moved;
+            drag = null;
+            element.classList.remove('is-dragging');
+            const rect = element.getBoundingClientRect();
+            try { localStorage.setItem(storageKey, JSON.stringify({ left: rect.left, top: rect.top })); } catch {}
+        };
+        handle.addEventListener('pointerup', finish);
+        handle.addEventListener('pointercancel', finish);
+        element.addEventListener('click', (event) => {
+            if (!suppressClick) return;
+            suppressClick = false;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }, true);
     }
 
     async function waitForAgent() {
@@ -105,7 +162,7 @@
 
     function extractPlan(text) {
         const plan = extractJson(text);
-        if (!Array.isArray(plan.actions) || !plan.actions.length) throw new Error('Agent 返回的操作计划为空');
+        if (!Array.isArray(plan.actions) || !plan.actions.length) throw new Error('EMPTY_ACTION_PLAN');
         return plan;
     }
 
@@ -182,8 +239,23 @@ ${deck ? `- addSlide：payload 包含 maid、summary、name、source；source �
         const progress = append(log, 'Agent 正在读取唯一真源并准备可审阅修改…', 'status');
         const researchResults = await research(current, goal, info);
         progress.textContent = `Agent 已完成 ${researchResults.length} 项只读检查，正在生成可审阅修改…`;
-        const answer = await askModel(promptFor(goal, info, source, researchResults));
-        const plan = extractPlan(answer);
+        const prompt = promptFor(goal, info, source, researchResults);
+        let answer = await askModel(prompt);
+        let plan;
+        try {
+            plan = extractPlan(answer);
+        } catch (error) {
+            if (error.message !== 'EMPTY_ACTION_PLAN') throw error;
+            progress.textContent = 'Agent 给出了说明但没有修改动作，正在自动重新规划…';
+            answer = await askModel(`${prompt}\n\n你上一次没有返回任何 actions。请根据用户目标生成至少一个可执行写操作；如果目标不明确，选择最小、安全、可审阅的修改。只返回规定 JSON。`);
+            try { plan = extractPlan(answer); }
+            catch (retryError) {
+                if (retryError.message === 'EMPTY_ACTION_PLAN') {
+                    throw new Error('Agent 理解了请求，但没有生成可执行修改。请指定要修改的章节、文字或当前幻灯片，并说明希望改成什么样。');
+                }
+                throw retryError;
+            }
+        }
         progress.textContent = plan.summary || 'Agent 已生成修改方案';
         for (const action of plan.actions) executeAction(agent, action, info, log);
     }

@@ -11,8 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * 接收用户评分与反馈，关联执行链路，并支持管理员复核和改进候选答案。
- * 维护入口：反馈状态、审核流程或差异计算规则都集中在这里维护。
+ * 接收用户评分与反馈，关联执行链路，并支持管理员复核和改进候选答案
+ * 维护入口：反馈状态、审核流程或差异计算规则都集中在这里维护
  */
 @Service
 public class AiFeedbackService {
@@ -38,7 +38,7 @@ public class AiFeedbackService {
     this.json = json;
   }
 
-  // 提交反馈改进候选答案。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 提交反馈改进候选答案。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public Offer offer(long user, OfferRequest request) {
     if (request == null || !TRIGGERS.contains(request.triggerType()))
       throw new IllegalArgumentException("AI feedback trigger is invalid");
@@ -71,7 +71,7 @@ public class AiFeedbackService {
     return new Offer(true, key, rate, LocalDateTime.now().plusDays(7));
   }
 
-  // 把反馈标记为无需处理。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 把反馈标记为无需处理。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public void dismiss(long user, String promptKey) {
     int count =
         jdbc.sql(
@@ -83,8 +83,8 @@ public class AiFeedbackService {
     if (count != 1) throw new IllegalArgumentException("AI feedback prompt is unavailable");
   }
 
-  // 提交用户反馈。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
-  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+  // 提交用户反馈。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
   @Transactional
   public FeedbackResult submit(long user, SubmitRequest request) {
     validate(request);
@@ -137,7 +137,7 @@ public class AiFeedbackService {
     return new FeedbackResult(id, "感谢反馈。你的评价已与本次 AI Trace 关联。", !request.helpful());
   }
 
-  // 查询待管理员处理的反馈队列。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 查询待管理员处理的反馈队列。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public List<Map<String, Object>> adminQueue() {
     return jdbc.sql(
             """
@@ -152,7 +152,7 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
         .listOfRows();
   }
 
-  // 根据候选评分生成最终路由决策。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 根据候选评分生成最终路由决策。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public void decide(long admin, long id, Decision request) {
     if (request == null || !Set.of("IN_REVIEW", "RESOLVED", "DISMISSED").contains(request.status()))
       throw new IllegalArgumentException("Optimization decision is invalid");
@@ -171,8 +171,8 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
   }
 
   /**
-   * 读取最近一次发现快照。
-   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 读取最近一次发现快照
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param feedback 数据库中的反馈记录
    * @param execution 反馈关联的执行记录
@@ -217,8 +217,8 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
   }
 
   /**
-   * 构造运行时工具执行上下文。
-   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 构造运行时工具执行上下文
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param user 用户 ID
    * @param executionKey execution 的业务唯一键
@@ -268,7 +268,7 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
     return new Context(execution, document);
   }
 
-  // 查询已经存在的配置记录。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 查询已经存在的配置记录。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   private Optional<Offer> existing(long user, Context context) {
     String sql =
         "SELECT prompt_key,sample_rate,expires_at FROM ai_feedback_prompt WHERE user_id=:user AND"
@@ -304,7 +304,7 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
             (LocalDateTime) row.get("expires_at")));
   }
 
-  // 记录用户对回答的评分。
+  // 记录用户对回答的评分
   private double rate(String trigger) {
     return switch (trigger) {
       case "FILE_GENERATION", "MULTI_STEP_TASK" -> .50;
@@ -313,7 +313,7 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
     };
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validate(SubmitRequest request) {
     if (request == null
         || request.promptKey() == null
@@ -327,7 +327,7 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
       throw new IllegalArgumentException("AI feedback is invalid");
   }
 
-  // 把对象序列化为 JSON。通过 Jackson 完成 JSON 的解析或序列化。
+  // 把对象序列化为 JSON。通过 Jackson 完成 JSON 的解析或序列化
   private String write(Object value) {
     try {
       return json.writeValueAsString(value);
@@ -336,7 +336,7 @@ ORDER BY FIELD(o.status,'OPEN','IN_REVIEW','RESOLVED','DISMISSED'),o.priority DE
     }
   }
 
-  // 清理并限制外部文本长度。
+  // 清理并限制外部文本长度
   private String clean(String value, int max) {
     if (value == null || value.isBlank()) return null;
     String result = value.trim();

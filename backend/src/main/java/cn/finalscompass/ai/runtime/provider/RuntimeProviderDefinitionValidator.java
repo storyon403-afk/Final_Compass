@@ -9,8 +9,8 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 /**
- * 校验供应商、模型和端点定义之间的完整性、唯一性及安全约束。
- * 维护入口：新增配置字段时必须同步补充这里的交叉校验，避免无效定义进入运行时。
+ * 校验供应商、模型和端点定义之间的完整性、唯一性及安全约束
+ * 维护入口：新增配置字段时必须同步补充这里的交叉校验，避免无效定义进入运行时
  */
 @Component
 public final class RuntimeProviderDefinitionValidator {
@@ -24,8 +24,8 @@ public final class RuntimeProviderDefinitionValidator {
     this.json = json;
   }
 
-  // 校验定义及其关联配置。
-  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+  // 校验定义及其关联配置
+  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
   public void validate(RuntimeProviderDefinition provider) {
     require(
         provider.id() > 0 && provider.key() != null && KEY.matcher(provider.key()).matches(),
@@ -96,7 +96,7 @@ public final class RuntimeProviderDefinitionValidator {
     }
   }
 
-  // 校验外部 URL 的协议和格式。
+  // 校验外部 URL 的协议和格式
   private boolean validUrl(String value) {
     try {
       URI uri = URI.create(value);
@@ -107,7 +107,7 @@ public final class RuntimeProviderDefinitionValidator {
     }
   }
 
-  // 把 JSON 文本解析为对象节点。通过 Jackson 完成 JSON 的解析或序列化。
+  // 把 JSON 文本解析为对象节点。通过 Jackson 完成 JSON 的解析或序列化
   private JsonNode object(RuntimeProviderDefinition provider, String field, String value) {
     try {
       JsonNode node = json.readTree(value);
@@ -125,7 +125,7 @@ public final class RuntimeProviderDefinitionValidator {
     if (!condition) throw invalid(provider, field, reason);
   }
 
-  // 构造统一的参数校验异常。
+  // 构造统一的参数校验异常
   private InvalidRuntimeProviderDefinitionException invalid(
       RuntimeProviderDefinition provider, String field, String reason) {
     return new InvalidRuntimeProviderDefinitionException(

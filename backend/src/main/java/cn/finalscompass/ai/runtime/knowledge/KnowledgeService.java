@@ -11,7 +11,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 // RAG 知识库引擎：知识入库-->切块-->向量化-->存储-->按权限检索-->语义+关键词混合排序
 // 1.ingestApproved()把审核通过的资料（markdown）入库 2.search()根据用户问题，从知识库里找最相关的内容
-// 维护入口：入库链路改 ingestApproved，召回与混排改 search，分块和向量协议分别改 Chunker/EmbeddingGateway。
+// 维护入口：入库链路改 ingestApproved，召回与混排改 search，分块和向量协议分别改 Chunker/EmbeddingGateway
 @Service
 public final class KnowledgeService {
   // 声明
@@ -36,7 +36,7 @@ public final class KnowledgeService {
   }
 
   /**
-   * ingestApproved ingests approved knowledge sources into the system（把管理员已经批准的一份资料正式加入知识库）
+   * ingestApproved 将管理员已批准的资料正式加入知识库
    *
    * @param adminId the ID of the administrator who approved the source（哪个管理员完成了这次审核和入库）
    * @param command the ingestion command containing the source details（整份资料信息）
@@ -210,7 +210,7 @@ ORDER BY c.id DESC LIMIT 1000
     // 对每个 Chunk 计算 lexical score 和 semantic score，计算混合评分（65% 语义相似度，35% 精确关键词命中，用 Math.max(0,
     // semantic)：不让负数扣分，范围为[0,1]）
     // 如果：vector == null，说明语义搜索失败，semantic score 为 0，score = 0.35 * lexical:只用 lexical score
-    // ,所以只有：精确字符串包含 query 的 Chunk 才能被找到。
+    // ,所以只有：精确字符串包含 query 的 Chunk 才能被找到
     // .sorted() 按照 score 降序排列，score 相同的按 sourceKey 升序排列，sourceKey 相同的按 chunkIndex 升序排列,最后取前 limit
     // 个结果
     return rows.stream()

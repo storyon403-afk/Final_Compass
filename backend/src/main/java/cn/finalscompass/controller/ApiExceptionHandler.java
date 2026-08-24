@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-/** 将控制器抛出的常见异常转换为稳定且经过脱敏的 API 错误响应。 */
+/** 将控制器抛出的常见异常转换为稳定且经过脱敏的 API 错误响应 */
 @RestControllerAdvice
 public class ApiExceptionHandler {
   private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
@@ -25,7 +25,7 @@ public class ApiExceptionHandler {
     return errorBody(message);
   }
 
-  /** Returns the application's sanitized reason instead of Spring's generic status phrase. */
+  /** 返回应用脱敏后的原因，而非 Spring 的通用状态描述 */
   @ExceptionHandler(ResponseStatusException.class)
   public ResponseEntity<Map<String, String>> status(ResponseStatusException exception) {
     String reason = exception.getReason() == null ? "请求暂时无法完成" : exception.getReason();

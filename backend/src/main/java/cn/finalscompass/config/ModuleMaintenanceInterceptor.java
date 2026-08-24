@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-/** 在后端阻止维护模块的业务调用，避免仅靠前端维护页被直接请求绕过。 */
+/** 在后端阻止维护模块的业务调用，避免仅靠前端维护页被直接请求绕过 */
 public final class ModuleMaintenanceInterceptor implements HandlerInterceptor {
   private final AuthService auth;private final SystemModuleService modules;private final ObjectMapper json;
   public ModuleMaintenanceInterceptor(AuthService auth,SystemModuleService modules,ObjectMapper json){this.auth=auth;this.modules=modules;this.json=json;}

@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
  *   回调/浏览器结果 --> updateStatus + addArtifact --> view 返回完整任务
  */
 /**
- * 智能体运行入口，负责创建任务、调用外部 Agent、接收回调并维护任务产物。
- * 维护入口：任务生命周期改这里；模型选择改 provider/model；浏览器通信改 BrowserGatewayService。
+ * 智能体运行入口，负责创建任务、调用外部 Agent、接收回调并维护任务产物
+ * 维护入口：任务生命周期改这里；模型选择改 provider/model；浏览器通信改 BrowserGatewayService
  */
 @Service
 public class AiRuntimeDispatchService {
@@ -254,7 +254,7 @@ public class AiRuntimeDispatchService {
         .single();
   }
 
-  // 查询任务所属用户。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 查询任务所属用户。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public long ownerUserId(long runId) {
     return jdbc.sql("SELECT user_id FROM ai_runtime_run WHERE id=:run")
         .param("run", runId)
@@ -262,7 +262,7 @@ public class AiRuntimeDispatchService {
         .single();
   }
 
-  // 查询任务产生的全部文件。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 查询任务产生的全部文件。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public List<Map<String, Object>> artifacts(long user, String key) {
     return jdbc.sql(
             "SELECT a.id,a.file_name,a.content_type,a.size_bytes,a.created_at FROM"

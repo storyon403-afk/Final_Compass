@@ -6,7 +6,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 集中管理业务模块开放状态；前端展示与后端拦截必须读取同一份配置。 */
+/** 集中管理业务模块开放状态；前端展示与后端拦截必须读取同一份配置 */
 @Service
 public class SystemModuleService {
   private final JdbcClient jdbc;

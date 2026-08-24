@@ -63,6 +63,7 @@
         readExternalResource: (payload) =>
             nativeApi.readExternalResource(payload),
         save: (payload) => nativeApi.save(payload),
+        cacheDraft: (payload) => nativeApi.cacheDraft?.(payload),
         exportRichDocument: (payload) =>
             nativeApi.exportRichDocument(payload),
         listRecent: () => nativeApi.listRecent(),

@@ -10,7 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** Administrator endpoints for Microsoft Graph delegated mail authorization. */
+/** Microsoft Graph 委托邮件授权的管理员接口 */
 @RestController
 @RequestMapping("/api/system/mail/microsoft")
 public class MicrosoftMailController {

@@ -22,13 +22,13 @@ public class BrowserBridgeCredentialController {
     this.credentials = credentials;
   }
 
-  /** Explicit human action; rotating a binding invalidates the previously bound installation. */
+  /** 需要用户明确操作，轮换绑定会使之前绑定的安装失效 */
   @PostMapping("/bindings")
   public BrowserBridgeCredentialService.Binding bind(HttpServletRequest request) {
     return credentials.bind(auth.current(request).id());
   }
 
-  /** Called by the bound extension, never with a user's login session. */
+  /** 由已绑定扩展调用，不使用用户登录会话 */
   @PostMapping("/tickets")
   public BrowserBridgeCredentialService.Ticket exchange(@Valid @RequestBody ExchangeRequest request) {
     return credentials.exchange(request.bindingSecret());

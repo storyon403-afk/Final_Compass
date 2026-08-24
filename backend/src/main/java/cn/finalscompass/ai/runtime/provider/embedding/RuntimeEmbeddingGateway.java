@@ -37,8 +37,8 @@ import org.springframework.stereotype.Component;
  *        调用成功并返回              调用失败，尝试下一个候选
  */
 /**
- * 统一编排 Embedding 模型匹配、凭据解析、客户端选择和失败回退。
- * 维护入口：候选筛选改 RuntimeProviderMatcher；供应商报文改对应 EmbeddingClient。
+ * 统一编排 Embedding 模型匹配、凭据解析、客户端选择和失败回退
+ * 维护入口：候选筛选改 RuntimeProviderMatcher；供应商报文改对应 EmbeddingClient
  */
 @Component
 public final class RuntimeEmbeddingGateway {
@@ -63,7 +63,7 @@ public final class RuntimeEmbeddingGateway {
     this.usage = usage;
   }
 
-  /** User-triggered embedding calls participate in the same platform-key policy. */
+  /** 用户触发的向量调用遵守相同的平台密钥策略 */
   public EmbeddingBatch embed(long userId, List<String> inputs) {
     usage.check(userId, AiCredentialSource.PLATFORM);
     try {

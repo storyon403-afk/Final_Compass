@@ -5,8 +5,8 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * 集中声明执行、节点和供应商调用允许的状态转换。
- * 维护入口：增加状态或调整生命周期时先改这里，再检查 TraceStore 和前端状态展示。
+ * 集中声明执行、节点和供应商调用允许的状态转换
+ * 维护入口：增加状态或调整生命周期时先改这里，再检查 TraceStore 和前端状态展示
  */
 @Component
 public final class RuntimeTraceStateMachine {
@@ -100,20 +100,20 @@ public final class RuntimeTraceStateMachine {
                       RuntimeProviderInvocationStatus.TIMEOUT,
                       RuntimeProviderInvocationStatus.CANCELLED));
 
-  // 校验状态是否允许从当前值流转到目标值。状态变化先经过状态机约束，阻止非法跳转。
+  // 校验状态是否允许从当前值流转到目标值。状态变化先经过状态机约束，阻止非法跳转
   public void requireTransition(RuntimeExecutionStatus from, RuntimeExecutionStatus to) {
     if (!EXECUTION.getOrDefault(from, Set.of()).contains(to))
       throw new IllegalStateException("Invalid execution status transition: " + from + " -> " + to);
   }
 
-  // 校验状态是否允许从当前值流转到目标值。状态变化先经过状态机约束，阻止非法跳转。
+  // 校验状态是否允许从当前值流转到目标值。状态变化先经过状态机约束，阻止非法跳转
   public void requireTransition(RuntimeExecutionNodeStatus from, RuntimeExecutionNodeStatus to) {
     if (!NODE.getOrDefault(from, Set.of()).contains(to))
       throw new IllegalStateException(
           "Invalid execution node status transition: " + from + " -> " + to);
   }
 
-  // 校验状态是否允许从当前值流转到目标值。状态变化先经过状态机约束，阻止非法跳转。
+  // 校验状态是否允许从当前值流转到目标值。状态变化先经过状态机约束，阻止非法跳转
   public void requireTransition(
       RuntimeProviderInvocationStatus from, RuntimeProviderInvocationStatus to) {
     if (!INVOCATION.getOrDefault(from, Set.of()).contains(to))

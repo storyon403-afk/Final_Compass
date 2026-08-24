@@ -177,7 +177,7 @@ ON DUPLICATE KEY UPDATE encrypted_key=:encrypted,encryption_iv=:iv,key_fingerpri
         .update();
   }
 
-  /** 保存用户专用视觉 Key，与主模型和审核模型凭据隔离。 */
+  /** 保存用户专用视觉 Key，与主模型和审核模型凭据隔离 */
   @Transactional public Map<String,Object> saveUserVisionKey(long userId,SaveUserKey request){
     String provider=providers.require(request.provider());
     if(!List.of("gemini","doubao").contains(provider))throw new IllegalArgumentException("视觉 Provider 仅支持 Gemini 或 Doubao");
@@ -250,7 +250,7 @@ ON DUPLICATE KEY UPDATE encrypted_key=:encrypted,encryption_iv=:iv,key_fingerpri
           .param("enabled", request.enabled())
           .param("admin", adminId)
           .update();
-      // 管理员配置的新模型必须同步进入 Runtime 注册表，否则旧配置表显示保存成功，路由器却找不到它。
+      // 管理员配置的新模型必须同步进入 Runtime 注册表，否则旧配置表显示保存成功，路由器却找不到它
       if (!"hermes".equals(provider)) registerPlatformModel(provider, model, request.enabled());
       return Map.of(
           "provider",
@@ -369,8 +369,8 @@ ON DUPLICATE KEY UPDATE provider=:provider,model_name=:model,encrypted_key=:encr
   }
 
   /**
-   * 将管理员平台配置同步到统一 Runtime 模型目录。
-   * 新模型默认只声明文本推理能力；视觉、工具和结构化输出必须在确认协议实现后单独登记。
+   * 将管理员平台配置同步到统一 Runtime 模型目录
+   * 新模型默认只声明文本推理能力；视觉、工具和结构化输出必须在确认协议实现后单独登记
    */
   private void registerPlatformModel(String provider, String model, boolean enabled) {
     jdbc.sql(

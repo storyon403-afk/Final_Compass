@@ -10,8 +10,8 @@ import java.util.*;
 import org.springframework.stereotype.Component;
 
 /**
- * 调用 OpenAI 兼容 Embeddings API，把文本批量转换为浮点向量。
- * 维护入口：Embedding 协议和批量限制改这里；向量存储与检索策略改 KnowledgeService。
+ * 调用 OpenAI 兼容 Embeddings API，把文本批量转换为浮点向量
+ * 维护入口：Embedding 协议和批量限制改这里；向量存储与检索策略改 KnowledgeService
  */
 @Component
 public final class OpenAiRuntimeEmbeddingClient implements RuntimeEmbeddingClient {
@@ -28,8 +28,8 @@ public final class OpenAiRuntimeEmbeddingClient implements RuntimeEmbeddingClien
   }
 
   /**
-   * 为文本生成向量表示。
-   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化。
+   * 为文本生成向量表示
+   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化
    *
    * @param candidate 待转换的模型候选项
    * @param credential 本次调用使用的凭据

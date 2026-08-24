@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-/** 执行独立视觉预处理，将图片转换成可安全交给主回答模型的结构化文本。 */
+/** 执行独立视觉预处理，将图片转换成可安全交给主回答模型的结构化文本 */
 @Service
 public class AiVisionService {
   private final org.springframework.jdbc.core.simple.JdbcClient jdbc;private final AiCredentialResolver credentials;private final RuntimeProviderDefinitionRepository providers;private final RuntimeProviderClientRegistry clients;private final AiUsageGuardService usage;
@@ -21,7 +21,7 @@ public class AiVisionService {
   public VisionResult analyze(long userId,MultipartFile file,String providerValue,String modelValue,String sourceValue,String ephemeral){
     if(file==null||file.isEmpty()||file.getSize()>10*1024*1024||file.getContentType()==null||!file.getContentType().startsWith("image/"))throw new IllegalArgumentException("请选择 10MB 以内的图片");
     AiCredentialSource source;try{source=AiCredentialSource.valueOf(sourceValue);}catch(Exception e){throw new IllegalArgumentException("视觉凭据来源不合法");}
-    // 功能开关只控制用户自带视觉链路；平台额度始终服从管理员配置的平台视觉通道。
+    // 功能开关只控制用户自带视觉链路；平台额度始终服从管理员配置的平台视觉通道
     boolean enabled=jdbc.sql("SELECT user_vision_auxiliary_enabled FROM ai_feature_setting WHERE id=1").query(Boolean.class).single();if(source!=AiCredentialSource.PLATFORM&&!enabled)throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"管理员已关闭用户视觉辅助功能");
     if(source==AiCredentialSource.EPHEMERAL_BYOK&&!jdbc.sql("SELECT user_vision_ephemeral_key_enabled FROM ai_feature_setting WHERE id=1").query(Boolean.class).single())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"管理员已关闭临时视觉 Key");
     var provider=providers.findRoutableByKey(providerValue).orElseThrow(()->new IllegalArgumentException("视觉 Provider 不可用"));

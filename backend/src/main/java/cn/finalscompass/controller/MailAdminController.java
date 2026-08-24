@@ -8,7 +8,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-/** Administrator SMTP, template and manually confirmed credential-delivery endpoints. */
+/** 管理员 SMTP、模板与人工确认凭据投递接口 */
 @RestController
 @RequestMapping("/api/system/mail")
 public class MailAdminController {

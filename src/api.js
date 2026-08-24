@@ -101,8 +101,12 @@ export async function initIdentity() {
 export const catalogApi = {
   courses: () => request('/courses'),
   colleges: () => request('/courses/colleges'),
+  programs: () => request('/courses/programs'),
   addCollege: (name) => request('/courses/colleges', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
+  }),
+  addProgram: (college, name) => request('/courses/programs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ college, name })
   }),
   addCourse: (fields) => request('/courses', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields)

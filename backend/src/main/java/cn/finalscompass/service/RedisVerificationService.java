@@ -18,7 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Redis-backed verification secrets and atomic request rate limits. */
+/** 基于 Redis 的验证密钥与原子请求限流 */
 @Service
 public class RedisVerificationService {
   private static final DefaultRedisScript<Long> LIMIT_SCRIPT =

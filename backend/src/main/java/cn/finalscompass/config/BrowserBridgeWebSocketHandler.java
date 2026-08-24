@@ -12,7 +12,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.SubProtocolCapable;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-/** WebSocket endpoint handler for the Chrome extension browser bridge. */
+/** Chrome 扩展浏览器桥接的 WebSocket 端点处理器 */
 @Component
 public final class BrowserBridgeWebSocketHandler extends TextWebSocketHandler
     implements SubProtocolCapable {

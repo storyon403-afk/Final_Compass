@@ -12,6 +12,23 @@
         let focusMode = false;
         let disposed = false;
 
+        function setPanelCollapsed(panel, collapsed, persist = true) {
+            const isOutline = panel === 'outline';
+            const className = `${panel}-collapsed`;
+            document.body.classList.toggle(className, collapsed);
+            const toolbarButton = elements[`${panel}-toggle-btn`];
+            toolbarButton?.classList.toggle('active', !collapsed);
+            toolbarButton?.setAttribute('aria-pressed', String(!collapsed));
+            if (persist) {
+                try { localStorage.setItem(`scriptorium-${panel}-collapsed`, String(collapsed)); } catch {}
+            }
+            if (persist) showToast(`${isOutline ? '篇章' : '文脉'}已${collapsed ? '收起' : '展开'}`, 'info', 1200);
+        }
+
+        function togglePanel(panel) {
+            setPanelCollapsed(panel, !document.body.classList.contains(`${panel}-collapsed`));
+        }
+
         function cacheElements() {
             document.querySelectorAll('[id]').forEach((element) => {
                 elements[element.id] = element;
@@ -353,12 +370,12 @@
                 (event) => updateZoom(event.target.value),
                 options
             );
-            click('outline-toggle-btn', () =>
-                document.body.classList.toggle('outline-collapsed')
-            );
-            click('lineage-toggle-btn', () =>
-                document.body.classList.toggle('lineage-collapsed')
-            );
+            click('outline-toggle-btn', () => togglePanel('outline'));
+            click('outline-collapse-btn', () => setPanelCollapsed('outline', true));
+            click('outline-expand-btn', () => setPanelCollapsed('outline', false));
+            click('lineage-toggle-btn', () => togglePanel('lineage'));
+            click('lineage-collapse-btn', () => setPanelCollapsed('lineage', true));
+            click('lineage-expand-btn', () => setPanelCollapsed('lineage', false));
             click('focus-mode-btn', () => setFocusMode(true));
             click('focus-exit-btn', () => setFocusMode(false));
 
@@ -398,6 +415,10 @@
 
         async function initialize() {
             cacheElements();
+            try {
+                setPanelCollapsed('outline', localStorage.getItem('scriptorium-outline-collapsed') === 'true', false);
+                setPanelCollapsed('lineage', localStorage.getItem('scriptorium-lineage-collapsed') === 'true', false);
+            } catch {}
             context.bindElements?.(elements, notificationPort, surfacePort);
             bindControls();
             controllers.forEach((controller) => controller.bind?.());

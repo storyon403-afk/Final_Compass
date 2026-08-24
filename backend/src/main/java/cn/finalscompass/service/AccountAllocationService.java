@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Allocates sequential beta login accounts using a single MySQL row lock. */
+/** 使用单个 MySQL 行锁顺序分配内测登录账号 */
 @Service
 public class AccountAllocationService {
   private static final Logger log = LoggerFactory.getLogger(AccountAllocationService.class);
@@ -43,8 +43,8 @@ public class AccountAllocationService {
       try {
         reserve(id);
       } catch (RuntimeException exception) {
-        // One temporarily failing request must not prevent later verified users from
-        // receiving their reservations. A later list refresh retries the same row.
+        // 单个暂时失败的请求不能阻止后续已验证用户
+        // 获得预留账号，后续列表刷新会重试同一记录
         log.warn(
             "Unable to backfill account reservation for request {}: {}",
             id,

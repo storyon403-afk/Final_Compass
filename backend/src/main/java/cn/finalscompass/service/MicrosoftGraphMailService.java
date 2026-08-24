@@ -24,7 +24,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Microsoft authorization-code/PKCE connection and Graph sendMail provider. */
+/** Microsoft 授权码与 PKCE 连接及 Graph 邮件发送提供方 */
 @Service
 public class MicrosoftGraphMailService {
   private static final Logger log = LoggerFactory.getLogger(MicrosoftGraphMailService.class);

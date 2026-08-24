@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Administrator-only SMTP, template and account-provisioning operations. */
+/** 仅限管理员执行的 SMTP、模板与账号配置操作 */
 @Service
 public class MailAdminService {
   private static final String PASSWORD_ALPHABET =
@@ -152,7 +152,7 @@ UPDATE email_template SET version=version+1,subject_template=:subject,text_templ
     requireText(input.username(), "登录账号");
     requireText(input.displayName(), "显示名");
     // 同时遵守 app_user.username(40) 与 anonymous_user.nickname(32) 的数据库边界，
-    // 在进入事务前返回可读错误，避免由数据库截断异常变成通用 500。
+    // 在进入事务前返回可读错误，避免由数据库截断异常变成通用 500
     if (!input.username().trim().matches("[A-Za-z0-9_.-]{3,40}"))
       throw new IllegalArgumentException("账号只能包含字母、数字、下划线、点或短横线，长度3-40位");
     if (input.displayName().trim().length() > 32)
@@ -257,8 +257,8 @@ VALUES (:request,:user,'ACCOUNT_CREATED',:admin,'SENDING')
   }
 
   /**
-   * Generates a non-identifying display name while leaving the login account
-   * administrator-controlled.
+   * 生成不含身份信息的显示名称，登录账号仍由
+   * 管理员控制
    */
   public Map<String, String> suggestDisplayName() {
     List<String> words = List.of("银杏", "松果", "青禾", "白露", "海盐", "星屿", "山岚", "小满");

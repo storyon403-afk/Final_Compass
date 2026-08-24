@@ -21,8 +21,8 @@ import org.springframework.stereotype.Service;
  *          --> normalize --> 计算摘要 --> DiscoveryStore 快照/绑定 --> Report
  */
 /**
- * 连接 MCP 服务器发现工具，完成规范化、摘要比对和快照持久化。
- * 维护入口：发现协议改 Transport；工具规范化改 normalize；快照策略改 DiscoveryStore。
+ * 连接 MCP 服务器发现工具，完成规范化、摘要比对和快照持久化
+ * 维护入口：发现协议改 Transport；工具规范化改 normalize；快照策略改 DiscoveryStore
  */
 @Service
 public final class RuntimeMcpDiscoveryService {
@@ -45,7 +45,7 @@ public final class RuntimeMcpDiscoveryService {
     this.json = json;
   }
 
-  // 发现并同步 MCP 服务器提供的工具。在结束时主动释放资源或擦除敏感数据。
+  // 发现并同步 MCP 服务器提供的工具。在结束时主动释放资源或擦除敏感数据
   public RuntimeMcpDiscoveryReport discover(String serverKey, long requestedByUserId) {
     if (requestedByUserId <= 0) throw new IllegalArgumentException("MCP discovery user is invalid");
     RuntimeMcpServerDefinition server =
@@ -72,7 +72,7 @@ public final class RuntimeMcpDiscoveryService {
         persisted.staleBindings());
   }
 
-  // 把供应商数据转换为内部统一格式。利用流式过滤和排序得到符合约束的稳定结果。
+  // 把供应商数据转换为内部统一格式。利用流式过滤和排序得到符合约束的稳定结果
   private RuntimeMcpDiscoverySnapshot normalize(
       RuntimeMcpServerDefinition server, RuntimeMcpDiscoveryResult result) {
     if (result == null
@@ -119,7 +119,7 @@ public final class RuntimeMcpDiscoveryService {
         tools);
   }
 
-  // 递归规范化 JSON 对象的字段顺序。通过 Jackson 完成 JSON 的解析或序列化。
+  // 递归规范化 JSON 对象的字段顺序。通过 Jackson 完成 JSON 的解析或序列化
   private String canonicalObject(String value, String label) {
     try {
       JsonNode node = json.readTree(value);
@@ -130,7 +130,7 @@ public final class RuntimeMcpDiscoveryService {
     }
   }
 
-  // 把输入转换为稳定的规范字符串。通过 Jackson 完成 JSON 的解析或序列化；利用流式过滤和排序得到符合约束的稳定结果。
+  // 把输入转换为稳定的规范字符串。通过 Jackson 完成 JSON 的解析或序列化；利用流式过滤和排序得到符合约束的稳定结果
   private JsonNode canonical(JsonNode node) {
     if (node.isObject()) {
       ObjectNode result = json.createObjectNode();
@@ -147,7 +147,7 @@ public final class RuntimeMcpDiscoveryService {
     return node.deepCopy();
   }
 
-  // 计算工具定义的稳定摘要。通过摘要或 Base64 编码生成稳定且可传输的标识。
+  // 计算工具定义的稳定摘要。通过摘要或 Base64 编码生成稳定且可传输的标识
   private String digest(String value) {
     try {
       return HexFormat.of()
@@ -162,7 +162,7 @@ public final class RuntimeMcpDiscoveryService {
     return limited(value, max, null);
   }
 
-  // 截断过长的外部文本。主路径不可用时按候选顺序尝试备用项，提高调用成功率。
+  // 截断过长的外部文本。主路径不可用时按候选顺序尝试备用项，提高调用成功率
   private String limited(String value, int max, String fallback) {
     String normalized = value == null ? fallback : value;
     if (normalized != null && normalized.length() > max)

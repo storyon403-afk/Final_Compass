@@ -27,8 +27,8 @@ import org.springframework.stereotype.Component;
  *                       initialize --> tools/list / tools/call --> close
  */
 /**
- * 通过子进程标准输入输出实现 MCP JSON-RPC 初始化、工具发现与调用。
- * 维护入口：进程参数、消息 framing、超时和进程复用策略都在这里维护。
+ * 通过子进程标准输入输出实现 MCP JSON-RPC 初始化、工具发现与调用
+ * 维护入口：进程参数、消息 framing、超时和进程复用策略都在这里维护
  */
 @Component
 public final class StdioRuntimeMcpTransport implements RuntimeMcpTransport {
@@ -53,7 +53,7 @@ public final class StdioRuntimeMcpTransport implements RuntimeMcpTransport {
     return RuntimeMcpTransportType.STDIO;
   }
 
-  // 调用目标服务。通过 Jackson 完成 JSON 的解析或序列化；在结束时主动释放资源或擦除敏感数据。
+  // 调用目标服务。通过 Jackson 完成 JSON 的解析或序列化；在结束时主动释放资源或擦除敏感数据
   @Override
   public RuntimeMcpCallResult callTool(RuntimeMcpCallRequest request, char[] token) {
     try (Session session = open(request.server(), token)) {
@@ -74,7 +74,7 @@ public final class StdioRuntimeMcpTransport implements RuntimeMcpTransport {
     }
   }
 
-  // 发现并同步 MCP 服务器提供的工具。通过 Jackson 完成 JSON 的解析或序列化；在结束时主动释放资源或擦除敏感数据。
+  // 发现并同步 MCP 服务器提供的工具。通过 Jackson 完成 JSON 的解析或序列化；在结束时主动释放资源或擦除敏感数据
   @Override
   public RuntimeMcpDiscoveryResult discoverTools(RuntimeMcpServerDefinition server, char[] token) {
     try (Session session = open(server, token)) {
@@ -116,8 +116,8 @@ public final class StdioRuntimeMcpTransport implements RuntimeMcpTransport {
     }
   }
 
-  // 启动并连接 stdio MCP 子进程。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；通过 Jackson 完成 JSON 的解析或序列化。
-  // 可升级：可加入进程复用、并发上限和更细粒度的存活探测。
+  // 启动并连接 stdio MCP 子进程。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；通过 Jackson 完成 JSON 的解析或序列化
+  // 可升级：可加入进程复用、并发上限和更细粒度的存活探测
   private Session open(RuntimeMcpServerDefinition server, char[] token) throws Exception {
     if (server.transportType() != RuntimeMcpTransportType.STDIO)
       throw new IllegalArgumentException("Not STDIO MCP");
@@ -156,7 +156,7 @@ public final class StdioRuntimeMcpTransport implements RuntimeMcpTransport {
     return session;
   }
 
-  // 解析外部输入。
+  // 解析外部输入
   private Set<Path> parsePaths(String value) {
     Set<Path> result = new HashSet<>();
     if (value != null && !value.isBlank())

@@ -3,7 +3,44 @@
 (() => {
     const STYLE_PACK_KEY = 'finals-compass-livedoc-style-packs-v1';
     const SVG_PACK_KEY = 'finals-compass-livedoc-svg-packs-v1';
+    const LOCAL_DB_NAME = 'finals-compass-livedoc-local-v1';
+    const LOCAL_DB_VERSION = 1;
     const subscribers = new Map();
+
+    function openLocalDb() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(LOCAL_DB_NAME, LOCAL_DB_VERSION);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('handles')) db.createObjectStore('handles', { keyPath: 'id' });
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('无法打开本地草稿缓存'));
+        });
+    }
+
+    async function localStore(storeName, mode, operation) {
+        const db = await openLocalDb();
+        try {
+            return await new Promise((resolve, reject) => {
+                const transaction = db.transaction(storeName, mode);
+                const request = operation(transaction.objectStore(storeName));
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error || new Error('本地缓存操作失败'));
+                transaction.onabort = () => reject(transaction.error || new Error('本地缓存事务失败'));
+            });
+        } finally { db.close(); }
+    }
+
+    const localGet = (store, id) => localStore(store, 'readonly', (items) => items.get(id));
+    const localPut = (store, value) => localStore(store, 'readwrite', (items) => items.put(value));
+    const localDelete = (store, id) => localStore(store, 'readwrite', (items) => items.delete(id));
+    const localAll = (store) => localStore(store, 'readonly', (items) => items.getAll());
+
+    function localId() {
+        return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
 
     function emit(channel, payload) {
         (subscribers.get(channel) || new Set()).forEach((listener) => listener(payload));
@@ -37,12 +74,12 @@
         });
     }
 
-    async function projectResult(file) {
+    async function projectResult(file, filePath = '') {
         if (!file) return { success: false, canceled: true };
         const extension = file.name.split('.').pop()?.toLowerCase();
         return {
             success: true,
-            filePath: `browser://${file.name}`,
+            filePath: filePath || `browser://${file.name}`,
             name: file.name,
             kind: extension === 'vpptx' ? 'vpptx' : 'vdocx',
             bytes: new Uint8Array(await file.arrayBuffer()),
@@ -112,6 +149,69 @@
         anchor.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
         return { success: true, filePath: `browser-download://${name}`, name, size: blob.size, modifiedAt: Date.now() };
+    }
+
+    async function chooseLocalProject() {
+        if (typeof window.showOpenFilePicker !== 'function') {
+            return projectResult(await pickFile('.vdocx,.vpptx'));
+        }
+        try {
+            const [handle] = await window.showOpenFilePicker({
+                multiple: false,
+                types: [{ description: 'liveDoc 工程', accept: { 'application/vnd.vcp.vdoc+zip': ['.vdocx', '.vpptx'] } }],
+            });
+            const id = localId();
+            await localPut('handles', { id, handle });
+            return projectResult(await handle.getFile(), `local-handle://${id}`);
+        } catch (error) {
+            if (error?.name === 'AbortError') return { success: false, canceled: true };
+            throw error;
+        }
+    }
+
+    async function saveToLocalFile(name, bytes, filePath, saveAs) {
+        let id = !saveAs ? String(filePath || '').match(/^local-handle:\/\/([^/]+)$/)?.[1] : '';
+        let handle = id ? (await localGet('handles', id))?.handle : null;
+        if (handle && await handle.queryPermission?.({ mode: 'readwrite' }) !== 'granted') {
+            if (await handle.requestPermission?.({ mode: 'readwrite' }) !== 'granted') handle = null;
+        }
+        if (!handle && typeof window.showSaveFilePicker === 'function') {
+            try {
+                handle = await window.showSaveFilePicker({
+                    suggestedName: name,
+                    types: [{ description: 'liveDoc 工程', accept: { 'application/vnd.vcp.vdoc+zip': [name.toLowerCase().endsWith('.vpptx') ? '.vpptx' : '.vdocx'] } }],
+                });
+            } catch (error) {
+                if (error?.name === 'AbortError') return { success: false, canceled: true };
+                throw error;
+            }
+            id = localId();
+            await localPut('handles', { id, handle });
+        }
+        if (!handle) return download(name, bytes, 'application/vnd.vcp.vdoc+zip');
+        const writable = await handle.createWritable();
+        await writable.write(bytes);
+        await writable.close();
+        return { success: true, filePath: `local-handle://${id}`, name: handle.name || name, size: bytes.length, modifiedAt: Date.now() };
+    }
+
+    async function cacheDraft(payload = {}) {
+        const bytes = new Uint8Array(payload.bytes || []);
+        if (!bytes.length) return { success: false };
+        const id = String(payload.documentId || 'current');
+        await localPut('drafts', {
+            id,
+            name: String(payload.name || '未命名文稿.vdocx'),
+            kind: projectKind(payload.name),
+            bytes,
+            sourcePath: String(payload.filePath || ''),
+            dirty: payload.dirty !== false,
+            updatedAt: Date.now(),
+        });
+        const drafts = (await localAll('drafts')).sort((a, b) => b.updatedAt - a.updatedAt);
+        await Promise.all(drafts.slice(12).map((item) => localDelete('drafts', item.id)));
+        notifyHost('draft-cached', { name: payload.name });
+        return { success: true };
     }
 
     function serverProjectId(path) {
@@ -202,9 +302,21 @@
 
     const api = Object.freeze({
         openWindow: async () => true,
-        chooseOpen: async () => projectResult(await pickFile('.vdocx,.vpptx')),
+        chooseOpen: chooseLocalProject,
         chooseImport: async () => importResult(await pickFile('.html,.htm,.md,.markdown,.txt,.rtf,.docx,.pptx,.vdocx,.vpptx')),
         readPath: async (filePath) => {
+            const draftId = String(filePath || '').match(/^local-cache:\/\/(.+)$/)?.[1];
+            if (draftId) {
+                const draft = await localGet('drafts', draftId);
+                if (!draft) throw new Error('本地恢复缓存已不存在');
+                return { success: true, filePath: draft.sourcePath || null, name: draft.name, kind: draft.kind, bytes: new Uint8Array(draft.bytes), size: draft.bytes.byteLength, modifiedAt: draft.updatedAt };
+            }
+            const handleId = String(filePath || '').match(/^local-handle:\/\/([^/]+)$/)?.[1];
+            if (handleId) {
+                const handle = (await localGet('handles', handleId))?.handle;
+                if (!handle) throw new Error('本地文件授权已失效，请重新使用“打开”选择文件');
+                return projectResult(await handle.getFile(), filePath);
+            }
             const id = serverProjectId(filePath);
             if (!id) throw new Error('浏览器不能通过本机路径直接读取文件，请使用“打开”。');
             const response = await apiFetch(`/api/livedoc/projects/${id}`);
@@ -221,21 +333,18 @@
             const base = suggested.replace(/\.(?:vdocx|vpptx)$/i, '') || '未命名文稿';
             const name = `${base}${extension}`;
             const bytes = new Uint8Array(payload.bytes || []);
-            const currentId = payload.saveAs ? '' : serverProjectId(payload.filePath);
-            try {
-                const query = new URLSearchParams({ name, kind: extension.slice(1) });
-                const response = await apiFetch(`/api/livedoc/projects${currentId ? `/${currentId}` : ''}?${query}`, {
-                    method: currentId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: bytes
-                });
-                const project = await response.json();
-                const result = { success: true, filePath: `server://project/${project.id}`, name: project.name, size: project.sizeBytes, modifiedAt: Date.now() };
+            const result = await saveToLocalFile(name, bytes, payload.filePath, payload.saveAs);
+            if (result.success) {
+                try {
+                    await cacheDraft({ documentId: payload.documentId, name: result.name, filePath: result.filePath, bytes, dirty: false });
+                } catch (error) {
+                    console.warn('[liveDoc] saved locally but could not refresh recovery cache', error);
+                }
                 notifyHost('project-saved', result);
-                return result;
-            } catch (error) {
-                console.warn('[liveDoc] server save unavailable, using download fallback', error);
-                return download(name, bytes, 'application/vnd.vcp.vdoc+zip');
             }
+            return result;
         },
+        cacheDraft,
         exportRichDocument: async (payload = {}) => {
             const html = await standaloneHtml(payload.html || '');
             if (payload.format === 'pdf') {
@@ -255,14 +364,22 @@
             return result;
         },
         listRecent: async () => {
+            const localDrafts = (await localAll('drafts').catch(() => []))
+                .sort((a, b) => b.updatedAt - a.updatedAt)
+                .map((draft) => ({
+                    path: `local-cache://${draft.id}`, filePath: `local-cache://${draft.id}`,
+                    name: `${draft.name}${draft.dirty ? ' · 恢复草稿' : ' · 本机缓存'}`,
+                    kind: draft.kind, size: draft.bytes?.byteLength || 0, modifiedAt: draft.updatedAt,
+                }));
             try {
                 const response = await apiFetch('/api/livedoc/projects');
-                return (await response.json()).map((project) => ({
+                const legacyProjects = (await response.json()).map((project) => ({
                     path: `server://project/${project.id}`, filePath: `server://project/${project.id}`,
-                    name: project.name, kind: project.documentKind,
+                    name: `${project.name} · 云端旧项目`, kind: project.documentKind,
                     size: project.sizeBytes, modifiedAt: new Date(project.updatedAt).getTime()
                 }));
-            } catch { return []; }
+                return [...localDrafts, ...legacyProjects].sort((a, b) => b.modifiedAt - a.modifiedAt);
+            } catch { return localDrafts; }
         },
         loadStylePacks: async () => loadJson(STYLE_PACK_KEY),
         saveStylePacks: async (packs) => saveJson(STYLE_PACK_KEY, packs),

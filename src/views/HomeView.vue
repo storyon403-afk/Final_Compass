@@ -6,6 +6,7 @@ import { catalogApi, isAdmin } from '../api'
 const route = useRoute()
 const router = useRouter()
 const colleges = ref([])
+const programCatalog = ref([])
 const courses = ref([])
 const selectedCollege = ref('')
 const selectedProgram = ref('')
@@ -13,15 +14,17 @@ const selectedType = ref('')
 const query = ref('')
 const loadError = ref('')
 const showAddCollege = ref(false)
+const showAddProgram = ref(false)
 const showAddCourse = ref(false)
 const adding = ref(false)
 const formError = ref('')
 const newCollegeName = ref('')
+const newProgramName = ref('')
 const newCourse = ref({ name: '', code: '' })
 
-const programs = computed(() => selectedCollege.value === '数学与统计学院'
-  ? ['数学类', '数学与应用数学', '统计学']
-  : ['未分专业'])
+const programs = computed(() => programCatalog.value
+  .filter((program) => program.college === selectedCollege.value)
+  .map((program) => program.name))
 const courseTypes = ['专业课', '非专业课']
 const stage = computed(() => !selectedCollege.value ? 'college' : !selectedProgram.value ? 'program' : !selectedType.value ? 'type' : 'courses')
 
@@ -86,8 +89,18 @@ function goTo(level) {
 
 async function loadData() {
   loadError.value = ''
-  try { [colleges.value, courses.value] = await Promise.all([catalogApi.colleges(), catalogApi.courses()]) }
+  try { [colleges.value, programCatalog.value, courses.value] = await Promise.all([catalogApi.colleges(), catalogApi.programs(), catalogApi.courses()]) }
   catch (error) { loadError.value = error.message }
+}
+
+async function submitProgram() {
+  if (!newProgramName.value.trim()) return
+  adding.value = true; formError.value = ''
+  try {
+    const created = await catalogApi.addProgram(selectedCollege.value, newProgramName.value.trim())
+    await loadData(); newProgramName.value = ''; showAddProgram.value = false; chooseProgram(created.name)
+  } catch (error) { formError.value = error.message }
+  finally { adding.value = false }
 }
 
 async function submitCollege() {
@@ -116,6 +129,7 @@ async function submitCourse() {
 function closeModals(event) {
   if (event.key !== 'Escape') return
   showAddCollege.value = false
+  showAddProgram.value = false
   showAddCourse.value = false
 }
 
@@ -130,6 +144,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', closeModals))
     <header class="workspace-header">
       <div><span class="eyebrow">课程导航</span><h1>今天想复习什么？</h1><p>按学院、专业和课程类型找到对应的老师圈。</p></div>
       <button v-if="isAdmin && stage === 'college'" class="secondary-button" type="button" @click="showAddCollege = true">＋ 添加学院</button>
+      <button v-if="isAdmin && stage === 'program'" class="secondary-button" type="button" @click="showAddProgram = true">＋ 添加专业</button>
       <button v-if="isAdmin && stage === 'courses'" class="secondary-button" type="button" @click="showAddCourse = true">＋ 添加课程</button>
     </header>
 
@@ -158,6 +173,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', closeModals))
           <span class="choice-icon">{{ program === '统计学' ? 'σ' : 'ƒ' }}</span><span><strong>{{ program }}</strong><small>进入课程分类</small></span><i>→</i>
         </button>
       </div>
+      <div v-if="!programs.length" class="empty-state"><strong>该学院还没有专业</strong><p>{{ isAdmin ? '可以使用右上角按钮添加第一个专业。' : '请联系管理员补充专业。' }}</p></div>
     </div>
 
     <div v-else-if="stage === 'type'" class="selection-section">
@@ -188,6 +204,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', closeModals))
 
   <div v-if="showAddCollege" class="modal-backdrop" @click.self="showAddCollege = false">
     <form class="upload-modal compact-modal" @submit.prevent="submitCollege"><button class="modal-close" type="button" aria-label="关闭" @click="showAddCollege = false">×</button><span class="eyebrow">管理员功能</span><h2>添加学院</h2><p>新增后会出现在学院入口，不影响已有课程。</p><label>学院名称<input v-model="newCollegeName" maxlength="100" placeholder="例如：物理学院" required /></label><p v-if="formError" class="form-error">{{ formError }}</p><button class="primary-button wide" :disabled="adding">{{ adding ? '正在添加…' : '确认添加' }}</button></form>
+  </div>
+
+  <div v-if="showAddProgram" class="modal-backdrop" @click.self="showAddProgram = false">
+    <form class="upload-modal compact-modal" @submit.prevent="submitProgram"><button class="modal-close" type="button" aria-label="关闭" @click="showAddProgram = false">×</button><span class="eyebrow">{{ selectedCollege }} · 管理员功能</span><h2>添加专业</h2><p>新增后会显示在当前学院的专业入口中。</p><label>专业名称<input v-model="newProgramName" maxlength="80" placeholder="例如：计算机科学与技术" required /></label><p v-if="formError" class="form-error">{{ formError }}</p><button class="primary-button wide" :disabled="adding">{{ adding ? '正在添加…' : '确认添加' }}</button></form>
   </div>
 
   <div v-if="showAddCourse" class="modal-backdrop" @click.self="showAddCourse = false">

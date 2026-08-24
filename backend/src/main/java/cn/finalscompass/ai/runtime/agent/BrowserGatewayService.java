@@ -20,8 +20,8 @@ import org.springframework.web.socket.WebSocketSession;
  *   浏览器回包 --> handleResult ---------------------> 唤醒等待方
  */
 /**
- * 维护用户与浏览器扩展的 WebSocket 连接，并把异步命令和响应按 requestId 配对。
- * 维护入口：浏览器命令协议或超时策略改这里；任务业务状态由 AiRuntimeDispatchService 维护。
+ * 维护用户与浏览器扩展的 WebSocket 连接，并把异步命令和响应按 requestId 配对
+ * 维护入口：浏览器命令协议或超时策略改这里；任务业务状态由 AiRuntimeDispatchService 维护
  */
 @Service
 public final class BrowserGatewayService {
@@ -36,8 +36,8 @@ public final class BrowserGatewayService {
     this.json = json;
   }
 
-  // 注册浏览器 WebSocket 会话。在结束时主动释放资源或擦除敏感数据；局部失败会降级为空结果，不让辅助能力中断主流程。
-  // 可升级：可增加结构化日志或监控指标，避免异常被完全吞掉。
+  // 注册浏览器 WebSocket 会话。在结束时主动释放资源或擦除敏感数据；局部失败会降级为空结果，不让辅助能力中断主流程
+  // 可升级：可增加结构化日志或监控指标，避免异常被完全吞掉
   public void register(long userId, WebSocketSession session) {
     WebSocketSession previous = sessions.put(userId, session);
     if (previous != null && previous.isOpen()) {
@@ -58,8 +58,8 @@ public final class BrowserGatewayService {
   }
 
   /**
-   * 向已连接的浏览器发送命令并等待响应。
-   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；通过 Jackson 完成 JSON 的解析或序列化。
+   * 向已连接的浏览器发送命令并等待响应
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象；通过 Jackson 完成 JSON 的解析或序列化
    *
    * @param runKey 智能体任务唯一键
    * @param command 已经归一化的执行命令
@@ -106,8 +106,8 @@ public final class BrowserGatewayService {
   }
 
   /**
-   * 完成等待中的浏览器命令并传递成功或失败结果。
-   * 实现上，用异步结果对象关联请求与回包，并在超时后结束等待。
+   * 完成等待中的浏览器命令并传递成功或失败结果
+   * 实现上，用异步结果对象关联请求与回包，并在超时后结束等待
    *
    * @param commandId command 对应的数据库 ID
    * @param status 目标状态

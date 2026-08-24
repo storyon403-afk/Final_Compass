@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 为已认证账户取得或创建对外匿名身份，避免在社区功能中暴露账户信息。 */
+/** 为已认证账户取得或创建对外匿名身份，避免在社区功能中暴露账户信息 */
 @RestController
 @RequestMapping("/api/identity")
 public class IdentityController {

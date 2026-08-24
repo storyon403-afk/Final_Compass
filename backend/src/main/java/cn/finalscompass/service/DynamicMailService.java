@@ -16,7 +16,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Sends plain-text mail through the currently enabled, encrypted SMTP configuration. */
+/** 通过当前已启用且加密保存的 SMTP 配置发送纯文本邮件 */
 @Service
 public class DynamicMailService {
   private static final Logger log = LoggerFactory.getLogger(DynamicMailService.class);

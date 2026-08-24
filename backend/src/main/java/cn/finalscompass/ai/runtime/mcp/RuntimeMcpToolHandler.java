@@ -9,8 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 /**
- * 把统一运行时工具调用转发到 MCP 服务器，并校验绑定、凭据和返回结果。
- * 维护入口：调用前治理规则改这里；网络协议细节改 RuntimeMcpTransport 实现。
+ * 把统一运行时工具调用转发到 MCP 服务器，并校验绑定、凭据和返回结果
+ * 维护入口：调用前治理规则改这里；网络协议细节改 RuntimeMcpTransport 实现
  */
 @Component
 public final class RuntimeMcpToolHandler implements RuntimeToolHandler {
@@ -37,8 +37,8 @@ public final class RuntimeMcpToolHandler implements RuntimeToolHandler {
   }
 
   /**
-   * 调用外部服务并解析返回结果。
-   * 实现上，通过 Jackson 完成 JSON 的解析或序列化；在结束时主动释放资源或擦除敏感数据。
+   * 调用外部服务并解析返回结果
+   * 实现上，通过 Jackson 完成 JSON 的解析或序列化；在结束时主动释放资源或擦除敏感数据
    *
    * @param definition 待保存或校验的定义
    * @param context 本次工具调用的运行上下文

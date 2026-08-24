@@ -6,8 +6,8 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * 把知识库检索封装成运行时工具，使模型能通过统一 Tool 协议查询资料。
- * 维护入口：工具参数契约改 RuntimeToolDefinition；具体召回算法改 KnowledgeService。
+ * 把知识库检索封装成运行时工具，使模型能通过统一 Tool 协议查询资料
+ * 维护入口：工具参数契约改 RuntimeToolDefinition；具体召回算法改 KnowledgeService
  */
 @Component
 public final class KnowledgeSearchRuntimeToolHandler implements RuntimeToolHandler {
@@ -23,7 +23,7 @@ public final class KnowledgeSearchRuntimeToolHandler implements RuntimeToolHandl
     return "knowledge-search-v1";
   }
 
-  // 调用外部服务并解析返回结果。通过 Jackson 完成 JSON 的解析或序列化。
+  // 调用外部服务并解析返回结果。通过 Jackson 完成 JSON 的解析或序列化
   public String invoke(
       RuntimeToolDefinition definition, RuntimeToolExecutionContext context, String argumentsJson) {
     try {

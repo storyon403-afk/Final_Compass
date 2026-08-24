@@ -15,8 +15,8 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
 /**
- * Registers the browser bridge WebSocket endpoint; the handshake consumes a short-lived,
- * single-use machine ticket from the WebSocket subprotocol header.
+ * 注册浏览器桥接 WebSocket 端点，握手会消费一个短期且
+ * 来自 WebSocket 子协议请求头的一次性机器票据
  */
 @Configuration
 @EnableWebSocket

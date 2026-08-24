@@ -3,7 +3,7 @@ package cn.finalscompass.config;
 import java.util.Map;
 import org.slf4j.MDC;
 
-/** Shared MDC context used to correlate HTTP requests and AI executions. */
+/** 用于关联 HTTP 请求与 AI 执行的共享 MDC 上下文 */
 public final class TraceContext {
   public static final String HTTP_TRACE_ID = "traceId";
   public static final String AI_TRACE_ID = "aiTraceId";

@@ -30,7 +30,7 @@ public class AuthService {
     this.throttle = throttle;
   }
 
-  /** Keeps lightweight test doubles source-compatible without weakening production injection. */
+  /** 保持轻量测试替身的源码兼容性，同时不削弱生产环境注入约束 */
   protected AuthService(JdbcClient jdbc) {
     this(jdbc, null, null);
   }
@@ -64,7 +64,7 @@ public class AuthService {
         token, user.username(), user.displayName(), user.role(), user.mustChangePassword());
   }
 
-  /** Compatibility entry point for lightweight service tests. */
+  /** 轻量服务测试使用的兼容入口 */
   public AuthProfile login(LoginRequest request) {
     return login(request, "unknown");
   }

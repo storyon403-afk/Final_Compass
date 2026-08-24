@@ -9,7 +9,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
  * API 登录拦截器：从 Bearer 请求头或会话 Cookie 中提取令牌，并把当前用户放入请求属性。 Controller 后续通过 {@link
- * AuthService#current(HttpServletRequest)} 取得该用户。
+ * AuthService#current(HttpServletRequest)} 取得该用户
  */
 public class AuthenticationInterceptor implements HandlerInterceptor {
   private final AuthService auth;
@@ -22,7 +22,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
   }
 
   /**
-   * 在 Controller 执行前完成身份验证；未登录时直接返回 401 JSON。
+   * 在 Controller 执行前完成身份验证；未登录时直接返回 401 JSON
    *
    * @return {@code true} 表示继续进入 Controller，{@code false} 表示响应已结束
    */

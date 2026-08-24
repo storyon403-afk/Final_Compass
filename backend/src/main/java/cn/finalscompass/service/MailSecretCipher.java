@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Encrypts SMTP credentials and OAuth refresh tokens with a mail-specific AES-256-GCM master key.
+ * 使用邮件专用 AES-256-GCM 主密钥加密 SMTP 凭据和 OAuth 刷新令牌
  */
 @Component
 public class MailSecretCipher {

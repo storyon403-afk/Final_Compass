@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Callback endpoints for the external local Agent Gateway; authenticated by per-run callback token.
+ * 本地外部智能体网关的回调接口，使用每次运行独立的回调令牌认证
  */
 @RestController
 @RequestMapping("/api/ai-center/external-agent")

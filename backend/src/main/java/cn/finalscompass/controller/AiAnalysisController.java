@@ -40,7 +40,7 @@ public class AiAnalysisController {
   }
 
   //查询（GET有参请求API注解）， @GetMapping默认继承@RequestMapping("/api/ai")的路径
-  //restful传值方式("/{dashboard}") ，http://localhost:8080/api/ai/1  dashboard=1 
+  // RESTful 路径传值方式("/{dashboard}")，http://localhost:8080/api/ai/1  dashboard=1
   //对比普通传参：http://localhost:8080/api/ai?dashboard=1&byok=2 dashboard=1 byok=2
   //相同注解，参数必须不一
   @GetMapping("/dashboard")
@@ -48,14 +48,14 @@ public class AiAnalysisController {
     return ai.dashboard(auth.current(request).id());
   }
 
-  //PUT http://localhost:8080/ai/api/byok(局部pacth)
+  // 更新请求 http://localhost:8080/ai/api/byok(局部pacth)
   @PutMapping("/byok")
   public Map<String, Object> saveByok(
       HttpServletRequest request, @RequestBody AiAnalysisService.SaveUserKey body) {
     return ai.saveUserKey(auth.current(request).id(), body);
   }
 
-  //DELET http://localhost:8080/ai/api/byok/{provider}
+  // 删除请求 http://localhost:8080/ai/api/byok/{provider}
   @DeleteMapping("/byok/{provider}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void deleteByok(HttpServletRequest request, @PathVariable String provider) {
@@ -102,7 +102,7 @@ public class AiAnalysisController {
     return ai.savePlatformReviewKey(auth.requireAdmin(request).id(), body);
   }
 
-  //POST http://localhost:8080/ai/api/attachments/convert
+  // 创建请求 http://localhost:8080/ai/api/attachments/convert
   @PostMapping(
       value = "/attachments/convert",
       consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)

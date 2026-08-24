@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Issues a persistent machine binding once, then exchanges it for single-use short-lived tickets. */
+/** 首次签发持久机器绑定，随后将其换取一次性短期票据 */
 @Service
 public class BrowserBridgeCredentialService {
   private static final int TICKET_LIFETIME_SECONDS = 120;

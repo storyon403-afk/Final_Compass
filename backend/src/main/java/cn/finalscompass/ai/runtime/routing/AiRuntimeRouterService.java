@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
  *       --> RouteDecision（主模型、备用模型、选择原因）
  */
 /**
- * 对外提供运行时能力卡片，并结合候选模型生成最终路由决策。
- * 维护入口：新增 Runtime 类型改能力卡片；供应商筛选改 Matcher；评分权重改 decide。
+ * 对外提供运行时能力卡片，并结合候选模型生成最终路由决策
+ * 维护入口：新增 Runtime 类型改能力卡片；供应商筛选改 Matcher；评分权重改 decide
  */
 @Service
 public final class AiRuntimeRouterService {
@@ -24,7 +24,7 @@ public final class AiRuntimeRouterService {
           "自主", "调研", "研究", "拆解", "规划并执行", "开放任务", "生成", "文件", "文档", "pdf", "ppt", "docx", "xlsx",
           "海报", "agent");
 
-  // 加载完整供应商目录。
+  // 加载完整供应商目录
   public Catalog catalog() {
     return new Catalog(
         "AI_CENTER",
@@ -60,7 +60,7 @@ public final class AiRuntimeRouterService {
                 "仅支持已安装扩展且已登录目标网站的桌面 Chrome")));
   }
 
-  // 为请求选择合适的供应商和模型。
+  // 为请求选择合适的供应商和模型
   public RouteDecision route(RouteRequest request) {
     if (request == null
         || request.goal() == null
@@ -101,7 +101,7 @@ public final class AiRuntimeRouterService {
     return new RouteDecision(selected, "CHAT", "目标适合直接问答，结合知识库检索回答", List.of(), List.of());
   }
 
-  // 选择用户首选或平台默认配置。局部失败会降级为空结果，不让辅助能力中断主流程。
+  // 选择用户首选或平台默认配置。局部失败会降级为空结果，不让辅助能力中断主流程
   private RuntimeType preferred(String value) {
     if (value == null || value.isBlank() || "AUTO".equalsIgnoreCase(value)) return null;
     try {

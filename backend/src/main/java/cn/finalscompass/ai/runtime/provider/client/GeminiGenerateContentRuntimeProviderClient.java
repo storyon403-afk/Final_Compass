@@ -17,8 +17,8 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * 把统一模型命令适配为 Gemini generateContent 协议，并维护工具续传上下文。
- * 维护入口：Gemini 请求/响应字段和错误映射改这里；通用模型流程改 ModelClientGateway。
+ * 把统一模型命令适配为 Gemini generateContent 协议，并维护工具续传上下文
+ * 维护入口：Gemini 请求/响应字段和错误映射改这里；通用模型流程改 ModelClientGateway
  */
 @Component
 public final class GeminiGenerateContentRuntimeProviderClient
@@ -39,8 +39,8 @@ public final class GeminiGenerateContentRuntimeProviderClient
   }
 
   /**
-   * 调用外部服务并解析返回结果。
-   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化。
+   * 调用外部服务并解析返回结果
+   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化
    *
    * @param command 已经归一化的执行命令
    * @param credential 本次调用使用的凭据
@@ -94,9 +94,9 @@ public final class GeminiGenerateContentRuntimeProviderClient
   }
 
   /**
-   * 把工具执行结果提交给模型并继续上一轮响应。
-   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化。
-   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+   * 把工具执行结果提交给模型并继续上一轮响应
+   * 实现上，先组装协议请求，再通过传输层发送并校验响应；通过 Jackson 完成 JSON 的解析或序列化
+   * 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
    *
    * @param command 已经归一化的执行命令
    * @param credential 本次调用使用的凭据
@@ -168,8 +168,8 @@ public final class GeminiGenerateContentRuntimeProviderClient
   }
 
   /**
-   * 把统一调用命令转换为供应商协议请求体。
-   * 实现上，在结束时主动释放资源或擦除敏感数据；通过摘要或 Base64 编码生成稳定且可传输的标识。
+   * 把统一调用命令转换为供应商协议请求体
+   * 实现上，在结束时主动释放资源或擦除敏感数据；通过摘要或 Base64 编码生成稳定且可传输的标识
    *
    * @param command 已经归一化的执行命令
    * @param binaryInput 可选的图片等二进制输入
@@ -227,7 +227,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
     return body;
   }
 
-  // 构造携带工具结果的续传请求体。
+  // 构造携带工具结果的续传请求体
   private Map<String, Object> continuationBody(
       RuntimeModelInvocationCommand command, JsonNode contents) {
     Map<String, Object> generationConfig = new LinkedHashMap<>();
@@ -261,7 +261,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
   }
 
   /**
-   * 校验定义及其关联配置。
+   * 校验定义及其关联配置
    *
    * @param command 已经归一化的执行命令
    * @param credential 本次调用使用的凭据
@@ -292,7 +292,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
       throw new IllegalArgumentException("Gemini Runtime accepts image binary input only");
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validateTools(RuntimeModelInvocationCommand command) {
     if (command.allowedTools().size() != command.toolSpecifications().size()
         || !command.toolSpecifications().stream()
@@ -303,7 +303,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
           "Gemini Runtime Tool specifications do not match allowlist");
   }
 
-  // 解析工具参数 Schema。通过 Jackson 完成 JSON 的解析或序列化。
+  // 解析工具参数 Schema。通过 Jackson 完成 JSON 的解析或序列化
   private JsonNode schema(String value) {
     try {
       JsonNode schema = json.readTree(value);
@@ -314,7 +314,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
     }
   }
 
-  // 解析并校验结构化输出 Schema。通过 Jackson 完成 JSON 的解析或序列化。
+  // 解析并校验结构化输出 Schema。通过 Jackson 完成 JSON 的解析或序列化
   private JsonNode outputSchema(RuntimeModelInvocationCommand command) {
     try {
       JsonNode schema = json.readTree(command.outputSchemaJson());
@@ -328,7 +328,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
     }
   }
 
-  // 规范化并校验供应商接口地址。
+  // 规范化并校验供应商接口地址
   private URI endpoint(String value, String modelKey) {
     URI base = URI.create(value);
     if (!"https".equalsIgnoreCase(base.getScheme())
@@ -344,7 +344,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
         base.toString().replaceAll("/+$", "") + "/v1beta/models/" + model + ":generateContent");
   }
 
-  // 从供应商响应中提取最终文本。
+  // 从供应商响应中提取最终文本
   private String content(JsonNode parsed, List<RuntimeToolCall> toolCalls) {
     StringBuilder result = new StringBuilder();
     JsonNode candidates = parsed.path("candidates");
@@ -362,7 +362,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
     throw failure("GEMINI_EMPTY", null, false, null);
   }
 
-  // 从供应商响应中提取并校验工具调用。
+  // 从供应商响应中提取并校验工具调用
   private List<RuntimeToolCall> toolCalls(
       JsonNode parsed, List<RuntimeToolSpecification> specifications) {
     Map<String, String> names =
@@ -389,7 +389,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
     return List.copyOf(result);
   }
 
-  // 序列化 Gemini 后续工具调用所需的上下文。通过 Jackson 完成 JSON 的解析或序列化。
+  // 序列化 Gemini 后续工具调用所需的上下文。通过 Jackson 完成 JSON 的解析或序列化
   private String continuationState(JsonNode request, JsonNode response) {
     JsonNode content = response.path("candidates").path(0).path("content");
     if (!content.isObject()) throw failure("GEMINI_CONTINUATION_STATE_MISSING", null, false, null);
@@ -404,7 +404,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
     }
   }
 
-  // 从响应头提取链路追踪 ID。利用流式过滤和排序得到符合约束的稳定结果。
+  // 从响应头提取链路追踪 ID。利用流式过滤和排序得到符合约束的稳定结果
   private String requestId(Map<String, List<String>> headers) {
     return headers.entrySet().stream()
         .filter(
@@ -421,7 +421,7 @@ public final class GeminiGenerateContentRuntimeProviderClient
     return status == 429 || status >= 500;
   }
 
-  // 判断异常链中是否包含超时异常。
+  // 判断异常链中是否包含超时异常
   private boolean timeout(Throwable failure) {
     for (Throwable current = failure; current != null; current = current.getCause())
       if (current.getClass().getSimpleName().toLowerCase().contains("timeout")) return true;

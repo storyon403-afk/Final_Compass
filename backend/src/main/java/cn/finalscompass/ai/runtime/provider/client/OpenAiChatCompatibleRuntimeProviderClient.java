@@ -12,8 +12,8 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * 把统一模型命令适配为 OpenAI Chat Completions 兼容协议。
- * 维护入口：兼容协议的公共请求、响应和错误规则改这里；供应商、模型和端点只在数据库注册。
+ * 把统一模型命令适配为 OpenAI Chat Completions 兼容协议
+ * 维护入口：兼容协议的公共请求、响应和错误规则改这里；供应商、模型和端点只在数据库注册
  */
 @Component
 public final class OpenAiChatCompatibleRuntimeProviderClient
@@ -34,8 +34,8 @@ public final class OpenAiChatCompatibleRuntimeProviderClient
   }
 
   /**
-   * 调用外部服务并解析返回结果。
-   * 实现上只依赖 adapterKey，不硬编码 Provider；Provider 与可信端点的绑定由运行时注册表负责。
+   * 调用外部服务并解析返回结果
+   * 实现上只依赖 adapterKey，不硬编码 Provider；Provider 与可信端点的绑定由运行时注册表负责
    */
   @Override
   public RuntimeProviderClientResult invoke(
@@ -84,7 +84,7 @@ public final class OpenAiChatCompatibleRuntimeProviderClient
     }
   }
 
-  /** 校验统一命令、凭据和当前公共协议已经实现的能力边界。 */
+  /** 校验统一命令、凭据和当前公共协议已经实现的能力边界 */
   private void validate(
       RuntimeModelInvocationCommand command,
       ResolvedAiCredential credential,
@@ -112,14 +112,14 @@ public final class OpenAiChatCompatibleRuntimeProviderClient
       throw new IllegalArgumentException("OpenAI-compatible structured output is not configured");
   }
 
-  // 文本供应商继续发送字符串 content；视觉供应商按兼容规范发送 image_url Data URL 与文本数组。
+  // 文本供应商继续发送字符串 content；视觉供应商按兼容规范发送 image_url Data URL 与文本数组
   private Map<String,Object> requestBody(RuntimeModelInvocationCommand command,String userInput,RuntimeBinaryInput binaryInput){
     Object userContent=userInput;
     if(binaryInput!=null){String dataUrl="data:"+binaryInput.mediaType()+";base64,"+Base64.getEncoder().encodeToString(binaryInput.copyBytes());userContent=List.of(Map.of("type","image_url","image_url",Map.of("url",dataUrl)),Map.of("type","text","text",userInput));}
     return Map.of("model",command.modelKey(),"stream",false,"temperature",0.2,"messages",List.of(Map.of("role","system","content",command.systemInstruction()),Map.of("role","user","content",userContent)));
   }
 
-  // 规范化并校验供应商接口地址；注册表只提供 base URL，本客户端统一追加协议路径。
+  // 规范化并校验供应商接口地址；注册表只提供 base URL，本客户端统一追加协议路径
   private URI endpoint(String value) {
     URI base = URI.create(value);
     if (!"https".equalsIgnoreCase(base.getScheme())
@@ -131,7 +131,7 @@ public final class OpenAiChatCompatibleRuntimeProviderClient
     return URI.create(base.toString().replaceAll("/+$", "") + "/chat/completions");
   }
 
-  // 从公共响应结构中提取最终文本，不把供应商原始响应写入异常。
+  // 从公共响应结构中提取最终文本，不把供应商原始响应写入异常
   private String content(Map<String, Object> parsed, String provider) {
     if (!(parsed.get("choices") instanceof List<?> choices)
         || choices.isEmpty()
@@ -147,7 +147,7 @@ public final class OpenAiChatCompatibleRuntimeProviderClient
     return value instanceof Number number ? number.intValue() : 0;
   }
 
-  // 不同兼容服务使用的请求 ID 响应头并不完全一致。
+  // 不同兼容服务使用的请求 ID 响应头并不完全一致
   private String requestId(Map<String, List<String>> headers) {
     return headers.entrySet().stream()
         .filter(
@@ -164,7 +164,7 @@ public final class OpenAiChatCompatibleRuntimeProviderClient
     return status == 408 || status == 409 || status == 429 || status >= 500;
   }
 
-  // 判断异常链中是否包含超时异常。
+  // 判断异常链中是否包含超时异常
   private boolean timeout(Throwable failure) {
     for (Throwable current = failure; current != null; current = current.getCause())
       if (current.getClass().getSimpleName().toLowerCase().contains("timeout")) return true;

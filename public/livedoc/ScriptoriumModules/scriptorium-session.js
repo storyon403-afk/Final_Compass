@@ -16,6 +16,9 @@
         let elements = context.elements || {};
         let unsavedResolver = null;
         let checkpointQueue = Promise.resolve();
+        let draftCacheTimer = 0;
+        let draftCacheRevision = -1;
+        let unsubscribeDraftCache = null;
         let disposed = false;
 
         function setElements(nextElements) {
@@ -236,6 +239,7 @@
                 const result = await persistencePort.save({
                     filePath: status.currentPath,
                     suggestedName: status.currentName,
+                    documentId: status.documentId,
                     saveAs,
                     bytes,
                 });
@@ -272,6 +276,35 @@
                     });
                 }
             }
+        }
+
+        function scheduleDraftCache() {
+            if (typeof persistencePort.cacheDraft !== 'function') return;
+            window.clearTimeout(draftCacheTimer);
+            draftCacheTimer = window.setTimeout(async () => {
+                const status = documentPort.status();
+                if (!status.ready || !status.dirty || status.saving || status.revision === draftCacheRevision) return;
+                try {
+                    context.editorResolver?.()?.flush?.();
+                    const captured = documentPort.captureContext();
+                    const bytes = await containerModule.pack(documentPort.document(), documentPort.resourceData());
+                    if (!documentPort.isContextCurrent(captured, { revision: true })) {
+                        scheduleDraftCache();
+                        return;
+                    }
+                    await persistencePort.cacheDraft({
+                        documentId: status.documentId,
+                        name: status.currentName,
+                        filePath: status.currentPath,
+                        dirty: true,
+                        bytes,
+                    });
+                    draftCacheRevision = status.revision;
+                    notificationPort.show?.('草稿已缓存在当前设备', 'success');
+                } catch (error) {
+                    console.warn('[liveDoc] draft cache failed:', error);
+                }
+            }, 2200);
         }
 
         function persistCheckpoint(reason = '刻点') {
@@ -385,6 +418,7 @@
         }
 
         function bind() {
+            unsubscribeDraftCache = documentPort.subscribe('document-mutated', scheduleDraftCache);
             elements['unsaved-cancel-btn']?.addEventListener(
                 'click',
                 () => resolveUnsavedDecision('cancel')
@@ -401,6 +435,8 @@
 
         function dispose() {
             if (disposed) return;
+            window.clearTimeout(draftCacheTimer);
+            unsubscribeDraftCache?.();
             if (unsavedResolver) resolveUnsavedDecision('cancel');
             disposed = true;
         }

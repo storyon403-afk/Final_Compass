@@ -6,7 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
-/** 提供公共模块状态和管理员维护入口。 */
+/** 提供公共模块状态和管理员维护入口 */
 @RestController @RequestMapping("/api/system/modules")
 public class SystemModuleController {
   private final AuthService auth; private final SystemModuleService modules;

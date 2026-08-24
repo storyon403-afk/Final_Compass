@@ -16,7 +16,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-/** 处理注册、登录、密码变更及内测访问验证等账户认证流程。 */
+/** 处理注册、登录、密码变更及内测访问验证等账户认证流程 */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

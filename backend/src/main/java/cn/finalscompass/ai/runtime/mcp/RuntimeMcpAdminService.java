@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * 管理 MCP 服务器、工具版本、权限风险和人工审批，是 MCP 治理的业务入口。
- * 维护入口：治理状态与审批规则改这里；远端发现改 DiscoveryService；实际调用改 ToolHandler。
+ * 管理 MCP 服务器、工具版本、权限风险和人工审批，是 MCP 治理的业务入口
+ * 维护入口：治理状态与审批规则改这里；远端发现改 DiscoveryService；实际调用改 ToolHandler
  */
 @Service
 public final class RuntimeMcpAdminService {
@@ -35,7 +35,7 @@ public final class RuntimeMcpAdminService {
     this.json = json;
   }
 
-  // 汇总运行时执行情况。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 汇总运行时执行情况。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public Map<String, Object> overview() {
     return Map.of(
         "servers",
@@ -77,8 +77,8 @@ ORDER BY FIELD(a.decision,'PENDING','APPROVED','REJECTED'),a.created_at DESC
     return discovery.discover(serverKey, adminId);
   }
 
-  // 保存业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
-  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+  // 保存业务数据。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
   public void saveServer(ServerInput input, long adminId) {
     if (input == null
         || input.serverKey() == null
@@ -140,7 +140,7 @@ ON DUPLICATE KEY UPDATE name=:name,description=:description,transport_type=:tran
         .update();
   }
 
-  // 计算反馈内容与原答案之间的差异。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 计算反馈内容与原答案之间的差异。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public List<Map<String, Object>> diff(String serverKey) {
     List<Long> snapshots =
         jdbc.sql(
@@ -182,8 +182,8 @@ ON DUPLICATE KEY UPDATE name=:name,description=:description,transport_type=:tran
   }
 
   /**
-   * 创建工具审批申请并冻结待审核版本。
-   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 创建工具审批申请并冻结待审核版本
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param discoveredToolId discoveredTool 对应的数据库 ID
    * @param toolKey tool 的业务唯一键
@@ -221,8 +221,8 @@ WHERE t.id=:tool AND d.status='CURRENT'
   }
 
   /**
-   * 根据候选评分生成最终路由决策。
-   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 根据候选评分生成最终路由决策
+   * 实现上，在事务边界内完成相关写操作，避免只更新部分数据；使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param approvalId approval 对应的数据库 ID
    * @param approve 是否批准当前申请
@@ -261,8 +261,8 @@ WHERE a.id=:id FOR UPDATE
         });
   }
 
-  // 发布 AI 中心内容新版本。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
-  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分。
+  // 发布 AI 中心内容新版本。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
+  // 可升级：该方法职责较多，后续可按校验、执行和结果持久化拆分
   private void publish(Approval row, long adminId) {
     Long toolId =
         jdbc.sql("SELECT id FROM ai_runtime_tool WHERE tool_key=:key")
@@ -325,7 +325,7 @@ VALUES (:toolId,:version,'PUBLISHED','MCP','mcp-gateway',CAST(:input AS JSON),
         .update();
   }
 
-  // 计算发现工具集合的摘要。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 计算发现工具集合的摘要。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   private Map<String, String> toolDigests(long snapshotId) {
     Map<String, String> result = new LinkedHashMap<>();
     jdbc.sql(
@@ -343,7 +343,7 @@ VALUES (:toolId,:version,'PUBLISHED','MCP','mcp-gateway',CAST(:input AS JSON),
   }
 
   /**
-   * 校验定义及其关联配置。
+   * 校验定义及其关联配置
    *
    * @param key 业务唯一键
    * @param version 工具定义版本
@@ -361,7 +361,7 @@ VALUES (:toolId,:version,'PUBLISHED','MCP','mcp-gateway',CAST(:input AS JSON),
       throw new IllegalArgumentException("MCP approval target is invalid");
   }
 
-  // 把对象序列化为 JSON。通过 Jackson 完成 JSON 的解析或序列化。
+  // 把对象序列化为 JSON。通过 Jackson 完成 JSON 的解析或序列化
   private String write(Object value) {
     try {
       return json.writeValueAsString(value);
@@ -370,7 +370,7 @@ VALUES (:toolId,:version,'PUBLISHED','MCP','mcp-gateway',CAST(:input AS JSON),
     }
   }
 
-  // 计算工具定义的稳定摘要。通过摘要或 Base64 编码生成稳定且可传输的标识。
+  // 计算工具定义的稳定摘要。通过摘要或 Base64 编码生成稳定且可传输的标识
   private String digest(String value) {
     try {
       return HexFormat.of()
@@ -381,7 +381,7 @@ VALUES (:toolId,:version,'PUBLISHED','MCP','mcp-gateway',CAST(:input AS JSON),
     }
   }
 
-  // 截断过长的外部文本。
+  // 截断过长的外部文本
   private String limited(String value, int max) {
     if (value != null && value.length() > max)
       throw new IllegalArgumentException("MCP admin text too long");
@@ -392,7 +392,7 @@ VALUES (:toolId,:version,'PUBLISHED','MCP','mcp-gateway',CAST(:input AS JSON),
     return value == null || value.isBlank() ? null : value.trim();
   }
 
-  // 校验定义及其关联配置。
+  // 校验定义及其关联配置
   private void validateHttps(String value) {
     try {
       var uri = java.net.URI.create(value);

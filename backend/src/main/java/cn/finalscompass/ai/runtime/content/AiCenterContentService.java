@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 管理 AI 中心页面内容的读取、版本更新与发布。
- * 维护入口：新增页面键、内容格式或版本策略时修改这里及对应数据库约束。
+ * 管理 AI 中心页面内容的读取、版本更新与发布
+ * 维护入口：新增页面键、内容格式或版本策略时修改这里及对应数据库约束
  */
 @Service
 public class AiCenterContentService {
@@ -20,7 +20,7 @@ public class AiCenterContentService {
     this.jdbc = jdbc;
   }
 
-  // 读取当前已发布的 AI 中心内容。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+  // 读取当前已发布的 AI 中心内容。使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
   public Page published(String key) {
     validateKey(key);
     return jdbc.sql(
@@ -33,8 +33,8 @@ public class AiCenterContentService {
   }
 
   /**
-   * 校验并更新业务数据。
-   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象。
+   * 校验并更新业务数据
+   * 实现上，使用参数化 SQL 访问数据库，并将查询结果映射为领域对象
    *
    * @param admin 执行发布操作的管理员 ID
    * @param key 业务唯一键

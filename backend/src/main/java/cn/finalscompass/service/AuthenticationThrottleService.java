@@ -13,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Shared brute-force protection for password authentication entry points. */
+/** 密码认证入口共享的暴力破解防护 */
 @Service
 public class AuthenticationThrottleService {
   private static final int FAILURE_WINDOW_SECONDS = 24 * 60 * 60;

@@ -7,7 +7,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/** Creates the first administrator only when explicitly configured by the operator. */
+/** 仅在运维人员明确配置时创建首个管理员 */
 @Component
 public class AdminBootstrapService implements ApplicationRunner {
   private final JdbcClient jdbc;

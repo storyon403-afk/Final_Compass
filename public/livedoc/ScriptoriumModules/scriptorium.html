@@ -267,7 +267,12 @@
                     <span class="outline-kicker">DOCUMENT MAP</span>
                     <h2>篇章</h2>
                 </div>
-                <span id="outline-count" class="outline-count">0 节</span>
+                <div class="panel-header-actions">
+                    <span id="outline-count" class="outline-count">0 节</span>
+                    <button id="outline-collapse-btn" class="panel-collapse-button" type="button" title="向左收起篇章" aria-label="向左收起篇章">
+                        <svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>
+                    </button>
+                </div>
             </div>
 
             <div id="slide-navigator-header" class="slide-navigator-header" hidden>
@@ -298,6 +303,10 @@
                 <p>使用“标题 1–6”样式组织篇章；普通正文会自动进入段落索引。</p>
             </div>
         </aside>
+
+        <button id="outline-expand-btn" class="panel-edge-handle panel-edge-handle-left" type="button" title="展开篇章" aria-label="从左侧展开篇章">
+            <svg viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg><span>篇章</span>
+        </button>
 
         <div id="outline-resizer" class="panel-resizer panel-resizer-left" role="separator" aria-orientation="vertical" aria-label="调整篇章栏宽度"></div>
 
@@ -361,10 +370,15 @@
                     <span class="lineage-kicker">DOCUMENT LINEAGE</span>
                     <h2>文脉</h2>
                 </div>
-                <button id="create-checkpoint-btn" class="checkpoint-add" title="创建手动保存点" disabled>
-                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                    <span>新建刻点</span>
-                </button>
+                <div class="panel-header-actions">
+                    <button id="create-checkpoint-btn" class="checkpoint-add" title="创建手动保存点" disabled>
+                        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        <span>新建刻点</span>
+                    </button>
+                    <button id="lineage-collapse-btn" class="panel-collapse-button" type="button" title="向右收起文脉" aria-label="向右收起文脉">
+                        <svg viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg>
+                    </button>
+                </div>
             </div>
 
             <div class="lineage-summary">
@@ -397,6 +411,10 @@
                 </div>
             </section>
         </aside>
+
+        <button id="lineage-expand-btn" class="panel-edge-handle panel-edge-handle-right" type="button" title="展开文脉" aria-label="从右侧展开文脉">
+            <svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg><span>文脉</span>
+        </button>
     </main>
 
     <footer class="document-statusbar">
