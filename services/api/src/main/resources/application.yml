@@ -33,6 +33,8 @@ server:
     mime-types: application/json,text/html,text/plain,text/css,text/javascript,application/javascript,image/svg+xml
 app:
   environment: ${APP_ENV:dev}
+  # 只有这些直连来源可以通过 X-Forwarded-For 声明真实客户端地址。
+  trusted-proxy-addresses: ${TRUSTED_PROXY_ADDRESSES:127.0.0.1,::1}
   # 仅在 HTTPS 上线后启用，安全 Cookie 不会通过普通 HTTP 发送
   session-cookie-secure: ${SESSION_COOKIE_SECURE:false}
   auth-throttle:

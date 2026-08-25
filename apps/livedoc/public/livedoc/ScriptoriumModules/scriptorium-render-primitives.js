@@ -161,6 +161,30 @@ ${markdownBaseCss('.vdoc-runtime')}
     cursor: grabbing !important;
     opacity: .84;
 }
+[data-vdoc-object-layout="free"].vdoc-media[data-vdoc-media="image"] {
+    display: block !important;
+    overflow: visible !important;
+}
+[data-vdoc-object-layout="free"].vdoc-media[data-vdoc-media="image"] > img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    object-fit: fill !important;
+}
+[data-vdoc-object-layout="free"].vdoc-media[data-vdoc-media="image"] > figcaption {
+    position: absolute !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    z-index: 1 !important;
+    max-height: 35% !important;
+    overflow: hidden !important;
+}
 [data-vdoc-object-id] > [data-vdoc-object-resize-handle] {
     position: absolute !important;
     z-index: 2147483000 !important;
@@ -185,6 +209,22 @@ ${markdownBaseCss('.vdoc-runtime')}
     right: -7px !important;
     cursor: nesw-resize !important;
 }
+[data-vdoc-object-id] > [data-vdoc-object-resize-handle="n"] {
+    top: -6px !important;
+    left: calc(50% - 16px) !important;
+    width: 32px !important;
+    height: 9px !important;
+    border-radius: 5px !important;
+    cursor: ns-resize !important;
+}
+[data-vdoc-object-id] > [data-vdoc-object-resize-handle="e"] {
+    top: calc(50% - 16px) !important;
+    right: -6px !important;
+    width: 9px !important;
+    height: 32px !important;
+    border-radius: 5px !important;
+    cursor: ew-resize !important;
+}
 [data-vdoc-object-resize-handle="sw"] {
     bottom: -7px !important;
     left: -7px !important;
@@ -194,6 +234,22 @@ ${markdownBaseCss('.vdoc-runtime')}
     right: -7px !important;
     bottom: -7px !important;
     cursor: nwse-resize !important;
+}
+[data-vdoc-object-id] > [data-vdoc-object-resize-handle="s"] {
+    bottom: -6px !important;
+    left: calc(50% - 16px) !important;
+    width: 32px !important;
+    height: 9px !important;
+    border-radius: 5px !important;
+    cursor: ns-resize !important;
+}
+[data-vdoc-object-id] > [data-vdoc-object-resize-handle="w"] {
+    top: calc(50% - 16px) !important;
+    left: -6px !important;
+    width: 9px !important;
+    height: 32px !important;
+    border-radius: 5px !important;
+    cursor: ew-resize !important;
 }
 `;
         }

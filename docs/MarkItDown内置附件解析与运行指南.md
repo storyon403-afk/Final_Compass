@@ -37,7 +37,7 @@ Final_Compass/
 │   ├── pyproject.toml
 │   └── Dockerfile
 ├── services/api/
-│   └── apps/web/src/main/java/cn/finalscompass/
+│   └── services/api/src/main/java/cn/finalscompass/
 │       ├── controller/AiAnalysisController.java
 │       └── service/AiDocumentConversionService.java
 ├── apps/web/src/

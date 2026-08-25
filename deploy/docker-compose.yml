@@ -33,6 +33,8 @@ services:
       context: ..
       dockerfile: deploy/backend/Dockerfile
     container_name: finals-compass-backend
+    user: "10001:10001"
+    init: true
     restart: unless-stopped
     depends_on:
       mysql:
@@ -66,6 +68,7 @@ services:
       APP_LOGIN_URL: ${APP_LOGIN_URL}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL}
       BROWSER_BRIDGE_ALLOWED_ORIGINS: ${BROWSER_BRIDGE_ALLOWED_ORIGINS}
+      TRUSTED_PROXY_ADDRESSES: ${TRUSTED_PROXY_ADDRESSES:-127.0.0.1,::1,172.28.0.1,172.28.0.10}
       MICROSOFT_MAIL_CLIENT_ID: ${MICROSOFT_MAIL_CLIENT_ID:-}
       MICROSOFT_MAIL_CLIENT_SECRET: ${MICROSOFT_MAIL_CLIENT_SECRET:-}
       MICROSOFT_MAIL_REDIRECT_URI: ${MICROSOFT_MAIL_REDIRECT_URI:-}
@@ -82,6 +85,10 @@ services:
       - "127.0.0.1:8080:8080"
     networks:
       - app-network
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     logging: *default-logging
 
   redis:
@@ -144,7 +151,8 @@ services:
     ports:
       - "80:80"
     networks:
-      - app-network
+      app-network:
+        ipv4_address: 172.28.0.10
     logging: *default-logging
 
   loki:
@@ -198,6 +206,10 @@ services:
 networks:
   app-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1
 
 volumes:
   mysql_data:

@@ -1,6 +1,6 @@
 # Finals Compass AI Center 模块交接文档（Runtime 架构）
 
-> 文档基线：2026-08-11，Flyway 迁移至 V54，分支 `feature/ai-analysis`
+> 文档基线：2026-08-11，Flyway 迁移至 V54，分支 `feature/ai-analysis`。这是通用 AI Runtime 的交接基线，不覆盖 V65–V72 新增的 liveDoc/Scriptorium；该模块请读 [liveDoc 与 Scriptorium 维护指南](liveDoc与Scriptorium维护指南.md)。仓库总体迁移现已到 V73。
 > 代码路径：`services/api/src/main/java/cn/finalscompass/`，迁移：`services/api/src/main/resources/db/migration/`
 
 
@@ -416,7 +416,7 @@ MCP 凭据按 `authMode` 分发：`NONE`→空凭据；`PLATFORM_OAUTH`→subjec
 | V53 | `platform_ai_review_config`、`user_ai_review_secret` | MultiWeb 审核凭据 |
 | V54 | chat runtime 执行放行 | CHAT 链路收尾 |
 
-新迁移从 **V55** 开始。
+本文基线之后的迁移从 **V55** 开始；当前仓库已经到 **V73**，新增迁移必须从现有最高版本继续编号。
 
 ---
 
@@ -466,5 +466,5 @@ MCP 凭据按 `authMode` 分发：`NONE`→空凭据；`PLATFORM_OAUTH`→subjec
 
 - [MarkItDown 内置附件解析与运行指南](MarkItDown内置附件解析与运行指南.md) —— 附件转 Markdown 的 Worker 链路（仍被 `/api/ai/attachments/convert` 与知识库 ingest-file 使用；文中对旧 Skill 架构的引用作废）。
 - [系统架构与设计总览](系统架构与设计总览.md) —— 非 AI 章节有效；AI 数据流章节以本文为准。
-- [安全审计报告](安全审计报告.md) —— 2026-08-09 时点快照，未覆盖 chat 重构后的新链路。
+- [安全审计报告](安全审计报告0809qianwen3_8max.md) —— 2026-08-09 时点快照，未覆盖 chat 重构后的新链路。
 - [MySQL 数据库设计详解](MySQL数据库设计详解.md) —— 仅覆盖 V1–V15 基础库。

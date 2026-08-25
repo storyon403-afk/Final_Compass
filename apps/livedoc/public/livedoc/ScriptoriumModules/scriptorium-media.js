@@ -151,8 +151,10 @@
             );
             if (embedded) {
                 media.dataset.vdocResourceSrc = source;
-                media.src = documentPort.resourceResolver()
-                    ?.resolveHtml?.(source) || source;
+                // Persist the stable container URI. A blob: URL belongs to the
+                // current browser session and becomes invalid after reopening.
+                // The renderer resolves this URI to a fresh runtime URL.
+                media.setAttribute('src', source);
                 figure.dataset.vdocSourceKind = 'embedded-resource';
             } else {
                 media.src = source;
@@ -160,8 +162,17 @@
                 figure.dataset.vdocSrc = source;
             }
             media.style.display = 'block';
-            media.style.maxWidth = '100%';
-            media.style.margin = '0 auto';
+            if (kind === 'image') {
+                media.style.setProperty('width', '100%', 'important');
+                media.style.setProperty('height', '100%', 'important');
+                media.style.setProperty('max-width', 'none', 'important');
+                media.style.setProperty('max-height', 'none', 'important');
+                media.style.setProperty('margin', '0', 'important');
+                media.style.setProperty('object-fit', 'fill', 'important');
+            } else {
+                media.style.maxWidth = '100%';
+                media.style.margin = '0 auto';
+            }
             media.setAttribute('description', description);
             media.dataset.vdocDescription = description;
             if (kind === 'image') {
@@ -353,10 +364,12 @@
                         description
                     );
                 }
-                const inserted = currentAdapter().insertContent(
-                    node.outerHTML,
-                    { reason: 'media-inserted' }
-                );
+                const inserted = typeof context.insertObject === 'function'
+                    ? context.insertObject(node)
+                    : currentAdapter().insertContent(
+                        node.outerHTML,
+                        { reason: 'media-inserted' }
+                    );
                 if (!inserted) {
                     setStatus('当前编辑位置无法插入媒体。', 'error');
                     return false;

@@ -295,12 +295,24 @@
     }
 
     function applySlideLayout(node, options = {}) {
+        const nativeWidth = finite(node.dataset?.vdocNativeWidth, 0, 0);
+        const nativeHeight = finite(node.dataset?.vdocNativeHeight, 0, 0);
+        const hasExplicitWidth = options.width != null || Boolean(node.style.width);
+        const hasExplicitHeight = options.height != null || Boolean(node.style.height);
+        let defaultWidth = 260;
+        let defaultHeight = 180;
+        if (!hasExplicitWidth && !hasExplicitHeight
+            && nativeWidth > 0 && nativeHeight > 0) {
+            const scale = Math.min(360 / nativeWidth, 240 / nativeHeight, 1);
+            defaultWidth = Math.max(24, nativeWidth * scale);
+            defaultHeight = Math.max(24, nativeHeight * scale);
+        }
         node.dataset.vdocObjectLayout = 'free';
         node.style.position = 'absolute';
         node.style.left = `${finite(options.left ?? node.style.left, 80)}px`;
         node.style.top = `${finite(options.top ?? node.style.top, 80)}px`;
-        node.style.width = `${finite(options.width ?? node.style.width, 260, 24)}px`;
-        node.style.height = `${finite(options.height ?? node.style.height, 180, 24)}px`;
+        node.style.width = `${finite(options.width ?? node.style.width, defaultWidth, 24)}px`;
+        node.style.height = `${finite(options.height ?? node.style.height, defaultHeight, 24)}px`;
         node.style.margin = '0';
         node.style.maxWidth = 'none';
         node.style.zIndex = String(Math.round(finite(
@@ -318,6 +330,16 @@
         );
         node.style.transform = 'rotate(var(--vdoc-object-rotation, 0deg))';
         node.style.transformOrigin = 'center';
+        if (node.matches?.('.vdoc-media[data-vdoc-media="image"]')) {
+            const image = node.querySelector(':scope > img');
+            image?.style.setProperty('display', 'block', 'important');
+            image?.style.setProperty('width', '100%', 'important');
+            image?.style.setProperty('height', '100%', 'important');
+            image?.style.setProperty('max-width', 'none', 'important');
+            image?.style.setProperty('max-height', 'none', 'important');
+            image?.style.setProperty('margin', '0', 'important');
+            image?.style.setProperty('object-fit', 'fill', 'important');
+        }
         return 'free';
     }
 
@@ -572,11 +594,25 @@
         return node;
     }
 
-    function findObject(fragment, objectId) {
-        if (!objectId) return null;
+    function findObject(fragment, objectId, stableId = '') {
+        if (objectId) {
+            const byObjectId = fragment.querySelector(
+                `[data-vdoc-object-id="${CSS.escape(String(objectId))}"]`
+            );
+            if (byObjectId) return byObjectId;
+        }
+        if (!stableId) return null;
         return fragment.querySelector(
-            `[data-vdoc-object-id="${CSS.escape(String(objectId))}"]`
+            `[data-vdoc-stable-id="${CSS.escape(String(stableId))}"]`
         );
+    }
+
+    function objectCandidates(rootNode) {
+        return [...rootNode.querySelectorAll(
+            `${OBJECT_SELECTOR}, .vdoc-media, .vdoc-media-batch`
+        )].filter((node) => !node.parentElement?.closest(
+            `${OBJECT_SELECTOR}, .vdoc-media-batch`
+        ));
     }
 
     function findAnchor(fragment, anchorId) {
@@ -679,7 +715,13 @@
         const template = document.createElement('template');
         template.innerHTML = String(source || '');
         const fragment = template.content;
-        const node = findObject(fragment, mutation.objectId);
+        const node = findObject(
+            fragment,
+            mutation.objectId,
+            mutation.stableId
+        ) || (Number.isInteger(mutation.objectIndex)
+            ? objectCandidates(fragment)[mutation.objectIndex] || null
+            : null);
         if (!node) return { changed: false, source: String(source || '') };
 
         let changed = false;
@@ -752,7 +794,7 @@
         function installResizeHandles(node) {
             removeResizeHandles();
             if (!node?.isConnected) return;
-            ['nw', 'ne', 'sw', 'se'].forEach((direction) => {
+            ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach((direction) => {
                 const handle = document.createElement('span');
                 handle.dataset.vdocObjectResizeHandle = direction;
                 handle.contentEditable = 'false';
@@ -844,9 +886,24 @@
 
         function beginDrag(event, object, resizeDirection = '') {
             const rect = object.getBoundingClientRect();
+            const image = object.matches?.('.vdoc-media[data-vdoc-media="image"]')
+                ? object.querySelector(':scope > img')
+                : null;
+            const naturalWidth = Number(image?.naturalWidth) || 0;
+            const naturalHeight = Number(image?.naturalHeight) || 0;
+            const nativeWidth = finite(object.dataset.vdocNativeWidth, 0, 0);
+            const nativeHeight = finite(object.dataset.vdocNativeHeight, 0, 0);
+            const aspectRatio = naturalWidth > 0 && naturalHeight > 0
+                ? naturalWidth / naturalHeight
+                : nativeWidth > 0 && nativeHeight > 0
+                    ? nativeWidth / nativeHeight
+                    : (object.offsetWidth || 240)
+                        / Math.max(1, object.offsetHeight || 160);
             state.drag = {
                 pointerId: event.pointerId,
                 object,
+                objectIndex: objectCandidates(root()).indexOf(object),
+                stableId: object.dataset.vdocStableId || '',
                 mode: resizeDirection ? 'resize' : 'move',
                 resizeDirection,
                 startX: event.clientX,
@@ -855,7 +912,7 @@
                 originalTop: finite(object.style.top, 0),
                 originalWidth: object.offsetWidth || finite(object.style.width, 240, 24),
                 originalHeight: object.offsetHeight || finite(object.style.height, 160, 24),
-                aspectRatio: (object.offsetWidth || 240) / Math.max(1, object.offsetHeight || 160),
+                aspectRatio,
                 moved: false,
                 drop: null,
                 rect,
@@ -878,17 +935,41 @@
                 const sceneDy = dy / scale;
                 const west = drag.resizeDirection.includes('w');
                 const north = drag.resizeDirection.includes('n');
-                let width = Math.max(24, drag.originalWidth + (west ? -sceneDx : sceneDx));
-                let height = Math.max(24, drag.originalHeight + (north ? -sceneDy : sceneDy));
+                const horizontal = /[ew]/.test(drag.resizeDirection);
+                const vertical = /[ns]/.test(drag.resizeDirection);
+                let width = horizontal
+                    ? Math.max(24, drag.originalWidth + (west ? -sceneDx : sceneDx))
+                    : drag.originalWidth;
+                let height = vertical
+                    ? Math.max(24, drag.originalHeight + (north ? -sceneDy : sceneDy))
+                    : drag.originalHeight;
 
-                if (event.shiftKey && Number.isFinite(drag.aspectRatio)) {
-                    if (Math.abs(sceneDx) >= Math.abs(sceneDy)) {
-                        height = width / drag.aspectRatio;
+                const cornerResize = horizontal && vertical;
+                const horizontalIntent = Math.abs(sceneDx);
+                const verticalIntent = Math.abs(sceneDy);
+                const diagonalIntent = horizontalIntent > 0
+                    && verticalIntent > 0
+                    && Math.min(horizontalIntent, verticalIntent)
+                        / Math.max(horizontalIntent, verticalIntent) >= 0.3;
+                if (cornerResize && !event.shiftKey && diagonalIntent
+                    && Number.isFinite(drag.aspectRatio)
+                    && drag.aspectRatio > 0) {
+                    const horizontalDelta = west ? -sceneDx : sceneDx;
+                    const verticalDeltaAsWidth = (north ? -sceneDy : sceneDy)
+                        * drag.aspectRatio;
+                    const widthDelta = Math.abs(horizontalDelta)
+                        >= Math.abs(verticalDeltaAsWidth)
+                        ? horizontalDelta
+                        : verticalDeltaAsWidth;
+                    const minimumWidth = Math.max(24, 24 * drag.aspectRatio);
+                    width = Math.max(minimumWidth, drag.originalWidth + widthDelta);
+                    height = width / drag.aspectRatio;
+                } else if (cornerResize && !event.shiftKey) {
+                    if (horizontalIntent >= verticalIntent) {
+                        height = drag.originalHeight;
                     } else {
-                        width = height * drag.aspectRatio;
+                        width = drag.originalWidth;
                     }
-                    width = Math.max(24, width);
-                    height = Math.max(24, height);
                 }
 
                 drag.object.style.width = `${Math.round(width * 10) / 10}px`;
@@ -961,6 +1042,8 @@
                 commitAfterPointer({
                     type: 'geometry',
                     objectId: drag.object.dataset.vdocObjectId,
+                    stableId: drag.stableId,
+                    objectIndex: drag.objectIndex,
                     styles,
                     impact: freeCanvas() ? 'geometry' : 'flow',
                 });
@@ -970,6 +1053,8 @@
                 commitAfterPointer({
                     type: 'geometry',
                     objectId: drag.object.dataset.vdocObjectId,
+                    stableId: drag.stableId,
+                    objectIndex: drag.objectIndex,
                     styles: {
                         left: drag.object.style.left,
                         top: drag.object.style.top,
@@ -1201,12 +1286,15 @@ ${safeCss}
         function runAction(action) {
             const node = selected();
             if (!node) return false;
+            const objectIndex = objectCandidates(root()).indexOf(node);
             hideMenu();
             if (action === 'edit') return openInspector();
             if (action === 'delete') {
                 context.commitMutation?.({
                     type: 'delete',
                     objectId: node.dataset.vdocObjectId,
+                    stableId: node.dataset.vdocStableId,
+                    objectIndex,
                     impact: freeCanvas() ? 'geometry' : 'flow',
                 });
                 clearSelection();
@@ -1340,6 +1428,12 @@ ${safeCss}
                 capture: true,
                 signal: state.uiAbort.signal,
             });
+            window.addEventListener('keydown', (event) => {
+                handleKeydown(event);
+            }, {
+                capture: true,
+                signal: state.uiAbort.signal,
+            });
         }
 
         function handleKeydown(event) {
@@ -1354,8 +1448,11 @@ ${safeCss}
             }
             if ((event.key === 'Delete' || event.key === 'Backspace')
                 && selected()
-                && !event.target?.closest?.('input,textarea,select,.CodeMirror')) {
+                && !event.target?.closest?.(
+                    'input,textarea,select,.CodeMirror,[contenteditable="true"]'
+                )) {
                 event.preventDefault();
+                event.stopImmediatePropagation();
                 runAction('delete');
                 return true;
             }

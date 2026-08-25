@@ -119,6 +119,7 @@
     let agentPort = null;
     let objectPort = null;
     let svgAssetPort = null;
+    let compositionPort = null;
     let shell = null;
     let pathRequestDisposer = null;
     let agentRequestDisposer = null;
@@ -381,6 +382,11 @@
             reason: `object-${mutation.type}`,
         });
         historyPort.capture({ reason: `object-${mutation.type}` });
+        // 拖拽和缩放已经直接更新了当前画布节点。此时重建整个
+        // ShadowRoot 会释放 pointer capture，并表现为对象刚移动就刷新、
+        // 跳回或无法继续拖动。几何数据写入源文档后保留现有画布即可；
+        // 后续切页、预览或重新打开时会自然按新位置渲染。
+        if (mutation.type === 'geometry') return true;
         renderFacade.invalidate('object-mutated');
         renderFacade.renderEdit({ force: true });
         return true;
@@ -520,6 +526,7 @@
                 notificationPort,
                 getAdapter: adapterResolver,
                 hash: hybridCompiler.simpleHash,
+                insertObject,
             });
 
         findPort =
@@ -702,6 +709,16 @@
                 insertObject,
             });
 
+        compositionPort =
+            window.ScriptoriumComposition.createCompositionController({
+                elements,
+                containerModule,
+                core,
+                notificationPort,
+                activateDocument: (model, metadata) =>
+                    sessionPort.create(model, metadata),
+            });
+
         [
             sessionPort,
             mediaPort,
@@ -711,6 +728,7 @@
             stylePort,
             lineageUiPort,
             svgAssetPort,
+            compositionPort,
         ].forEach(shell.register);
     }
 

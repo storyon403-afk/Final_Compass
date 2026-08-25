@@ -72,6 +72,10 @@
                 <svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/><path d="m3 19 3-7h15"/></svg>
                 <span>打开</span>
             </button>
+            <button id="composition-manage-btn" class="deck-button" type="button" title="管理融合模块" hidden>
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="8" height="6" rx="1"/><rect x="13" y="5" width="8" height="6" rx="1"/><rect x="8" y="14" width="8" height="6" rx="1"/><path d="M7 11v2h10v-2M12 13v1"/></svg>
+                <span>融合模块</span>
+            </button>
             <button id="import-btn" class="deck-button" title="导入 HTML、Markdown、TXT、RTF 或 DOCX">
                 <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg>
                 <span>导入</span>
@@ -251,6 +255,12 @@
             </span>
             <span><strong>新演示</strong><small>VPPTX 演示</small></span>
         </button>
+        <button id="new-composition-btn" type="button" role="menuitem" title="将 2–6 份 VPPTX 编排为小组组合演示">
+            <span class="start-menu-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="8" height="6" rx="1"/><rect x="13" y="5" width="8" height="6" rx="1"/><rect x="8" y="14" width="8" height="6" rx="1"/><path d="M7 11v2h10v-2M12 13v1"/></svg>
+            </span>
+            <span><strong>多 VPPTX 融合</strong><small>2–6 人小组演示编排</small></span>
+        </button>
         <span class="start-menu-separator" aria-hidden="true"></span>
         <button id="home-btn" type="button" role="menuitem" title="回到 Scriptorium 首页">
             <span class="start-menu-icon">
@@ -416,6 +426,36 @@
             <svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg><span>文脉</span>
         </button>
     </main>
+
+    <section id="composition-manager" class="dialog-backdrop composition-manager" role="dialog" aria-modal="true" aria-labelledby="composition-title" hidden>
+        <article class="composition-manager-dialog">
+            <header class="composition-manager-header">
+                <div><span>GROUP PRESENTATION COMPOSER</span><h2 id="composition-title">导入与编排 VPPTX 模块</h2><p>选择 2–6 位成员的演示文件；确认后将在标准 VPPTX 编辑器中生成组合演示。</p></div>
+                <button id="composition-close-btn" type="button" aria-label="关闭模块管理">×</button>
+            </header>
+            <div class="composition-manager-body">
+            <section id="composition-dropzone" class="composition-dropzone" tabindex="0" role="button" aria-label="导入 VPPTX 文件">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 9l5-5 5 5"/><path d="M4 15v5h16v-5"/></svg>
+                <strong>导入 2–6 份 VPPTX</strong>
+                <span>点击选择或将文件拖到这里；最多对应 6 位成员</span>
+                <button id="composition-add-btn" type="button">选择 VPPTX</button>
+                <input id="composition-file-input" type="file" accept=".vpptx" multiple hidden>
+            </section>
+                <section class="composition-modules" aria-label="融合模块顺序">
+                    <header>
+                        <div><strong>模块顺序</strong><span id="composition-count">0 / 6</span></div>
+                        <p>点击预览；拖动卡片排序，也可使用上移、下移。</p>
+                    </header>
+                    <div id="composition-empty" class="composition-empty">尚未导入 VPPTX</div>
+                    <div id="composition-list" class="composition-list"></div>
+                </section>
+            </div>
+            <footer class="composition-footer">
+                <div><strong id="composition-status">至少需要导入 2 份 VPPTX</strong><span>确认后自动生成封面、总目录，并按当前顺序接入成员页面。</span></div>
+                <button id="composition-confirm-btn" type="button" disabled>生成组合 VPPTX</button>
+            </footer>
+        </article>
+    </section>
 
     <footer class="document-statusbar">
         <div class="status-group">
@@ -1093,6 +1133,7 @@
     <script src="scriptorium-session.js"></script>
     <script src="scriptorium-flow-adapter.js"></script>
     <script src="scriptorium-deck-adapter.js"></script>
+    <script src="scriptorium-composition.js"></script>
     <script src="scriptorium-shell.js"></script>
     <script src="scriptorium.js"></script>
     <script src="livedoc-agent.js"></script>

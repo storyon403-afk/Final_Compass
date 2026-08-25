@@ -5,6 +5,7 @@ import cn.finalscompass.model.ApiModels.ChangePasswordRequest;
 import cn.finalscompass.model.ApiModels.LoginRequest;
 import cn.finalscompass.service.AuthService;
 import cn.finalscompass.service.BetaAccessService;
+import cn.finalscompass.service.TrustedProxyService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -23,14 +24,17 @@ public class AuthController {
   public static final String SESSION_COOKIE = "finals_compass_session";
   private final AuthService auth;
   private final BetaAccessService betaAccess;
+  private final TrustedProxyService trustedProxy;
   private final boolean sessionCookieSecure;
 
   public AuthController(
       AuthService auth,
       BetaAccessService betaAccess,
+      TrustedProxyService trustedProxy,
       @Value("${app.session-cookie-secure:false}") boolean sessionCookieSecure) {
     this.auth = auth;
     this.betaAccess = betaAccess;
+    this.trustedProxy = trustedProxy;
     this.sessionCookieSecure = sessionCookieSecure;
   }
 
@@ -99,9 +103,6 @@ public class AuthController {
   }
 
   private String clientIp(HttpServletRequest request) {
-    String forwarded = request.getHeader("X-Forwarded-For");
-    return forwarded == null || forwarded.isBlank()
-        ? request.getRemoteAddr()
-        : forwarded.split(",", 2)[0].trim();
+    return trustedProxy.clientIp(request);
   }
 }

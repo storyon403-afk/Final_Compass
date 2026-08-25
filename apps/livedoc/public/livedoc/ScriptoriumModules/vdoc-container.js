@@ -205,6 +205,23 @@
     }
 
     function createRuntimeResolver(documentModel, resourceData, objectUrls = new Map()) {
+        function restorePersistedResourceSources(source) {
+            const value = String(source || '');
+            if (!value.includes('data-vdoc-resource-src')) return value;
+            const template = document.createElement('template');
+            template.innerHTML = value;
+            template.content.querySelectorAll('[data-vdoc-resource-src]')
+                .forEach((element) => {
+                    const reference = element.dataset.vdocResourceSrc;
+                    if (reference?.startsWith(RESOURCE_SCHEME)) {
+                        // Older projects kept the stable resource URI here but
+                        // persisted a now-dead blob: URL in src.
+                        element.setAttribute('src', reference);
+                    }
+                });
+            return template.innerHTML;
+        }
+
         const urlFor = (category, id) => {
             // 清单会在编辑期间动态增加资源，因此不能在创建解析器时复制成静态 Map。
             const resource = resourceMetadata(documentModel, id);
@@ -227,7 +244,7 @@
             return output;
         };
         const resolveHtml = (html) => replaceMappedSourceUrls(
-            String(html || '').replace(
+            restorePersistedResourceSources(html).replace(
                 RESOURCE_PATTERN,
                 (_match, category, id) =>
                     urlFor(category.toLowerCase(), id.toLowerCase()) || _match
@@ -244,7 +261,7 @@
         };
         const resolveExportHtml = (html) => {
             let output = replaceMappedSourceUrls(
-                String(html || '').replace(
+                restorePersistedResourceSources(html).replace(
                     RESOURCE_PATTERN,
                     (_match, category, id) =>
                         dataUrlFor(category.toLowerCase(), id.toLowerCase()) || _match

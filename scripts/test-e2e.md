@@ -2,13 +2,13 @@
 
 验证目标：chat 问答（SSE+RAG）、Gateway 调用本地 agent、浏览器扩展 WS 桥接、artifact 下载。
 
-前置条件：MySQL / Redis 已启动，Flyway 已执行到 V52（`ai_runtime_run.callback_token` 列与 `ai_runtime_run_artifact` 表存在）。
+前置条件：MySQL / Redis 已启动，后端已执行仓库当前全部 Flyway 迁移（目前为 V73；Agent 回调能力最低依赖 V52）。
 
 ## 1. 启动后端 + 前端 + mock agent
 
 ```bash
 cd /Users/storyon/study/Final_Compass
-./scripts/dev.sh          # 后端 8080 + 前端 5173（另开终端）
+./scripts/dev.sh          # 后端 8080 + 主站 5173 + liveDoc 5174（另开终端）
 node scripts/hermes-agent.mjs # Hermes Agent Gateway，监听 127.0.0.1:8642
 # 若 hermes 不在 PATH：HERMES_BIN=/绝对路径/hermes node scripts/hermes-agent.mjs
 # 仅测试协议、不消耗模型额度时可改用：node scripts/mock-agent.mjs
