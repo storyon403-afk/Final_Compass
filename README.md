@@ -178,7 +178,9 @@ docker compose up -d --build mysql redis markitdown-worker pdf-renderer backend
 
 随后在仓库根目录执行 `npm ci && npm run build`，把组合后的 `dist/` 发布到静态目录，并将 `/api/` 和 `/ws/` 代理给后端。
 
-绑定域名与 HTTPS 时，以 `deploy/nginx/finals-compass-https.conf.example` 为模板，将 `__DOMAIN__` 替换为实际域名。DNS 指向当前公网 IP 并签发证书后，把站点 URL 更新为 HTTPS，同时设置 `SESSION_COOKIE_SECURE=true`；以后更换服务器 IP 只需更新 DNS。
+备案前在 Ubuntu 本机或受控局域网测试时，使用 `deploy/nginx/finals-compass-local-http.conf`；它接受 `http://localhost`、`http://finalscompass` 和本机局域网 IP，并代理到宿主机 `127.0.0.1:8080` 的后端。此模式需设置 `SESSION_COOKIE_SECURE=false`，且不应暴露到公网。
+
+备案后绑定域名与 HTTPS 时，以 `deploy/nginx/finals-compass-https.conf.example` 为模板，将全部 `__DOMAIN__` 替换为完整的实际域名。`FinalsCompass` 可作为产品名或局域网主机名，但不是可签发公网证书的完整域名。DNS 指向当前公网 IP 并签发证书后，把站点 URL 更新为 HTTPS，同时设置 `SESSION_COOKIE_SECURE=true`；以后更换服务器 IP 只需更新 DNS。
 
 日志滚动、Trace 关联及 Loki + Grafana 的配置见 [日志与 Trace 运维指南](docs/日志与Trace运维指南.md)。`.env`、数据库卷、日志与上传文件均不得提交。
 
