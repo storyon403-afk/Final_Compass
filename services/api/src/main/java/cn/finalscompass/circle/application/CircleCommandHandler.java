@@ -35,9 +35,13 @@ public class CircleCommandHandler {
     if(file.isEmpty()||file.getSize()>20L*1024*1024)throw bad("文件为空或超过 20MB");
     String original=StringUtils.cleanPath(file.getOriginalFilename()==null?"resource":file.getOriginalFilename());
     String ext=StringUtils.getFilenameExtension(original);if(ext==null||!EXTENSIONS.contains(ext.toLowerCase()))throw bad("不支持此文件类型");
+    ext=ext.toLowerCase();
+    String mime;
+    try(var input=file.getInputStream()){mime=ResourceFilePolicy.validateAndMime(ext,input.readNBytes(16));}
+    catch(IllegalArgumentException error){throw bad(error.getMessage());}
     long anonymous=identities.internalIdForAccount(user.id()),courseId=repository.lookupCourse(course),teacherId=repository.lookupTeacher(teacher);
-    String name=UUID.randomUUID()+"."+ext.toLowerCase();storage.store(name,file);
-    try{repository.addResource(teacherId,courseId,anonymous,title,type,description,original,name,file.getContentType(),file.getSize());activity.recordResourceSubmitted(user.id(),name);}
+    String name=UUID.randomUUID()+"."+ext;storage.store(name,file);
+    try{repository.addResource(teacherId,courseId,anonymous,title,type,description,original,name,mime,file.getSize());activity.recordResourceSubmitted(user.id(),name);}
     catch(RuntimeException error){storage.deleteQuietly(name);throw error;}
   }
   @Transactional public Discussion discuss(AuthService.CurrentUser user,String course,String teacher,CreateDiscussion input){

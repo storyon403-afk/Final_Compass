@@ -6,6 +6,7 @@ import cn.finalscompass.service.AuthService;
 import cn.finalscompass.shared.security.AuthorizationPolicy;
 import cn.finalscompass.shared.storage.UploadStorage;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.*;
@@ -19,9 +20,10 @@ public class CircleQueryHandler {
   public List<Resource> resources(String course,String teacher){return repository.resources(course,teacher);}
   public ResponseEntity<org.springframework.core.io.Resource> file(String course,String teacher,long id,String disposition){
     var stored=repository.resourceFile(course,teacher,id);if(!storage.exists(stored.storageName()))throw new ResponseStatusException(HttpStatus.NOT_FOUND,"资料文件不存在");
-    MediaType type;try{type=MediaType.parseMediaType(stored.mimeType()==null?"application/octet-stream":stored.mimeType());}catch(IllegalArgumentException ignored){type=MediaType.APPLICATION_OCTET_STREAM;}
-    var content="attachment".equalsIgnoreCase(disposition)?ContentDisposition.attachment():ContentDisposition.inline();repository.incrementDownloads(id);
-    return ResponseEntity.ok().contentType(type).header(HttpHeaders.CONTENT_DISPOSITION,
+    MediaType type=safeMediaType(stored);
+    boolean inline=ResourceFilePolicy.mayRenderInline(type.toString())&&!"attachment".equalsIgnoreCase(disposition);
+    var content=inline?ContentDisposition.inline():ContentDisposition.attachment();repository.incrementDownloads(id);
+    return ResponseEntity.ok().contentType(type).header("X-Content-Type-Options","nosniff").header(HttpHeaders.CONTENT_DISPOSITION,
         content.filename(stored.originalName(),StandardCharsets.UTF_8).build().toString())
         .body(new org.springframework.core.io.FileSystemResource(storage.resolve(stored.storageName())));
   }
@@ -29,4 +31,11 @@ public class CircleQueryHandler {
   public CircleSummary summary(String course,String teacher){return repository.summary(course,teacher);}
   public StudyGuide guide(String course,String teacher){return repository.guide(course,teacher);}
   public List<GuideSubmission> approved(AuthService.CurrentUser user,String course,String teacher){authorization.requireAdmin(user);return repository.approvedSubmissions(course,teacher);}
+  private MediaType safeMediaType(CircleQueryRepository.StoredFile stored){
+    String name=stored.originalName()==null?"":stored.originalName();int dot=name.lastIndexOf('.');
+    if(dot<0)return MediaType.APPLICATION_OCTET_STREAM;
+    try(var input=Files.newInputStream(storage.resolve(stored.storageName()))){
+      return MediaType.parseMediaType(ResourceFilePolicy.validateAndMime(name.substring(dot+1),input.readNBytes(16)));
+    }catch(Exception ignored){return MediaType.APPLICATION_OCTET_STREAM;}
+  }
 }

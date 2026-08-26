@@ -14,7 +14,7 @@
     "dompurify": "^3.4.13",
     "katex": "^0.18.1",
     "marked": "^18.0.9",
-    "pdfjs-dist": "^6.1.200",
+    "pdfjs-dist": "^6.2.108",
     "vite": "8.1.4",
     "vue": "3.5.39",
     "vue-router": "5.2.0"

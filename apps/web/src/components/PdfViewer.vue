@@ -32,6 +32,7 @@ async function renderPdf(blob) {
       standardFontDataUrl: '/pdfjs/standard_fonts/',
       wasmUrl: '/pdfjs/wasm/',
       useSystemFonts: true,
+      isEvalSupported: false,
     })
     documentHandle = await task.promise
     for (let number = 1; number <= documentHandle.numPages; number++) {
