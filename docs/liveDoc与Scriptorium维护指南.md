@@ -48,7 +48,7 @@ apps/livedoc/public/livedoc/
 - HTML 可在浏览器侧直接生成并下载。
 - PDF 通过 `POST /api/livedoc/export/pdf` 提交 HTML，`LiveDocService` 再调用配置的 `services/pdf-renderer` 并返回结果；未配置 URL 或 Token 时接口返回 503。
 - 工程保存与 PDF/HTML 导出是不同语义：前者保留可继续编辑的真源和资源，后者是交付产物。
-- `services/pdf-renderer` 是可独立部署的辅助服务，当前 Compose 默认未启动它；需要 PDF 导出时应同时配置 `PDF_RENDERER_URL` 与 `PDF_RENDERER_TOKEN`。
+- `services/pdf-renderer` 是可独立部署的辅助服务，服务器 Compose 已默认启动它；部署前必须在 `deploy/.env` 中配置独立的 `PDF_RENDERER_TOKEN`。Renderer 只加入 Compose 内网，不向宿主机或公网映射端口。
 
 ## 5. 开发与构建
 

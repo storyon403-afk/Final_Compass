@@ -41,6 +41,8 @@ services:
         condition: service_healthy
       markitdown-worker:
         condition: service_healthy
+      pdf-renderer:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -74,6 +76,8 @@ services:
       MICROSOFT_MAIL_REDIRECT_URI: ${MICROSOFT_MAIL_REDIRECT_URI:-}
       MARKITDOWN_WORKER_URL: http://markitdown-worker:8090
       MARKITDOWN_WORKER_TOKEN: ${MARKITDOWN_WORKER_TOKEN}
+      PDF_RENDERER_URL: http://pdf-renderer:8787
+      PDF_RENDERER_TOKEN: ${PDF_RENDERER_TOKEN}
       JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxMetaspaceSize=192m
       LOG_DIR: /app/logs
       LOG_MAX_HISTORY: ${LOG_MAX_HISTORY:-30}
@@ -134,6 +138,35 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
+  pdf-renderer:
+    build:
+      context: ..
+      dockerfile: services/pdf-renderer/Dockerfile
+    container_name: finals-compass-pdf-renderer
+    init: true
+    restart: unless-stopped
+    environment:
+      PDF_RENDERER_TOKEN: ${PDF_RENDERER_TOKEN}
+      PDF_RENDERER_HOST: 0.0.0.0
+      PDF_RENDERER_PORT: 8787
+      CHROME_PATH: /usr/bin/chromium
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    networks:
+      - app-network
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
     logging: *default-logging

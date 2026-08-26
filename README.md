@@ -173,7 +173,7 @@ docker compose --profile container-frontend up -d --build
 已有宿主机 Nginx 时，只启动服务端组件：
 
 ```bash
-docker compose up -d --build mysql redis markitdown-worker backend
+docker compose up -d --build mysql redis markitdown-worker pdf-renderer backend
 ```
 
 随后在仓库根目录执行 `npm ci && npm run build`，把组合后的 `dist/` 发布到静态目录，并将 `/api/` 和 `/ws/` 代理给后端。

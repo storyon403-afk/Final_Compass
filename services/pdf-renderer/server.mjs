@@ -8,18 +8,25 @@ const host = process.env.PDF_RENDERER_HOST || "127.0.0.1";
 const port = Number(process.env.PDF_RENDERER_PORT || 8787);
 const token = process.env.PDF_RENDERER_TOKEN || "";
 const chrome = process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const maxBody = 8 * 1024 * 1024;
+// The backend accepts up to 8 MiB of HTML; Base64 and JSON make the request larger.
+const maxBody = 12 * 1024 * 1024;
 
 if (!token) throw new Error("PDF_RENDERER_TOKEN is required");
 
 function render(input, output) {
   return new Promise((resolve, reject) => {
-    execFile(chrome, ["--headless=new", "--disable-gpu", "--no-pdf-header-footer",
+    execFile(chrome, ["--headless=new", "--disable-gpu", "--disable-dev-shm-usage",
+      "--no-sandbox", "--no-pdf-header-footer", "--user-data-dir=/tmp/chrome-profile",
       `--print-to-pdf=${output}`, `file://${input}`], { timeout: 60000 }, (error) => error ? reject(error) : resolve());
   });
 }
 
 const server = http.createServer(async (request, response) => {
+  if (request.method === "GET" && request.url === "/health") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ status: "ok" }));
+    return;
+  }
   if (request.method !== "POST" || request.url !== "/render") {
     response.writeHead(404).end(); return;
   }
