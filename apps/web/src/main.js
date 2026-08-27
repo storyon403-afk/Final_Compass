@@ -9,6 +9,7 @@ import AiCenterView from './views/AiCenterView.vue'
 import AiRuntimeChatView from './views/AiRuntimeChatView.vue'
 import VcpRuntimeView from './views/VcpRuntimeView.vue'
 import LiveDocRuntimeView from './views/LiveDocRuntimeView.vue'
+import QuestionVineView from './views/QuestionVineView.vue'
 import './styles.css'
 
 const router = createRouter({
@@ -17,6 +18,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: HomeView },
     { path: '/cet', component: CetView },
+    { path: '/question-vine', component: QuestionVineView },
     { path: '/ai-analysis', redirect: '/ai-center' },
     { path: '/ai-center', component: AiCenterView },
     { path: '/ai-center/chat', component: AiRuntimeChatView, meta: { runtime: 'CHAT' } },

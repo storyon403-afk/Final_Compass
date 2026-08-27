@@ -33,6 +33,7 @@ const groupSubmitted = ref(false)
 const showTranscript = ref(false)
 const sessionAudioUrl = ref('')
 const sessionAudioLoading = ref(false)
+const CET_HISTORY_KEY = 'finalsCompassCetView'
 
 const practiceSections = [
   { key: 'WRITING', icon: 'W', name: '写作', note: '审题、构思与参考范文' },
@@ -163,9 +164,47 @@ function sectionName(code) {
   return [...practiceSections, ...sectionCatalog.INTENSIVE].find((entry) => entry.key === code)?.name || code
 }
 
-function chooseLevel(value) { level.value = value; mode.value = ''; section.value = ''; selectedPaperKey.value = ''; selectedItem.value = null }
+function cetSnapshot() {
+  return {
+    level: level.value, mode: mode.value, section: section.value,
+    paper: selectedPaperKey.value, item: selectedItem.value?.id || null
+  }
+}
+function pushCetHistory() {
+  window.history.pushState({ ...window.history.state, [CET_HISTORY_KEY]: cetSnapshot() }, '', window.location.href)
+}
+async function restoreCetHistory(snapshot) {
+  if (!snapshot) return
+  level.value = snapshot.level || ''; mode.value = snapshot.mode || ''; section.value = snapshot.section || ''
+  selectedPaperKey.value = ''; selectedItem.value = null; items.value = []
+  answer.value = ''; submitted.value = false; showTranslation.value = false
+  groupAnswers.value = {}; groupSubmitted.value = false; showTranscript.value = false
+  if (!level.value || !mode.value) return
+  loading.value = true; error.value = ''
+  try {
+    if (mode.value === 'FULL_PAPER') papers.value = await cetApi.papers(level.value)
+    else if (section.value) {
+      items.value = await cetApi.items(level.value, mode.value, section.value)
+      selectedPaperKey.value = snapshot.paper || ''
+      selectedItem.value = snapshot.item ? items.value.find(item => item.id === snapshot.item) || null : null
+    }
+  } catch (reason) { error.value = reason.message }
+  finally { loading.value = false }
+}
+function handleCetHistory(event) {
+  if (event.state?.[CET_HISTORY_KEY]) restoreCetHistory(event.state[CET_HISTORY_KEY])
+}
+function goToRoot() {
+  level.value = ''; mode.value = ''; section.value = ''; selectedPaperKey.value = ''; selectedItem.value = null
+  pushCetHistory()
+}
+function goToSection() { selectedPaperKey.value = ''; selectedItem.value = null; pushCetHistory() }
+function goToPaper() { selectedItem.value = null; pushCetHistory() }
+
+function chooseLevel(value) { level.value = value; mode.value = ''; section.value = ''; selectedPaperKey.value = ''; selectedItem.value = null; pushCetHistory() }
 async function chooseMode(value) {
   mode.value = value; section.value = ''; selectedPaperKey.value = ''; selectedItem.value = null
+  pushCetHistory()
   if (value === 'FULL_PAPER') {
     loading.value = true; error.value = ''
     try { papers.value = await cetApi.papers(level.value) }
@@ -175,6 +214,7 @@ async function chooseMode(value) {
 }
 async function chooseSection(value) {
   section.value = value; selectedPaperKey.value = ''; selectedItem.value = null; loading.value = true; error.value = ''
+  pushCetHistory()
   groupAnswers.value = {}; groupSubmitted.value = false; showTranscript.value = false
   if (sessionAudioUrl.value.startsWith('blob:')) URL.revokeObjectURL(sessionAudioUrl.value)
   sessionAudioUrl.value = ''
@@ -186,6 +226,7 @@ async function chooseSection(value) {
 }
 async function choosePaper(paper) {
   selectedPaperKey.value = paper.key
+  pushCetHistory()
   groupAnswers.value = {}; groupSubmitted.value = false; showTranscript.value = false
   if (sessionAudioUrl.value.startsWith('blob:')) URL.revokeObjectURL(sessionAudioUrl.value)
   sessionAudioUrl.value = ''
@@ -213,6 +254,7 @@ function submitGroup() {
 }
 async function openItem(item) {
   selectedItem.value = item; answer.value = ''; submitted.value = false; showTranslation.value = false
+  pushCetHistory()
   if (audioUrl.value.startsWith('blob:')) URL.revokeObjectURL(audioUrl.value)
   audioUrl.value = ''
   if (item.audioOriginalName) {
@@ -239,6 +281,7 @@ function enforceAudioSegment() {
   }
 }
 function goBack() {
+  if (window.history.state?.[CET_HISTORY_KEY] && stage.value !== 'level') { window.history.back(); return }
   if (selectedItem.value) { selectedItem.value = null; return }
   if (selectedPaperKey.value) { selectedPaperKey.value = ''; groupAnswers.value = {}; groupSubmitted.value = false; return }
   if (section.value) { section.value = ''; items.value = []; return }
@@ -344,16 +387,21 @@ async function clearAdminSection() {
 }
 function closeAdmin(event) { if (event.key === 'Escape') showAdmin.value = false }
 
-onMounted(() => window.addEventListener('keydown', closeAdmin))
+onMounted(() => {
+  window.addEventListener('keydown', closeAdmin)
+  window.addEventListener('popstate', handleCetHistory)
+  window.history.replaceState({ ...window.history.state, [CET_HISTORY_KEY]: cetSnapshot() }, '', window.location.href)
+})
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', closeAdmin)
+  window.removeEventListener('popstate', handleCetHistory)
   if (audioUrl.value.startsWith('blob:')) URL.revokeObjectURL(audioUrl.value)
   if (sessionAudioUrl.value.startsWith('blob:')) URL.revokeObjectURL(sessionAudioUrl.value)
 })
 </script>
 
 <template>
-  <section class="cet-page page-width">
+  <section class="cet-page page-width cet-enter">
     <header class="cet-header">
       <div>
         <span class="eyebrow">英语等级考试收录</span>
@@ -364,11 +412,11 @@ onBeforeUnmount(() => {
     </header>
 
     <nav v-if="stage !== 'level'" class="path-nav cet-path" aria-label="当前位置">
-      <button type="button" @click="level='';mode='';section='';selectedPaperKey='';selectedItem=null">CET 题库</button>
+      <button type="button" @click="goToRoot">CET 题库</button>
       <template v-if="level"><span>›</span><button type="button" @click="chooseLevel(level)">{{ level === 'CET4' ? 'CET-4' : 'CET-6' }}</button></template>
       <template v-if="mode"><span>›</span><button type="button" @click="chooseMode(mode)">{{ mode === 'PRACTICE' ? '分类练习' : mode === 'INTENSIVE' ? '精听精读' : '完整套卷' }}</button></template>
-      <template v-if="section"><span>›</span><button type="button" @click="selectedPaperKey='';selectedItem=null">{{ currentSection?.name }}</button></template>
-      <template v-if="currentPaper"><span>›</span><button type="button" @click="selectedItem=null">{{ currentPaper.examYear }}.{{ String(currentPaper.examMonth).padStart(2, '0') }} · 第 {{ currentPaper.setNumber }} 套</button></template>
+      <template v-if="section"><span>›</span><button type="button" @click="goToSection">{{ currentSection?.name }}</button></template>
+      <template v-if="currentPaper"><span>›</span><button type="button" @click="goToPaper">{{ currentPaper.examYear }}.{{ String(currentPaper.examMonth).padStart(2, '0') }} · 第 {{ currentPaper.setNumber }} 套</button></template>
       <template v-if="selectedItem"><span>›</span><b>{{ selectedItem.title }}</b></template>
     </nav>
 

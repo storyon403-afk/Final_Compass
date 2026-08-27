@@ -183,6 +183,23 @@ export const systemApi = {
   removeDiscussion: (id) => request(`/system/discussions/${id}`, { method: 'DELETE' })
 }
 
+export const questionVineApi = {
+  topics: () => request('/question-vine/topics'),
+  createTopic: fields => request('/question-vine/topics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }),
+  answer: (uid, content, parentAnswerId = null) => request(`/question-vine/topics/${uid}/answers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, parentAnswerId }) }),
+  deleteTopic: sequence => request(`/question-vine/admin/topics/${sequence}`, { method: 'DELETE' })
+}
+
+export const messageApi = {
+  inbox: () => request('/messages'),
+  unread: () => request('/messages/unread-count'),
+  read: id => request(`/messages/${id}/read`, { method: 'PUT' }),
+  readAll: () => request('/messages/read-all', { method: 'PUT' }),
+  contactAdmin: fields => request('/messages/contact-admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }),
+  accounts: () => request('/messages/admin/accounts'),
+  adminSend: fields => request('/messages/admin/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) })
+}
+
 export const mcpAdminApi = {
   overview: () => request('/system/mcp'),
   saveServer: (fields) => request('/system/mcp/servers', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }),

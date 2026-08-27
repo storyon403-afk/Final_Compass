@@ -11,8 +11,11 @@ import AdminMcpModal from './components/AdminMcpModal.vue'
 import AdminAiFeedbackModal from './components/AdminAiFeedbackModal.vue'
 import GlobalControlCenter from './components/GlobalControlCenter.vue'
 import AdminModuleSettingsModal from './components/AdminModuleSettingsModal.vue'
+import AdminQuestionVineModal from './components/AdminQuestionVineModal.vue'
+import MessageCenterModal from './components/MessageCenterModal.vue'
+import AdminMessageSettingsModal from './components/AdminMessageSettingsModal.vue'
 import ModuleMaintenanceView from './views/ModuleMaintenanceView.vue'
-import { authApi, authenticated, authSession, initIdentity, isAdmin, profile, systemApi } from './api'
+import { authApi, authenticated, authSession, initIdentity, isAdmin, messageApi, profile, systemApi } from './api'
 
 const route = useRoute()
 const introVisible = ref(true)
@@ -32,6 +35,10 @@ const showSurvey = ref(false)
 const showSurveyAdmin = ref(false)
 const showControlCenter = ref(false)
 const showModuleAdmin = ref(false)
+const showQuestionVineAdmin = ref(false)
+const showMessages = ref(false)
+const showMessageAdmin = ref(false)
+const unreadMessages = ref(0)
 const moduleSettings = ref([])
 const routeModuleKey=computed(()=>route.path.startsWith('/ai-center')?'AI_CENTER':route.path.startsWith('/cet')?'CET_PRACTICE':route.path==='/'||route.path.startsWith('/courses/')?'COURSE_NAVIGATION':null)
 const activeMaintenance=computed(()=>moduleSettings.value.find(item=>item.moduleKey===routeModuleKey.value&&item.status==='MAINTENANCE'))
@@ -58,6 +65,7 @@ const themeLabel = computed(() => ({ system: '跟随系统', light: '浅色模�
 const effectiveTheme = computed(() => theme.value === 'system' ? (systemDark.value ? 'dark' : 'light') : theme.value)
 const locationLabel = computed(() => {
   if (route.path === '/') return '课程导航'
+  if (route.path.startsWith('/question-vine')) return '问题藤'
   if (route.params.teacherId) return '老师圈'
   if (route.params.courseId) return '任课老师'
   return '课程导航'
@@ -67,6 +75,7 @@ const introImages = Object.values(introImageModules)
 const introImage = introImages[Math.floor(Math.random() * introImages.length)]
 const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 const transitionScenes = ['tree', 'waves', 'vine']
+let messagePoll = null
 
 function enterSite() {
   if (introLeaving.value) return
@@ -99,11 +108,16 @@ function closeOverlays(event) {
   showSurveyAdmin.value = false
   showControlCenter.value = false
   showModuleAdmin.value = false
+  showQuestionVineAdmin.value = false
+  showMessages.value = false
+  showMessageAdmin.value = false
 }
 
 function openControlCenterSection(section) {
   switch (section) {
     case 'moderation': openModeration(); break
+    case 'question-vine': showQuestionVineAdmin.value = true; break
+    case 'messages': showMessageAdmin.value = true; break
     case 'beta-access': openBetaAccess(); break
     case 'mail': showMailAdmin.value = true; break
     case 'mcp': showMcpAdmin.value = true; break
@@ -113,6 +127,16 @@ function openControlCenterSection(section) {
     case 'survey': showSurveyAdmin.value = true; break
     case 'modules': showModuleAdmin.value = true; break
   }
+}
+
+function closeQuestionVineAdminForJump() {
+  showQuestionVineAdmin.value = false
+  showControlCenter.value = false
+}
+async function refreshUnreadMessages() {
+  if (!authenticated.value) { unreadMessages.value = 0; return }
+  try { unreadMessages.value = (await messageApi.unread()).count }
+  catch { unreadMessages.value = 0 }
 }
 
 async function loadAnnouncement(openForUser = true) {
@@ -303,7 +327,7 @@ watch(effectiveTheme, (value) => { document.documentElement.dataset.theme = valu
 watch(theme, (value) => localStorage.setItem('finals-compass-theme', value))
 watch(() => route.fullPath, () => { showAccount.value = false })
 watch(() => authSession.value.token, (token, previousToken) => {
-  if (token && token !== previousToken) loadAnnouncement(true)
+  if (token && token !== previousToken) { loadAnnouncement(true); refreshUnreadMessages() }
   else if (!token) showAnnouncement.value = false
 }, { immediate: true })
 watch(() => authSession.value.mustChangePassword, (required) => { if (required) showPassword.value = true }, { immediate: true })
@@ -313,10 +337,13 @@ onMounted(() => {
   window.addEventListener('keydown', closeOverlays)
   if (authenticated.value) initIdentity().catch(() => {})
   if(authenticated.value)systemApi.modules().then(value=>moduleSettings.value=value).catch(()=>{})
+  refreshUnreadMessages()
+  messagePoll = window.setInterval(refreshUnreadMessages, 30000)
 })
 onBeforeUnmount(() => {
   mediaQuery.removeEventListener('change', handleSystemTheme)
   window.removeEventListener('keydown', closeOverlays)
+  if (messagePoll) window.clearInterval(messagePoll)
 })
 </script>
 
@@ -332,6 +359,7 @@ onBeforeUnmount(() => {
     <header class="browser-bar">
       <nav class="business-switch" aria-label="业务模块">
         <router-link to="/"><span>⌂</span>课程导航</router-link>
+        <router-link to="/question-vine"><span>∿</span>问题藤</router-link>
         <router-link to="/cet"><span>EN</span>英语等级考试收录</router-link>
         <router-link to="/ai-center"><span>✦</span>AI Center</router-link>
       </nav>
@@ -341,6 +369,7 @@ onBeforeUnmount(() => {
         <div v-if="showAccount" class="account-menu browser-menu">
           <div class="menu-identity"><b>{{ profile.nickname || authSession.displayName }}</b><small>{{ isAdmin ? '管理员' : '匿名内测用户' }}</small></div>
           <button type="button" @click="cycleTheme"><span>{{ effectiveTheme === 'dark' ? '☾' : '☀' }}</span>{{ themeLabel }}</button>
+          <button class="message-menu-entry" type="button" @click="showMessages=true;showAccount=false"><span>✉</span>消息<i v-if="unreadMessages" aria-label="有新消息"></i></button>
           <button v-if="isAdmin" class="control-center-entry" type="button" @click="showControlCenter = true; showAccount = false"><span>⌘</span>控制中心</button>
           <button type="button" @click="showSurvey = true; showAccount = false">填写调查问卷</button>
           <button type="button" @click="showPassword = true; showAccount = false">修改密码</button>
@@ -352,6 +381,9 @@ onBeforeUnmount(() => {
     <SuspendRest />
   </div>
   <AdminModuleSettingsModal v-if="showModuleAdmin" @close="showModuleAdmin=false" @updated="systemApi.modules().then(value=>moduleSettings=value)"/>
+  <MessageCenterModal v-if="showMessages" @close="showMessages=false" @updated="refreshUnreadMessages" />
+  <AdminMessageSettingsModal v-if="showMessageAdmin && isAdmin" @close="showMessageAdmin=false" />
+  <AdminQuestionVineModal v-if="showQuestionVineAdmin && isAdmin" @close="showQuestionVineAdmin=false" @jump="closeQuestionVineAdminForJump" />
 
   <div v-if="showPassword" class="modal-backdrop" @click.self="!authSession.mustChangePassword && (showPassword = false)">
     <form class="upload-modal password-modal" @submit.prevent="changePassword">

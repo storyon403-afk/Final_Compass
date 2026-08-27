@@ -933,6 +933,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .draw-lines path, .draw-shapes path, .horizon-line { stroke-dashoffset: 0; }
 }
 
+/* Question Vine: a chronological, living discussion surface. */
+.question-vine-page{--vine-ink:color-mix(in srgb,var(--text) 82%,var(--text-3));--vine-soft:color-mix(in srgb,var(--text) 12%,transparent);min-height:calc(100vh - 56px);overflow:hidden;background:radial-gradient(ellipse at 50% 4%,color-mix(in srgb,var(--surface-2) 68%,transparent),transparent 34%),var(--bg);color:var(--text)}
+.vine-intro{position:relative;z-index:4;width:min(1180px,calc(100% - 48px));display:grid;grid-template-columns:1fr 310px;gap:70px;align-items:end;margin:auto;padding:64px 0 26px}.vine-intro small{font:700 9px/1.4 ui-monospace,monospace;letter-spacing:.19em;color:var(--text-3)}.vine-intro h1{margin:7px 0 3px;font:400 clamp(58px,9vw,112px)/.94 "Kaiti SC",STKaiti,KaiTi,"Comic Sans MS",cursive;letter-spacing:-.075em}.vine-intro p{margin:18px 0 0;color:var(--text-3);font:400 14px/1.8 "Kaiti SC",STKaiti,KaiTi,serif;letter-spacing:.03em}
+.vine-search{position:relative;padding-bottom:8px}.vine-search>label{display:block;margin-bottom:9px;color:var(--text-3);font:500 12px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-search>div{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;border-bottom:1px solid var(--text);padding:0 2px 8px}.vine-search>div span{font-size:20px;transform:rotate(-16deg)}.vine-search input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font:500 17px "Kaiti SC",STKaiti,KaiTi,"Comic Sans MS",cursive}.vine-search input::placeholder{color:var(--text-3)}.vine-search ol{position:absolute;z-index:20;top:62px;right:0;width:100%;margin:0;padding:11px 0 8px;list-style:none;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(14px);box-shadow:0 18px 30px rgba(0,0,0,.08)}.vine-search li button{width:100%;display:grid;grid-template-columns:50px 1fr;gap:8px;padding:9px 10px;border:0;border-bottom:1px dashed var(--border);background:transparent;text-align:left;cursor:pointer}.vine-search li button:hover{background:var(--surface-2)}.vine-search li b{font:600 9px ui-monospace,monospace;color:var(--text-3)}.vine-search li span{font:500 13px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-search li em{display:block;padding:16px 10px;color:var(--text-3);font:normal 12px "Kaiti SC",STKaiti,KaiTi,cursive}
+.vine-garden{position:relative;width:min(1120px,100%);margin:0 auto}.vine-stem-canvas{position:absolute;z-index:0;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}.vine-stem-canvas path{fill:none;vector-effect:non-scaling-stroke}.vine-shadow-line{stroke:var(--vine-soft);stroke-width:9;stroke-linecap:round}.vine-main-line{stroke:var(--vine-ink);stroke-width:2.1;stroke-linecap:round;stroke-dasharray:2 1}
+.vine-compose-bud{position:absolute;z-index:3;top:12px;left:50%;width:310px;display:grid;grid-template-columns:104px 1fr;align-items:center;gap:5px;padding:0;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;transform:translateX(-50%)}.vine-compose-bud svg{width:104px;height:116px;overflow:visible}.vine-compose-bud svg path{fill:var(--bg);stroke:var(--vine-ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transform-origin:60px 118px;animation:vine-bud-breathe 4.8s ease-in-out infinite}.vine-compose-bud span{display:grid;gap:3px;transform:rotate(1deg)}.vine-compose-bud b{position:absolute;left:42px;top:48px;font:300 27px/1 "Comic Sans MS",cursive}.vine-compose-bud em{font:500 17px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-compose-bud small{color:var(--text-3);font:10px/1.55 "Kaiti SC",STKaiti,KaiTi,cursive}.vine-compose-bud:hover svg path{fill:var(--text);stroke:var(--text)}.vine-compose-bud:hover b{color:var(--surface)}
+@keyframes vine-bud-breathe{0%,100%{transform:rotate(-1deg) scale(1)}50%{transform:rotate(1.6deg) scale(1.025)}}
+.vine-node{position:absolute;z-index:2;top:var(--node-y);width:50%;height:170px;scroll-margin-top:150px}.vine-node.left{left:0}.vine-node.right{right:0}.vine-branch-line{position:absolute;top:30px;width:68%;height:118px;overflow:visible;pointer-events:none}.vine-node.left .vine-branch-line{right:-1px}.vine-node.right .vine-branch-line{left:-1px}.vine-branch-line path{fill:none;stroke:var(--vine-ink);stroke-width:1.45;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.vine-node>button{position:absolute;width:min(330px,72%);min-height:150px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:20px 27px;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;transform:rotate(var(--tilt));transition:transform .35s cubic-bezier(.2,.85,.3,1),filter .25s}.vine-node.left>button{left:4%;top:0;border-radius:70% 28% 64% 30%/54% 36% 64% 46%}.vine-node.right>button{right:4%;top:0;border-radius:28% 70% 30% 64%/36% 54% 46% 64%}.vine-node>button::before{content:"";position:absolute;z-index:-1;inset:4px 0;border:1px solid var(--vine-ink);border-radius:inherit;background:color-mix(in srgb,var(--surface) 93%,transparent);box-shadow:inset 0 0 0 5px color-mix(in srgb,var(--text) 2%,transparent);transition:.3s}.vine-node.left>button::after,.vine-node.right>button::after{content:"";position:absolute;width:65%;height:1px;top:52%;background:color-mix(in srgb,var(--text) 20%,transparent);transform:rotate(var(--vein-angle))}.vine-node.left>button::after{right:9%;--vein-angle:-8deg}.vine-node.right>button::after{left:9%;--vein-angle:8deg}.vine-node>button:hover,.vine-node>button:focus-visible{z-index:5;transform:rotate(0) translateY(-7px) scale(1.035);filter:drop-shadow(0 14px 14px rgba(0,0,0,.1))}.vine-node>button:hover::before{background:var(--surface)}.vine-sequence{position:absolute;top:14px;color:var(--text-3);font:600 9px ui-monospace,monospace;letter-spacing:.08em}.vine-node.left .vine-sequence{right:29px}.vine-node.right .vine-sequence{left:29px}.vine-node h2{position:relative;z-index:1;max-width:94%;margin:5px 0 7px;font:500 clamp(17px,2vw,22px)/1.28 "Kaiti SC",STKaiti,KaiTi,"Comic Sans MS",cursive;letter-spacing:-.02em}.vine-meta{position:relative;z-index:1;color:var(--text-3);font:10px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-tags{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.vine-tags i{font:normal 9px ui-monospace,monospace;color:var(--text-2)}.vine-tags i::before{content:"#";color:var(--text-3)}.vine-state{position:absolute;right:26px;bottom:15px;color:var(--text-3);font:500 9px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-state.solved{color:var(--success)}
+.vine-root{position:absolute;z-index:2;bottom:2px;left:50%;width:300px;display:grid;justify-items:center;transform:translateX(-50%);text-align:center}.vine-root svg{width:240px;height:112px}.vine-root path{fill:none;stroke:var(--vine-ink);stroke-width:1.4;stroke-linecap:round}.vine-root b{margin-top:-10px;font:500 26px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-root time{margin-top:2px;color:var(--text-3);font:600 9px ui-monospace,monospace;letter-spacing:.14em}.vine-root p{margin:12px 0 0;color:var(--text-3);font:12px/1.7 "Kaiti SC",STKaiti,KaiTi,cursive}
+.vine-dialog-layer{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:22px;background:color-mix(in srgb,#000 48%,transparent);backdrop-filter:blur(6px);animation:vine-layer-in .2s ease}.vine-dialog{position:relative;width:min(760px,100%);max-height:min(820px,calc(100vh - 44px));overflow:auto;padding:48px clamp(26px,5vw,64px);background:var(--surface);color:var(--text);box-shadow:0 24px 90px rgba(0,0,0,.22);clip-path:polygon(0 1%,18% 0,42% .7%,67% 0,100% 1.2%,99.4% 28%,100% 52%,99.3% 79%,100% 99%,74% 99.4%,46% 100%,20% 99.3%,0 100%,.6% 72%,0 43%);animation:vine-paper-in .32s cubic-bezier(.2,.85,.3,1)}.vine-dialog-close{position:absolute;top:18px;right:22px;width:34px;height:34px;border:0;background:transparent;font:300 29px "Comic Sans MS",cursive;cursor:pointer}.vine-dialog>small{color:var(--text-3);font:700 9px ui-monospace,monospace;letter-spacing:.13em}.vine-dialog>h2{max-width:620px;margin:12px 0 16px;font:500 clamp(30px,5vw,48px)/1.18 "Kaiti SC",STKaiti,KaiTi,"Comic Sans MS",cursive;letter-spacing:-.045em}.vine-dialog-author{display:flex;align-items:center;gap:10px;color:var(--text-3);font:11px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-dialog-author span{padding:3px 7px;border:1px solid var(--text);border-radius:50%;color:var(--text);transform:rotate(-3deg)}.vine-dialog-body{margin:27px 0 36px;font-size:14px;line-height:1.95;white-space:pre-wrap}.vine-answer-thread{border-top:1px solid var(--text)}.vine-answer-thread>header{display:flex;justify-content:space-between;padding:16px 0}.vine-answer-thread>header b{font:500 18px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-answer-thread>header span{color:var(--text-3);font-size:10px}.vine-answer-thread article{padding:21px 0;border-top:1px dashed var(--border)}.vine-answer-thread article.accepted{padding-left:16px;border-left:2px solid var(--success)}.vine-answer-thread article>div{display:flex;justify-content:space-between}.vine-answer-thread article>div b{font-size:11px}.vine-answer-thread article>div span{color:var(--success);font-size:9px}.vine-answer-thread article p{line-height:1.8}.vine-answer-thread article button{padding:0;border:0;background:transparent;color:var(--text-3);font-size:9px;cursor:pointer}.vine-no-answer{padding:28px 0;color:var(--text-3);font:13px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-answer-form{display:grid;gap:10px;margin-top:26px}.vine-answer-form label,.vine-compose-dialog label{color:var(--text-3);font:500 11px "Kaiti SC",STKaiti,KaiTi,cursive}.vine-answer-form textarea{min-height:100px;padding:13px 0;border:0;border-top:1px solid var(--border);border-bottom:1px solid var(--text);outline:0;resize:vertical;background:transparent;color:var(--text);line-height:1.7}.vine-answer-form button,.vine-publish{justify-self:end;padding:10px 0 6px;border:0;border-bottom:1px solid var(--text);background:transparent;color:var(--text);font:500 13px "Kaiti SC",STKaiti,KaiTi,cursive;cursor:pointer}
+.vine-compose-dialog{display:grid;gap:20px}.vine-compose-dialog>h2{margin-bottom:0}.vine-compose-dialog>div{display:grid;grid-template-columns:1fr 1fr;gap:24px}.vine-compose-dialog label{display:grid;gap:7px}.vine-compose-dialog input,.vine-compose-dialog select,.vine-compose-dialog textarea{width:100%;padding:11px 0;border:0;border-bottom:1px solid var(--text);outline:0;background:transparent;color:var(--text);font:14px/1.6 inherit}.vine-compose-dialog textarea{min-height:140px;resize:vertical}.vine-publish{margin-top:5px}
+@keyframes vine-layer-in{from{opacity:0}}@keyframes vine-paper-in{from{opacity:0;transform:translateY(18px) rotate(-.5deg) scale(.985)}}
+@media(max-width:780px){.vine-intro{grid-template-columns:1fr;gap:28px;width:calc(100% - 32px);padding-top:38px}.vine-search{position:sticky;top:64px;z-index:15;padding:8px 12px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(12px)}.vine-garden{width:100%}.vine-stem-canvas{left:-32%;width:132%}.vine-compose-bud{left:31%;width:280px}.vine-node{width:82%}.vine-node.left{left:9%}.vine-node.right{right:1%}.vine-node>button{width:min(320px,82%)}.vine-node.left>button{left:0}.vine-node.right>button{right:0}.vine-node.left .vine-branch-line{right:-23%}.vine-node.right .vine-branch-line{left:-23%}.vine-root{left:36%}.vine-dialog{padding:42px 23px}.vine-compose-dialog>div{grid-template-columns:1fr;gap:20px}}
+@media(max-width:480px){.vine-intro h1{font-size:64px}.vine-node{width:94%}.vine-node.left{left:2%}.vine-node.right{right:0}.vine-node>button{width:78%;padding-inline:22px}.vine-node h2{font-size:18px}.vine-compose-bud{left:34%;transform:translateX(-42%) scale(.9)}.vine-dialog-layer{padding:9px}.vine-dialog{max-height:calc(100vh - 18px)}}
+@media(prefers-reduced-motion:reduce){.vine-compose-bud svg path{animation:none}.vine-node>button,.vine-dialog-layer,.vine-dialog{transition:none;animation:none}.vine-node>button:hover{transform:rotate(var(--tilt))}}
+
 /* AI conversation workspace (feature/ai-analysis) */
 .ai-chat-page { min-height: calc(100vh - 56px); background: radial-gradient(circle at 50% 18%, color-mix(in srgb, #e8e0f2 40%, transparent), transparent 32%), var(--bg); color: var(--text); }
 .ai-chat-topbar { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(18px, 4vw, 54px); border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(16px); }
@@ -1115,4 +1132,288 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .ai-center-return .ai-mode-bar,
   .ai-center-return .ai-mode-slide,
   .ai-center-return .ai-mode-scroll-hint { animation: none; }
+}
+
+/* Question Vine enters like a sketch being drawn, then lets each leaf unfurl. */
+.vine-page-enter {
+  animation: vine-surface-wake .5s ease-out backwards;
+}
+
+.vine-page-enter .vine-intro > div > small,
+.vine-page-enter .vine-intro > div > h1,
+.vine-page-enter .vine-intro > div > p {
+  animation: vine-copy-rise .58s cubic-bezier(.2, .82, .25, 1) backwards;
+}
+
+.vine-page-enter .vine-intro > div > small { animation-delay: .04s; }
+.vine-page-enter .vine-intro > div > h1 { animation-delay: .10s; }
+.vine-page-enter .vine-intro > div > p { animation-delay: .17s; }
+
+.vine-page-enter .vine-search {
+  animation: vine-search-drift .58s cubic-bezier(.2, .82, .25, 1) .18s backwards;
+}
+
+.vine-page-enter .vine-stem-canvas {
+  transform-origin: 50% 0;
+  animation: vine-stem-reveal 1.05s cubic-bezier(.2, .72, .18, 1) .12s backwards;
+}
+
+.vine-page-enter .vine-compose-bud {
+  animation: vine-bud-open .7s cubic-bezier(.16, 1.2, .3, 1) .22s backwards;
+}
+
+.vine-page-enter .vine-node {
+  animation: vine-leaf-unfurl .66s cubic-bezier(.16, 1, .3, 1) var(--enter-delay) backwards;
+}
+
+.vine-page-enter .vine-node.left { transform-origin: 100% 58%; }
+.vine-page-enter .vine-node.right { transform-origin: 0 58%; }
+
+.vine-page-enter .vine-branch-line path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: vine-branch-draw .48s ease-out var(--enter-delay) forwards;
+}
+
+@keyframes vine-surface-wake {
+  from { opacity: .35; background-position: 50% -40px; }
+}
+
+@keyframes vine-copy-rise {
+  from { opacity: 0; transform: translateY(15px); filter: blur(3px); }
+  70% { filter: blur(0); }
+}
+
+@keyframes vine-search-drift {
+  from { opacity: 0; transform: translate(18px, 7px); }
+}
+
+@keyframes vine-stem-reveal {
+  from { opacity: 0; clip-path: inset(0 0 100% 0); }
+  15% { opacity: 1; }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes vine-bud-open {
+  from { opacity: 0; transform: translateX(-50%) translateY(18px) scale(.72) rotate(-5deg); }
+  70% { transform: translateX(-50%) translateY(-2px) scale(1.025) rotate(1deg); }
+}
+
+@keyframes vine-leaf-unfurl {
+  from { opacity: 0; transform: translateY(20px) scale(.68) rotate(-2deg); filter: blur(3px); }
+  65% { filter: blur(0); }
+}
+
+@keyframes vine-branch-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* CET uses a brisk editorial rhythm: heading, rule, then numbered choices. */
+.cet-enter {
+  animation: cet-surface-in .42s ease-out backwards;
+}
+
+.cet-enter .cet-header {
+  position: relative;
+  animation: cet-header-in .52s cubic-bezier(.2, .82, .24, 1) .03s backwards;
+}
+
+.cet-enter .cet-header::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: var(--text);
+  transform-origin: left;
+  animation: cet-rule-write .72s cubic-bezier(.2, .75, .2, 1) .13s backwards;
+}
+
+.cet-enter .cet-header .eyebrow,
+.cet-enter .cet-header h1,
+.cet-enter .cet-header p,
+.cet-enter .cet-header > button {
+  animation: cet-copy-rise .5s cubic-bezier(.2, .82, .24, 1) backwards;
+}
+
+.cet-enter .cet-header .eyebrow { animation-delay: .04s; }
+.cet-enter .cet-header h1 { animation-delay: .10s; }
+.cet-enter .cet-header p { animation-delay: .16s; }
+.cet-enter .cet-header > button { animation-delay: .22s; }
+
+.cet-enter .cet-path,
+.cet-enter .section-heading,
+.cet-enter .cet-session-head {
+  animation: cet-copy-rise .46s ease-out backwards;
+}
+
+.cet-enter .cet-level-grid > button,
+.cet-enter .cet-mode-grid > button,
+.cet-enter .cet-section-grid > button,
+.cet-enter .cet-paper-choice-list > button,
+.cet-enter .cet-full-paper-grid > article {
+  animation: cet-choice-in .58s cubic-bezier(.18, .85, .24, 1) backwards;
+}
+
+.cet-enter .cet-level-grid > :nth-child(1),
+.cet-enter .cet-mode-grid > :nth-child(1),
+.cet-enter .cet-section-grid > :nth-child(1),
+.cet-enter .cet-paper-choice-list > :nth-child(1),
+.cet-enter .cet-full-paper-grid > :nth-child(1) { animation-delay: .18s; }
+.cet-enter .cet-level-grid > :nth-child(2),
+.cet-enter .cet-mode-grid > :nth-child(2),
+.cet-enter .cet-section-grid > :nth-child(2),
+.cet-enter .cet-paper-choice-list > :nth-child(2),
+.cet-enter .cet-full-paper-grid > :nth-child(2) { animation-delay: .26s; }
+.cet-enter .cet-mode-grid > :nth-child(3),
+.cet-enter .cet-section-grid > :nth-child(3),
+.cet-enter .cet-paper-choice-list > :nth-child(3),
+.cet-enter .cet-full-paper-grid > :nth-child(3) { animation-delay: .34s; }
+.cet-enter .cet-section-grid > :nth-child(n+4),
+.cet-enter .cet-paper-choice-list > :nth-child(n+4),
+.cet-enter .cet-full-paper-grid > :nth-child(n+4) { animation-delay: .40s; }
+
+.cet-enter .cet-level-grid > button > span {
+  animation: cet-number-settle .72s cubic-bezier(.16, 1.15, .3, 1) backwards;
+}
+.cet-enter .cet-level-grid > button:nth-child(1) > span { animation-delay: .31s; }
+.cet-enter .cet-level-grid > button:nth-child(2) > span { animation-delay: .39s; }
+
+@keyframes cet-surface-in {
+  from { opacity: .35; }
+}
+
+@keyframes cet-header-in {
+  from { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes cet-rule-write {
+  from { transform: scaleX(0); opacity: .25; }
+}
+
+@keyframes cet-copy-rise {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+@keyframes cet-choice-in {
+  from { opacity: 0; transform: translateY(25px) scale(.975); filter: blur(3px); }
+  65% { filter: blur(0); }
+}
+
+@keyframes cet-number-settle {
+  from { opacity: 0; transform: translateY(12px) rotate(-7deg) scale(.82); }
+  70% { transform: translateY(-2px) rotate(1deg) scale(1.02); }
+}
+
+.vine-admin-modal { width: min(680px, calc(100% - 32px)); }
+.vine-load-error { position: relative; z-index: 6; width: min(1180px, calc(100% - 48px)); margin: 18px auto -35px; color: var(--danger); font-size: 11px; }
+.vine-admin-modal > h2 { margin: 7px 0 9px; font: 500 30px "Kaiti SC", STKaiti, KaiTi, serif; }
+.vine-admin-modal > p { margin: 0; color: var(--text-3); font-size: 11px; line-height: 1.75; }
+.vine-admin-delete { gap: 13px; }
+.vine-admin-delete > label { display: grid; gap: 7px; color: var(--text-3); font-size: 11px; }
+.vine-admin-sequence { display: grid; grid-template-columns: 38px 1fr; align-items: center; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface); }
+.vine-admin-sequence:focus-within { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface-3); }
+.vine-admin-sequence span { display: grid; place-items: center; height: 42px; border-right: 1px solid var(--border); color: var(--text-3); font: 12px ui-monospace, monospace; }
+.vine-admin-sequence input { width: 100%; height: 42px; padding: 0 12px; border: 0; outline: 0; background: transparent; color: var(--text); font: 14px ui-monospace, monospace; }
+.vine-admin-preview { padding: 17px 18px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-2); }
+.vine-admin-preview header { display: flex; justify-content: space-between; gap: 12px; color: var(--text-3); font: 9px ui-monospace, monospace; }
+.vine-admin-preview h4 { margin: 14px 0 7px; font: 500 18px "Kaiti SC", STKaiti, KaiTi, serif; }
+.vine-admin-preview p { max-height: 72px; margin: 0 0 13px; overflow: hidden; color: var(--text-2); font-size: 11px; line-height: 1.7; }
+.vine-admin-preview small { color: var(--text-3); font-size: 9px; }
+.vine-unanswered-section > header { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.vine-unanswered-section > header h3 { margin: 0 0 4px; }
+.vine-unanswered-section > header p { margin: 0; color: var(--text-3); font-size: 9px; }
+.vine-unanswered-section > header > b { min-width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--text); border-radius: 50%; font: 500 13px ui-monospace, monospace; }
+.vine-unanswered-list { max-height: 248px; overflow-y: auto; border-top: 1px solid var(--border); }
+.vine-unanswered-list button { width: 100%; display: grid; grid-template-columns: 58px minmax(0, 1fr) 76px 48px; align-items: center; gap: 9px; padding: 12px 4px; border: 0; border-bottom: 1px dashed var(--border); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.vine-unanswered-list button:hover { background: var(--surface-2); }
+.vine-unanswered-list button span, .vine-unanswered-list button time { color: var(--text-3); font: 9px ui-monospace, monospace; }
+.vine-unanswered-list button b { overflow: hidden; font: 500 13px "Kaiti SC", STKaiti, KaiTi, serif; text-overflow: ellipsis; white-space: nowrap; }
+.vine-unanswered-list button i { color: var(--text-3); font-size: 9px; font-style: normal; text-align: right; }
+.vine-unanswered-empty { margin: 0; padding: 20px; background: var(--surface-2); color: var(--text-3); font-size: 10px; text-align: center; }
+.danger-button { padding: 10px 14px; border: 1px solid var(--danger); border-radius: 8px; background: transparent; color: var(--danger); cursor: pointer; }
+.danger-button:hover:not(:disabled) { background: var(--danger); color: #fff; }
+.danger-button:disabled { opacity: .35; cursor: not-allowed; }
+.vine-admin-confirm { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 15px; border: 1px solid color-mix(in srgb, var(--danger) 55%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--danger) 5%, var(--surface)); }
+.vine-admin-confirm p { display: grid; gap: 5px; margin: 0; }
+.vine-admin-confirm p b { font-size: 12px; }
+.vine-admin-confirm p small { color: var(--text-3); font-size: 9px; line-height: 1.5; }
+.vine-admin-confirm > div { display: flex; flex: 0 0 auto; gap: 7px; }
+.vine-admin-confirm > div > button:not(.danger-button) { padding: 10px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer; }
+
+@media (max-width: 620px) {
+  .vine-admin-confirm { align-items: stretch; flex-direction: column; }
+  .vine-admin-confirm > div { justify-content: flex-end; }
+  .vine-unanswered-list button { grid-template-columns: 52px minmax(0, 1fr) 44px; }
+  .vine-unanswered-list button time { display: none; }
+}
+
+/* On phones, leaves sit directly on the central vine instead of using long side branches. */
+@media (max-width: 780px) {
+  .vine-stem-canvas { left: 0; width: 100%; }
+  .vine-branch-line { display: none; }
+  .vine-compose-bud, .vine-root { left: 50%; }
+  .vine-node, .vine-node.left, .vine-node.right { right: auto; left: 0; width: 100%; }
+  .vine-node > button { width: min(330px, 62%); }
+  .vine-node.left > button { right: auto; left: 2%; }
+  .vine-node.right > button { right: 2%; left: auto; }
+}
+
+@media (max-width: 480px) {
+  .vine-node > button { width: 64%; }
+}
+
+.message-menu-entry { position: relative; }
+.message-menu-entry > i { position: absolute; top: 7px; right: 9px; width: 7px; height: 7px; border: 1px solid var(--surface); border-radius: 50%; background: #d83232; }
+.message-center-layer { z-index: 1250; padding: 18px; }
+.message-center-modal { width: min(980px, 100%); height: min(720px, calc(100vh - 36px)); display: grid; grid-template-rows: auto auto 1fr; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 17px; background: var(--surface); box-shadow: 0 28px 100px rgba(0,0,0,.22); }
+.message-center-modal > header { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 22px; border-bottom: 1px solid var(--border); }
+.message-center-modal > header span { color: var(--text-3); font: 8px ui-monospace,monospace; letter-spacing: .14em; }
+.message-center-modal > header h2 { margin: 4px 0 0; font: 500 27px "Kaiti SC",STKaiti,KaiTi,serif; }
+.message-center-modal > header > div:last-child { display: flex; align-items: center; gap: 7px; }
+.message-center-modal > header button { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; font-size: 10px; }
+.message-center-modal > header .message-close { width: 34px; height: 34px; padding: 0; border: 0; font-size: 24px; }
+.message-center-modal > .form-error { margin: 0; padding: 9px 22px; border-bottom: 1px solid var(--border); }
+.message-center-modal > main { min-height: 0; display: grid; grid-template-columns: 340px 1fr; }
+.message-center-modal > main > aside { overflow-y: auto; border-right: 1px solid var(--border); }
+.message-center-modal > main > aside > p { padding: 30px 20px; color: var(--text-3); font-size: 11px; }
+.message-center-modal > main > aside > button { width: 100%; display: grid; grid-template-columns: 9px 1fr; align-items: start; gap: 9px; padding: 16px 17px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.message-center-modal > main > aside > button:hover,.message-center-modal > main > aside > button.active { background: var(--surface-2); }
+.message-center-modal > main > aside > button i { width: 6px; height: 6px; margin-top: 5px; border-radius: 50%; background: transparent; }
+.message-center-modal > main > aside > button.unread i { background: #d83232; }
+.message-center-modal > main > aside > button span { min-width: 0; display: grid; gap: 6px; }
+.message-center-modal > main > aside > button b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.message-center-modal > main > aside > button.unread b { font-weight: 750; }
+.message-center-modal > main > aside > button small { color: var(--text-3); font-size: 9px; }
+.message-letter { overflow-y: auto; padding: clamp(28px,5vw,60px); background: linear-gradient(135deg,color-mix(in srgb,var(--surface-2) 45%,transparent),transparent 38%); }
+.message-letter > small { color: var(--text-3); font: 9px ui-monospace,monospace; }
+.message-letter-back { display: none; margin: 0 0 20px !important; }
+.message-letter h3 { margin: 16px 0 28px; padding-bottom: 20px; border-bottom: 1px solid var(--text); font: 500 clamp(25px,4vw,38px) "Kaiti SC",STKaiti,KaiTi,serif; }
+.message-letter p { white-space: pre-wrap; line-height: 1.9; }
+.message-letter > button { margin-top: 28px; padding: 9px 0; border: 0; border-bottom: 1px solid var(--text); background: transparent; color: var(--text); cursor: pointer; }
+.message-letter.empty { display: grid; place-items: center; color: var(--text-3); font: 13px "Kaiti SC",STKaiti,KaiTi,serif; }
+.message-compose { z-index: 2; position: absolute; width: min(560px,calc(100% - 32px)); display: grid; gap: 15px; }
+.message-compose h2,.admin-message-modal h2 { margin: 5px 0; font: 500 30px "Kaiti SC",STKaiti,KaiTi,serif; }
+.message-compose > p,.admin-message-modal > p { margin: 0; color: var(--text-3); font-size: 10px; line-height: 1.7; }
+.message-compose label,.admin-message-modal label { display: grid; gap: 6px; color: var(--text-3); font-size: 10px; }
+.message-compose input,.message-compose textarea,.admin-message-modal input,.admin-message-modal textarea { width: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.vine-answer-node { margin-left: calc(var(--reply-depth) * 18px); padding: 19px 0 !important; }
+.vine-answer-node > footer { display: flex; gap: 14px; }
+.vine-answer-node > footer button { padding: 0; border: 0; background: transparent; color: var(--text-3); font-size: 9px; cursor: pointer; }
+.vine-reply-children { margin-top: 13px; padding-left: 10px; border-left: 1px solid var(--border-strong); }
+.vine-answer-form { position: relative; }
+.vine-answer-form .vine-cancel-reply { position: absolute; top: -2px; right: 0; padding: 0; border: 0; color: var(--text-3); font-size: 9px; }
+
+@media(max-width:700px){
+  .message-center-layer { padding: 7px; }
+  .message-center-modal { height: calc(100vh - 14px); }
+  .message-center-modal > header { align-items: flex-start; padding: 13px; }
+  .message-center-modal > header > div:last-child { flex-wrap: wrap; justify-content: flex-end; }
+  .message-center-modal > main { grid-template-columns: 1fr; }
+  .message-center-modal > main > aside { border-right: 0; }
+  .message-center-modal > main > aside:has(+ .message-letter:not(.empty)) { display: none; }
+  .message-letter.empty { display: none; }
+  .message-letter-back { display: block; }
+  .vine-answer-node { margin-left: calc(var(--reply-depth) * 8px); }
 }

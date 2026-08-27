@@ -3,6 +3,8 @@ const emit = defineEmits(['close', 'open'])
 
 const sections = [
   { key: 'moderation', title: '内容审核', description: '批准或拒绝复习资料、匿名讨论与指南参考，批准后立即公开。' },
+  { key: 'question-vine', title: '问题藤叶片管理', description: '按序号摘除违规叶片，并让后续叶片自动连续补位。' },
+  { key: 'messages', title: '消息设置', description: '向全站广播消息，或选择指定账号投递站内信。' },
   { key: 'beta-access', title: '登录验证', description: '核对内测申请邮箱，亲自确认并发放账号与临时密码。' },
   { key: 'mail', title: 'SMTP 与邮件', description: '配置邮件服务（Graph / SMTP）与邮件模板。' },
   { key: 'mcp', title: 'MCP 管理中心', description: '管理 MCP 服务器连接与工具配置。' },
