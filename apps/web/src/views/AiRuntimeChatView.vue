@@ -8,6 +8,8 @@ import {
 } from "vue";
 import { useRoute } from "vue-router";
 import { aiApi, aiCenterApi, chatApi } from "../api";
+import { agentFailureMessage, hasExplicitDivision, readableRuntimeResult, requestsKnowledge } from "../lib/runtimePresentation";
+import { parseSse } from "../lib/sse";
 import AiCenterSettings from "../components/AiCenterSettings.vue";
 import { aiCenterSettings as settings } from "../aiCenterSettings";
 const SafeMarkdown = defineAsyncComponent(
@@ -49,29 +51,6 @@ function files(e) {
       attachments.value.push({ file, name: file.name });
   e.target.value = "";
 }
-function readable(value) {
-  if (!value) return "任务已完成。";
-  try {
-    const p = typeof value === "string" ? JSON.parse(value) : value;
-    if (typeof p === "string") return p;
-    if (p.summary) return p.summary;
-    if (p.content) return p.content;
-    if (p.output)
-      return typeof p.output === "string"
-        ? p.output
-        : JSON.stringify(p.output, null, 2);
-    if (p.participants)
-      return p.participants
-        .map(
-          (x) =>
-            `### ${x.provider_key || x.providerKey}\n\n${x.result_text || x.result || "未返回内容"}`,
-        )
-        .join("\n\n");
-    return JSON.stringify(p, null, 2);
-  } catch {
-    return String(value);
-  }
-}
 async function stopRuntime(){
   if(!busy.value)return;
   requestController?.abort();
@@ -105,26 +84,6 @@ async function convert(content, pending) {
     }
   }
   return `${content || "请分析附件"}${converted.join("")}`;
-}
-async function* parseSse(response) {
-  const reader = response.body.getReader(), decoder = new TextDecoder();
-  let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let index;
-    while ((index = buffer.indexOf("\n\n")) >= 0) {
-      const frame = buffer.slice(0, index);
-      buffer = buffer.slice(index + 2);
-      let event = "message", data = "";
-      for (const line of frame.split("\n")) {
-        if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) data += line.slice(5).trim();
-      }
-      if (data) yield { event, data: JSON.parse(data) };
-    }
-  }
 }
 async function sendChat(goal) {
   if (!chatSessionKey.value) {
@@ -164,11 +123,9 @@ async function invokeInternal(message, review = false, useKnowledge = false, run
   if (runKey && cancelledRunKeys.has(runKey)) throw new DOMException("任务已取消", "AbortError");
   return output.trim();
 }
-function explicitDivision(goal) { return /分工|分别|各自|并行|分头|负责|交给.{0,12}(Kimi|DeepSeek|千问|Qwen)/i.test(goal); }
-function explicitKnowledge(goal) { return /(查询|检索|参考|结合|使用).{0,12}(Finals\s*Compass|平台|本地)?(知识库|数据库)/i.test(goal); }
 async function multiWebAssignments(goal, participants) {
-  if (!explicitDivision(goal)) return participants.map(item => ({ ...item, assignment: goal }));
-  const planned = await invokeInternal(`你是 MultiWeb AI 的任务分发 Agent。请把用户任务拆成 KIMI、DEEPSEEK、QWEN 三份可独立执行的精简提示，每份保留必要背景并明确负责部分。只输出严格 JSON 对象，键必须是 KIMI、DEEPSEEK、QWEN。\n\n用户任务：${goal}`, false, explicitKnowledge(goal));
+  if (!hasExplicitDivision(goal)) return participants.map(item => ({ ...item, assignment: goal }));
+  const planned = await invokeInternal(`你是 MultiWeb AI 的任务分发 Agent。请把用户任务拆成 KIMI、DEEPSEEK、QWEN 三份可独立执行的精简提示，每份保留必要背景并明确负责部分。只输出严格 JSON 对象，键必须是 KIMI、DEEPSEEK、QWEN。\n\n用户任务：${goal}`, false, requestsKnowledge(goal));
   let parsed = {}; try { parsed = JSON.parse(planned.match(/\{[\s\S]*\}/)?.[0] || ""); } catch {}
   const fallback = { KIMI: `负责资料与事实部分：${goal}`, DEEPSEEK: `负责分析、论证与风险部分：${goal}`, QWEN: `负责结构、方案与表达部分：${goal}` };
   return participants.map(item => { const key=item.providerKey||item.provider_key; return { ...item, assignment: parsed[key] || fallback[key] || goal }; });
@@ -176,7 +133,7 @@ async function multiWebAssignments(goal, participants) {
 async function summarizeAndReview(runKey, goal, outputs) {
   const source = Object.entries(outputs).map(([key,value]) => `## ${key} 输出\n${String(value).slice(0,22000)}`).join("\n\n");
   messages.value.push({ role:"assistant", traceId:runKey, content:"三份网页 AI 输出已返回，正在使用总结模型合并…" });
-  const summary = await invokeInternal(`请综合三份网页 AI 输出，完成原始任务。交叉核对信息、处理冲突、去除重复并补足遗漏，输出一份完整的新答案。不要提及协作过程。\n\n原始任务：${goal}\n\n${source}`, false, explicitKnowledge(goal), runKey);
+  const summary = await invokeInternal(`请综合三份网页 AI 输出，完成原始任务。交叉核对信息、处理冲突、去除重复并补足遗漏，输出一份完整的新答案。不要提及协作过程。\n\n原始任务：${goal}\n\n${source}`, false, requestsKnowledge(goal), runKey);
   if (cancelledRunKeys.has(runKey)) return;
   messages.value.push({ role:"assistant", traceId:runKey, content:"总结稿已完成，正在使用审核模型复核…" });
   const reviewed = await invokeInternal(`请审核并修订下面的总结稿。检查是否完整回应原始任务，纠正事实冲突、逻辑漏洞、遗漏和不可靠表述。只输出审核后的最终答案。允许与总结模型相同，但必须重新检查。\n\n原始任务：${goal}\n\n总结稿：\n${summary}`, true, false, runKey);
@@ -225,7 +182,7 @@ async function sendAgent(goal) {
     }
     const answer = run.status === "FAILED"
       ? agentFailureMessage(run.error_code || run.errorCode)
-      : readable(run.response_payload);
+      : readableRuntimeResult(run.response_payload);
     if (run.status !== "FAILED" && !links.length) {
       links.push({ name: "hermes-agent-report.md", url: URL.createObjectURL(new Blob([answer], { type: "text/markdown;charset=utf-8" })) });
     }
@@ -238,10 +195,6 @@ async function sendAgent(goal) {
     activeRunKey.value = "";
     return;
   }
-}
-function agentFailureMessage(code) {
-  if (code === "HERMES_TIMEOUT") return "Hermes 生成和检查文件超过了 30 分钟，本次任务已停止。可以缩小页数后重试，或在本地提高 HERMES_RUN_TIMEOUT_MS。";
-  return `Agent 任务失败：${code || "未知错误"}`;
 }
 async function send() {
   const content = input.value.trim(),
@@ -283,7 +236,7 @@ async function send() {
         role: "assistant",
         traceId: runKey,
         content:
-          `${explicitDivision(goal)?"Finals Compass Agent 已拆分任务并分别派发":"同一完整任务已并行派发"}给 Kimi、DeepSeek 和 Qwen。登录后会自动续接；三份输出返回后依次执行总结和审核。`,
+          `${hasExplicitDivision(goal)?"Finals Compass Agent 已拆分任务并分别派发":"同一完整任务已并行派发"}给 Kimi、DeepSeek 和 Qwen。登录后会自动续接；三份输出返回后依次执行总结和审核。`,
       });
       activeRunKey.value = runKey;
       multiWebPending.value = true;

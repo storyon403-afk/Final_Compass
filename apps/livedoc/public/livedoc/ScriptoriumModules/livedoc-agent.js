@@ -113,8 +113,9 @@
 
     async function ensureSession() {
         if (state.sessionKey) return state.sessionKey;
+        const csrf = document.cookie.split('; ').find((item) => item.startsWith('finals_compass_csrf='))?.split('=').slice(1).join('=');
         const response = await fetch('/api/ai-center/chat/sessions', {
-            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }
+            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf ? decodeURIComponent(csrf) : '' }
         });
         if (!response.ok) throw new Error(`无法创建 Agent 会话（HTTP ${response.status}）`);
         state.sessionKey = (await response.json()).sessionKey;
@@ -123,9 +124,10 @@
 
     async function askModel(message) {
         const sessionKey = await ensureSession();
+        const csrf = document.cookie.split('; ').find((item) => item.startsWith('finals_compass_csrf='))?.split('=').slice(1).join('=');
         const response = await fetch(`/api/ai-center/chat/sessions/${encodeURIComponent(sessionKey)}/messages`, {
             method: 'POST', credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+            headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', 'X-CSRF-Token': csrf ? decodeURIComponent(csrf) : '' },
             body: JSON.stringify({ message, credentialSource: 'PLATFORM' })
         });
         if (!response.ok || !response.body) throw new Error(`Agent Runtime 不可用（HTTP ${response.status}）`);

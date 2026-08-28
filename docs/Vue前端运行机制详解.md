@@ -175,13 +175,13 @@ showAccount.value = true
 - `surveyApi`：调查问卷。
 - `cetApi`：四六级套卷、题目、音频和附件。
 
-统一的 `request()` 负责添加 Bearer Token、发送请求、解析 JSON、处理 HTTP 错误与追踪号，并在 401 时清除登录状态。
+统一的 `request()` 负责携带 HttpOnly 会话 Cookie、为写请求添加 CSRF 令牌、解析 JSON、处理 HTTP 错误与追踪号，并在 401 时清除登录状态。Bearer 仅用于浏览器扩展等受控外部集成。
 
 ### 6.1 共享登录状态
 
 ```js
-export const authSession = ref(initialSession)
-export const authenticated = computed(() => Boolean(authSession.value.token))
+export const authSession = ref({})
+export const authenticated = computed(() => Boolean(authSession.value.username))
 export const isAdmin = computed(() => authSession.value.role === 'ADMIN')
 ```
 
@@ -395,4 +395,3 @@ App.vue 自动显示系统主体
 ```
 
 这里没有显式调用“打开主页面”。登录状态改变后，模板自然选择系统主体。
-

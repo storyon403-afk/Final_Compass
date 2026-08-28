@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/auth")
 public class AuthController {
   public static final String SESSION_COOKIE = "finals_compass_session";
+  public static final String CSRF_COOKIE = "finals_compass_csrf";
   private final AuthService auth;
   private final BetaAccessService betaAccess;
   private final TrustedProxyService trustedProxy;
@@ -58,7 +59,16 @@ public class AuthController {
       @Valid @RequestBody LoginRequest request) {
     AuthProfile profile = auth.login(request, clientIp(servletRequest));
     setSessionCookie(response, profile.token(), 7 * 24 * 60 * 60);
+    setCsrfCookie(response, java.util.UUID.randomUUID().toString(), 7 * 24 * 60 * 60);
     return profile;
+  }
+
+  @GetMapping("/session")
+  public AuthProfile session(
+      @cn.finalscompass.shared.security.Authenticated AuthService.CurrentUser user,
+      HttpServletResponse response) {
+    setCsrfCookie(response, java.util.UUID.randomUUID().toString(), 7 * 24 * 60 * 60);
+    return new AuthProfile(null, user.username(), user.displayName(), user.role(), user.mustChangePassword());
   }
 
   @PostMapping("/stream-cookie")
@@ -68,6 +78,7 @@ public class AuthController {
     if (header == null || !header.startsWith("Bearer "))
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "登录状态无效");
     setSessionCookie(response, header.substring(7), 7 * 24 * 60 * 60);
+    setCsrfCookie(response, java.util.UUID.randomUUID().toString(), 7 * 24 * 60 * 60);
   }
 
   @PostMapping("/register")
@@ -87,6 +98,20 @@ public class AuthController {
   public void logout(HttpServletRequest request, HttpServletResponse response) {
     auth.logout(request);
     setSessionCookie(response, "", 0);
+    setCsrfCookie(response, "", 0);
+  }
+
+  private void setCsrfCookie(HttpServletResponse response, String token, long maxAge) {
+    response.addHeader(
+        HttpHeaders.SET_COOKIE,
+        ResponseCookie.from(CSRF_COOKIE, token)
+            .httpOnly(false)
+            .secure(sessionCookieSecure)
+            .sameSite("Lax")
+            .path("/")
+            .maxAge(maxAge)
+            .build()
+            .toString());
   }
 
   private void setSessionCookie(HttpServletResponse response, String token, long maxAge) {

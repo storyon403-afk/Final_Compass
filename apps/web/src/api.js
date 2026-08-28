@@ -1,20 +1,19 @@
 import { computed, ref } from 'vue'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
-const savedSession = localStorage.getItem('finals-compass-session')
-let initialSession = { token: '', username: '', displayName: '', role: '', mustChangePassword: false }
-if (savedSession) {
-  try { initialSession = JSON.parse(savedSession) } catch { localStorage.removeItem('finals-compass-session') }
-}
+const initialSession = { username: '', displayName: '', role: '', mustChangePassword: false }
 export const authSession = ref(initialSession)
-export const authenticated = computed(() => Boolean(authSession.value.token))
+export const authenticated = computed(() => Boolean(authSession.value.username))
 export const isAdmin = computed(() => authSession.value.role === 'ADMIN')
 export const profile = ref({ publicId: '', nickname: '匿名同学' })
 
 async function request(path, options = {}) {
   const headers = new Headers(options.headers || {})
-  if (authSession.value.token) headers.set('Authorization', `Bearer ${authSession.value.token}`)
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  if (!['GET', 'HEAD', 'OPTIONS'].includes((options.method || 'GET').toUpperCase())) {
+    const csrf = document.cookie.split('; ').find(item => item.startsWith('finals_compass_csrf='))?.split('=').slice(1).join('=')
+    if (csrf) headers.set('X-CSRF-Token', decodeURIComponent(csrf))
+  }
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' })
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
     if (response.status === 401 && path !== '/auth/login') clearSession()
@@ -30,8 +29,7 @@ async function request(path, options = {}) {
 
 async function requestBlob(path) {
   const headers = new Headers()
-  if (authSession.value.token) headers.set('Authorization', `Bearer ${authSession.value.token}`)
-  const response = await fetch(`${API_BASE}${path}`, { headers })
+  const response = await fetch(`${API_BASE}${path}`, { headers, credentials: 'include' })
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
     const traceId = response.headers.get('X-Trace-Id')
@@ -43,16 +41,18 @@ async function requestBlob(path) {
 
 function saveSession(value) {
   authSession.value = value
-  localStorage.setItem('finals-compass-session', JSON.stringify(value))
 }
 
 export function clearSession() {
-  authSession.value = { token: '', username: '', displayName: '', role: '', mustChangePassword: false }
+  authSession.value = { username: '', displayName: '', role: '', mustChangePassword: false }
   profile.value = { publicId: '', nickname: '匿名同学' }
-  localStorage.removeItem('finals-compass-session')
 }
 
 export const authApi = {
+  async restore() {
+    try { const session = await request('/auth/session'); saveSession(session); return session }
+    catch (error) { if (error.status !== 401) throw error; clearSession(); return null }
+  },
   requestBetaAccess: (email, confirmEmail, phone) => request('/auth/beta-access/request', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, confirmEmail, phone })
   }),
@@ -293,9 +293,10 @@ export const chatApi = {
   createSession: () => request('/ai-center/chat/sessions', { method: 'POST' }),
   async streamMessages(sessionKey, fields, signal) {
     const headers = new Headers({ 'Content-Type': 'application/json', Accept: 'text/event-stream' })
-    if (authSession.value.token) headers.set('Authorization', `Bearer ${authSession.value.token}`)
+    const csrf = document.cookie.split('; ').find(item => item.startsWith('finals_compass_csrf='))?.split('=').slice(1).join('=')
+    if (csrf) headers.set('X-CSRF-Token', decodeURIComponent(csrf))
     const response = await fetch(`${API_BASE}/ai-center/chat/sessions/${encodeURIComponent(sessionKey)}/messages`, {
-      method: 'POST', headers, body: JSON.stringify(fields), signal
+      method: 'POST', headers, body: JSON.stringify(fields), signal, credentials: 'include'
     })
     if (!response.ok) {
       const body = await response.json().catch(() => ({}))

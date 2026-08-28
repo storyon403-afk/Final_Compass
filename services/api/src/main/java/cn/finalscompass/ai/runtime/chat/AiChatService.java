@@ -19,11 +19,8 @@ import cn.finalscompass.ai.runtime.trace.RuntimeType;
 import cn.finalscompass.config.TraceContext;
 import cn.finalscompass.service.AiCredentialResolver;
 import cn.finalscompass.service.AiUsageGuardService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +28,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -67,8 +63,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Service
 public final class AiChatService {
   private static final Logger log = LoggerFactory.getLogger(AiChatService.class);
-  private static final int HISTORY_LIMIT = 20;
-  private static final Duration HISTORY_TTL = Duration.ofMinutes(120);
 
   // 声明
   private final KnowledgeService knowledge;
@@ -76,7 +70,8 @@ public final class AiChatService {
   private final AiCredentialResolver credentials;
   private final RuntimeModelClientGateway models;
   private final RuntimeExecutionTraceStore traces;
-  private final StringRedisTemplate redis;
+  private final ChatHistoryStore history;
+  private final ChatPromptBuilder prompts;
   private final ObjectMapper json;
   private final AiUsageGuardService usage;
 
@@ -87,7 +82,8 @@ public final class AiChatService {
       AiCredentialResolver credentials,
       RuntimeModelClientGateway models,
       RuntimeExecutionTraceStore traces,
-      StringRedisTemplate redis,
+      ChatHistoryStore history,
+      ChatPromptBuilder prompts,
       ObjectMapper json,
       AiUsageGuardService usage) {
     this.knowledge = knowledge;
@@ -95,7 +91,8 @@ public final class AiChatService {
     this.credentials = credentials;
     this.models = models;
     this.traces = traces;
-    this.redis = redis;
+    this.history = history;
+    this.prompts = prompts;
     this.json = json;
     this.usage = usage;
   }
@@ -285,7 +282,7 @@ public final class AiChatService {
               "outputUnits",
               result.outputUnits()));
       // 保存历史
-      appendHistory(userId, sessionKey, message, answer);
+      history.append(userId, sessionKey, message, answer);
       usage.record(userId, result.providerKey(), result.modelKey(), "CHAT", source, true,
           result.inputUnits(), result.outputUnits(), null, String.valueOf(executionId));
       // 更新 Trace
@@ -350,8 +347,8 @@ public final class AiChatService {
         source.name(),
         "chat",
         "1.0",
-        systemInstruction(sources),
-        userPrompt(userId, sessionKey, message),
+        prompts.systemInstruction(sources),
+        prompts.userPrompt(userId, sessionKey, message),
         null,
         null,
         null,
@@ -366,41 +363,6 @@ public final class AiChatService {
         endpoint.requestTimeoutMs());
   }
 
-  // 负责构造 system prompt
-  private String systemInstruction(List<KnowledgeService.SearchResult> sources) {
-    StringBuilder builder =
-        new StringBuilder("你是 Finals Compass 的学习助手，只回答用户问题，不生成文件。回答使用简体中文，条理清晰。");
-    if (sources != null && !sources.isEmpty()) {
-      builder.append("\n\n以下是从知识库检索到的资料，请优先依据资料回答，并在引用处标注对应编号 [n]；资料之外的内容请说明是通用知识。\n");
-      int index = 1;
-      for (KnowledgeService.SearchResult item : sources) {
-        builder.append("\n[").append(index++).append("] ").append(nullSafe(item.title()));
-        if (item.heading() != null && !item.heading().isBlank())
-          builder.append(" · ").append(item.heading());
-        builder.append("\n").append(truncate(nullSafe(item.content()), 1200)).append("\n");
-      }
-    }
-    return builder.toString();
-  }
-
-  // 把 Redis 中的历史对话 + 当前问题组合起来
-  private String userPrompt(long userId, String sessionKey, String message) {
-    List<Map<String, String>> history = loadHistory(userId, sessionKey);
-    StringBuilder builder = new StringBuilder();
-    if (!history.isEmpty()) {
-      builder.append("## 对话历史\n");
-      for (Map<String, String> item : history) {
-        builder
-            .append("user".equals(item.get("role")) ? "用户：" : "助手：")
-            .append(nullSafe(item.get("content")))
-            .append("\n");
-      }
-      builder.append("\n");
-    }
-    builder.append("## 当前问题\n").append(message);
-    return builder.toString();
-  }
-
   // 解析凭据来源
   private AiCredentialSource parseSource(String value) {
     if (value == null || value.isBlank()) return AiCredentialSource.PLATFORM;
@@ -408,37 +370,6 @@ public final class AiChatService {
       return AiCredentialSource.valueOf(value);
     } catch (IllegalArgumentException exception) {
       throw new IllegalArgumentException("凭据来源无效");
-    }
-  }
-
-  // 生成历史记录键
-  private String historyKey(long userId, String sessionKey) {
-    return "fc:chat:" + userId + ":" + sessionKey;
-  }
-
-  // Redis JSON --> List<Map<String,String>>
-  private List<Map<String, String>> loadHistory(long userId, String sessionKey) {
-    try {
-      String stored = redis.opsForValue().get(historyKey(userId, sessionKey));
-      if (stored == null || stored.isBlank()) return List.of();
-      return json.readValue(stored, new TypeReference<List<Map<String, String>>>() {});
-    } catch (Exception exception) {
-      return List.of();
-    }
-  }
-
-  // 读取loadHistory()，追加当前对话，截断到 HISTORY_LIMIT，写回 Redis
-  private void appendHistory(long userId, String sessionKey, String message, String answer) {
-    try {
-      List<Map<String, String>> history = new ArrayList<>(loadHistory(userId, sessionKey));
-      history.add(Map.of("role", "user", "content", truncate(message, 4000)));
-      history.add(Map.of("role", "assistant", "content", truncate(answer, 4000)));
-      while (history.size() > HISTORY_LIMIT) history.remove(0);
-      // 保存 120 分钟
-      redis
-          .opsForValue()
-          .set(historyKey(userId, sessionKey), json.writeValueAsString(history), HISTORY_TTL);
-    } catch (Exception ignored) {
     }
   }
 

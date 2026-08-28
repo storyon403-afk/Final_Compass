@@ -356,7 +356,7 @@ cet_paper ──< cet_item
 
 ## 14. 与 Vue 如何交互
 
-前端公共封装位于 `apps/web/src/api.js`，负责 JSON Header、Bearer token、响应解析和统一错误。组件表达业务意图，不关心数据库。
+前端公共封装位于 `apps/web/src/api.js`，负责 Cookie 会话、双提交 CSRF Header、响应解析和统一错误。Bearer 仅保留给受控外部集成；组件表达业务意图，不关心数据库。
 
 ```text
 点击课程

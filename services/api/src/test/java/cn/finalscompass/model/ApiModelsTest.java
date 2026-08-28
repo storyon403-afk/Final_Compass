@@ -14,4 +14,13 @@ class ApiModelsTest {
 
         assertThat(fields).containsExactly("content", "parentId");
     }
+
+    @Test
+    void authenticatedProfileNeverSerializesBearerToken() throws Exception {
+        var profile = new ApiModels.AuthProfile("server-secret-token", "user", "User", "USER", false);
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(profile);
+
+        assertThat(json).doesNotContain("server-secret-token").doesNotContain("token");
+        assertThat(json).contains("\"username\":\"user\"");
+    }
 }

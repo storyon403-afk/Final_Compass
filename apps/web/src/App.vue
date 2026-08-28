@@ -16,6 +16,8 @@ import MessageCenterModal from './components/MessageCenterModal.vue'
 import AdminMessageSettingsModal from './components/AdminMessageSettingsModal.vue'
 import ModuleMaintenanceView from './views/ModuleMaintenanceView.vue'
 import { authApi, authenticated, authSession, initIdentity, isAdmin, messageApi, profile, systemApi } from './api'
+import { useTheme } from './composables/useTheme'
+import { betaStatusLabel, emailHtml, moderationLabel, routeLocationLabel } from './lib/appShell'
 
 const route = useRoute()
 const introVisible = ref(true)
@@ -59,21 +61,11 @@ const announcementEnabled = ref(true)
 const announcementLoading = ref(false)
 const announcementError = ref('')
 const announcementMessage = ref('')
-const theme = ref(localStorage.getItem('finals-compass-theme') || 'system')
-const systemDark = ref(window.matchMedia('(prefers-color-scheme: dark)').matches)
-const themeLabel = computed(() => ({ system: '跟随系统', light: '浅色模式', dark: '深色模式' })[theme.value])
-const effectiveTheme = computed(() => theme.value === 'system' ? (systemDark.value ? 'dark' : 'light') : theme.value)
-const locationLabel = computed(() => {
-  if (route.path === '/') return '课程导航'
-  if (route.path.startsWith('/question-vine')) return '问题藤'
-  if (route.params.teacherId) return '老师圈'
-  if (route.params.courseId) return '任课老师'
-  return '课程导航'
-})
+const { themeLabel, cycleTheme } = useTheme()
+const locationLabel = computed(() => routeLocationLabel(route.path, route.params))
 const introImageModules = import.meta.glob('../pictures/*.{jpg,jpeg,png,webp}', { eager: true, query: '?url', import: 'default' })
 const introImages = Object.values(introImageModules)
 const introImage = introImages[Math.floor(Math.random() * introImages.length)]
-const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 const transitionScenes = ['tree', 'waves', 'vine']
 let messagePoll = null
 
@@ -84,14 +76,6 @@ function enterSite() {
   window.setTimeout(() => { introVisible.value = false }, 1050)
 }
 
-function cycleTheme() {
-  theme.value = theme.value === 'system' ? 'light' : theme.value === 'light' ? 'dark' : 'system'
-}
-
-function handleSystemTheme(event) { systemDark.value = event.matches }
-function moderationLabel(type) {
-  return { RESOURCE: '复习资料', DISCUSSION: '匿名讨论', GUIDE_SUBMISSION: '指南参考' }[type] || type
-}
 function closeOverlays(event) {
   if (event.key !== 'Escape') return
   showAccount.value = false
@@ -192,9 +176,7 @@ async function openBetaAccess() {
   finally { betaAccessLoading.value = false }
 }
 
-function statusLabel(status) {
-  return { CREATED: '正在发送', CODE_SENT: '等待用户验证', EMAIL_VERIFIED: '邮箱已验证', ACCOUNT_CREATED: '账号已创建', CREDENTIAL_SENT: '账号已发送', EXPIRED: '已失效' }[status] || status
-}
+const statusLabel = betaStatusLabel
 
 async function approveAccess(item) {
   betaAccessError.value = ''
@@ -256,18 +238,6 @@ async function copyText(text, message) {
   }
 }
 
-function emailHtml(text) {
-  const escape = (value) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const lines = text.split('\n').map((line, index) => {
-    let content = escape(line)
-    if (index === 0) content = `<strong>${content}</strong>`
-    else if (/^(账号|初始密码)：/.test(line)) content = `<strong>${content}</strong>`
-    else content = content.replace(/(\d{6})/g, '<strong style="font-size:20px;letter-spacing:3px">$1</strong>')
-    return line ? `<div>${content}</div>` : '<div><br></div>'
-  }).join('')
-  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.75;color:#222">${lines}</div>`
-}
-
 async function copyEmail(text, message) {
   try {
     if (window.isSecureContext && window.ClipboardItem && navigator.clipboard?.write) {
@@ -292,7 +262,6 @@ async function changePassword() {
   try {
     await authApi.changePassword(currentPassword.value, newPassword.value)
     authSession.value.mustChangePassword = false
-    localStorage.setItem('finals-compass-session', JSON.stringify(authSession.value))
     currentPassword.value = ''
     newPassword.value = ''
     passwordMessage.value = '密码修改成功'
@@ -323,17 +292,14 @@ async function moderate(item, decision) {
   finally { moderationBusyId.value = null }
 }
 
-watch(effectiveTheme, (value) => { document.documentElement.dataset.theme = value }, { immediate: true })
-watch(theme, (value) => localStorage.setItem('finals-compass-theme', value))
 watch(() => route.fullPath, () => { showAccount.value = false })
-watch(() => authSession.value.token, (token, previousToken) => {
-  if (token && token !== previousToken) { loadAnnouncement(true); refreshUnreadMessages() }
-  else if (!token) showAnnouncement.value = false
+watch(() => authSession.value.username, (username, previousUsername) => {
+  if (username && username !== previousUsername) { loadAnnouncement(true); refreshUnreadMessages() }
+  else if (!username) showAnnouncement.value = false
 }, { immediate: true })
 watch(() => authSession.value.mustChangePassword, (required) => { if (required) showPassword.value = true }, { immediate: true })
 
 onMounted(() => {
-  mediaQuery.addEventListener('change', handleSystemTheme)
   window.addEventListener('keydown', closeOverlays)
   if (authenticated.value) initIdentity().catch(() => {})
   if(authenticated.value)systemApi.modules().then(value=>moduleSettings.value=value).catch(()=>{})
@@ -341,7 +307,6 @@ onMounted(() => {
   messagePoll = window.setInterval(refreshUnreadMessages, 30000)
 })
 onBeforeUnmount(() => {
-  mediaQuery.removeEventListener('change', handleSystemTheme)
   window.removeEventListener('keydown', closeOverlays)
   if (messagePoll) window.clearInterval(messagePoll)
 })

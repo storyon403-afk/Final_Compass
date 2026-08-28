@@ -5,6 +5,8 @@ import cn.finalscompass.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
@@ -32,10 +34,12 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
     if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
     String header = request.getHeader("Authorization");
     String token = header != null && header.startsWith("Bearer ") ? header.substring(7) : null;
+    boolean cookieAuthenticated = false;
     if (token == null && request.getCookies() != null) {
       for (Cookie cookie : request.getCookies()) {
         if (AuthController.SESSION_COOKIE.equals(cookie.getName())) {
           token = cookie.getValue();
+          cookieAuthenticated = true;
           break;
         }
       }
@@ -45,6 +49,12 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
       response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
       response.setContentType("application/json;charset=UTF-8");
       response.getWriter().write("{\"error\":\"账号登录已失效，请重新登录\"}");
+      return false;
+    }
+    if (cookieAuthenticated && isStateChanging(request.getMethod()) && !validCsrf(request)) {
+      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+      response.setContentType("application/json;charset=UTF-8");
+      response.getWriter().write("{\"error\":\"请求安全校验失败，请刷新页面后重试\"}");
       return false;
     }
     request.setAttribute(AuthService.REQUEST_USER, user.get());
@@ -58,5 +68,29 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
       return false;
     }
     return true;
+  }
+
+  private boolean isStateChanging(String method) {
+    return !("GET".equalsIgnoreCase(method)
+        || "HEAD".equalsIgnoreCase(method)
+        || "OPTIONS".equalsIgnoreCase(method));
+  }
+
+  private boolean validCsrf(HttpServletRequest request) {
+    String cookieToken = null;
+    if (request.getCookies() != null) {
+      for (Cookie cookie : request.getCookies()) {
+        if (AuthController.CSRF_COOKIE.equals(cookie.getName())) {
+          cookieToken = cookie.getValue();
+          break;
+        }
+      }
+    }
+    String headerToken = request.getHeader("X-CSRF-Token");
+    return cookieToken != null
+        && headerToken != null
+        && MessageDigest.isEqual(
+            cookieToken.getBytes(StandardCharsets.UTF_8),
+            headerToken.getBytes(StandardCharsets.UTF_8));
   }
 }

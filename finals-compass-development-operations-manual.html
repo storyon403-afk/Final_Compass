@@ -1,0 +1,102 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Finals Compass 开发与运维说明书</title>
+<style>:root{--b:#155d73;--l:#d8e0e4;--s:#eef7f8}*{box-sizing:border-box}body{margin:0;background:#f2f4f5;color:#17202a;font:15px/1.72 system-ui,-apple-system,"Segoe UI","PingFang SC",sans-serif}.p{max-width:1160px;margin:auto;background:white;padding:52px 68px}h1{font-size:34px;margin-bottom:4px}h2{color:var(--b);border-bottom:2px solid var(--b);margin-top:48px}h3{margin-top:30px}code{font:13px ui-monospace,monospace;background:#f1f3f4;padding:2px 5px;border-radius:4px}pre{white-space:pre-wrap;background:#17202a;color:white;padding:15px;border-radius:7px}.flow{background:var(--s);color:#17202a;border-left:5px solid var(--b)}table{width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:14px}th,td{border:1px solid var(--l);padding:8px;vertical-align:top}th{background:#edf2f3;text-align:left}.path{font:12px ui-monospace,monospace;word-break:break-all}.note{padding:12px;background:#fff6df;border:1px solid #ead89d}.toc{columns:2}.muted{color:#607080}@media(max-width:760px){.p{padding:24px 18px}.toc{columns:1}table{display:block;overflow:auto}}@media print{body{background:white}.p{max-width:none;padding:10mm}h2{break-before:page}}</style></head><body><main class="p">
+<header><h1>Finals Compass 开发与运维说明书</h1><p class="muted">代码实态版 · 2026-08-29 · 请求全链路追踪、分层实现与运行维护</p><p>基线：当前工作区与 Flyway V75。方法名比行号稳定，因此本文以“文件 + 方法”定位；代码变更后应同步修订。</p></header>
+<h2>目录</h2><ol class="toc"><li><a href="#a">系统拓扑</a></li><li><a href="#b">公共请求生命周期</a></li><li><a href="#c">上下文、安全和异常</a></li><li><a href="#d">课程导航与老师圈</a></li><li><a href="#e">问题藤</a></li><li><a href="#f">CET</a></li><li><a href="#g">AI Center</a></li><li><a href="#h">数据与中间件</a></li><li><a href="#i">部署与排障</a></li><li><a href="#j">开发检查表</a></li></ol>
+
+<h2 id="a">1. 系统拓扑与代码边界</h2>
+<table><tr><th>层/进程</th><th>职责</th><th>真实入口</th></tr><tr><td>Vue SPA</td><td>路由、表单、响应式状态、SSE、Blob。</td><td class="path">apps/web/src/main.js<br>App.vue<br>api.js</td></tr><tr><td>Nginx</td><td>静态资源、SPA fallback、API/WebSocket 反代、安全头。</td><td class="path">deploy/nginx/finals-compass*.conf</td></tr><tr><td>Spring Boot</td><td>HTTP 边界、中间件、应用编排、数据访问。</td><td class="path">services/api/src/main/java/cn/finalscompass</td></tr><tr><td>MySQL/Flyway</td><td>业务、账号、AI 注册表与执行 Trace。</td><td class="path">db/migration/V1…V75.sql</td></tr><tr><td>Redis</td><td>限流、验证码、安全状态、聊天历史。</td><td class="path">ActionRateLimitService<br>AiUsageGuardService<br>ChatHistoryStore</td></tr><tr><td>外部运行时</td><td>附件转换、PDF、Agent、网页 AI。</td><td class="path">markitdown-worker/<br>pdf-renderer/<br>hermes-agent.mjs<br>browser-extension/</td></tr></table>
+<pre class="flow">用户 → Vue 组件 → api.js → Nginx → RequestTraceFilter
+→ AuthenticationInterceptor → ModuleMaintenanceInterceptor
+→ 参数解析/Validation → Controller → Application Handler/Service
+→ Domain Repository → Jdbc Repository/Redis/UploadStorage/外部服务
+→ JSON、SSE 或文件响应 → Vue ref/computed → DOM</pre>
+
+<h2 id="b">2. 公共请求生命周期</h2>
+<h3>2.1 浏览器启动</h3><ol><li><code>apps/web/src/main.js</code> 建立 Vue Router：<code>/</code>、<code>/question-vine</code>、<code>/cet</code>、<code>/ai-center/**</code>。</li><li>挂载前执行 <code>authApi.restore()</code> → <code>GET /api/auth/session</code>。HttpOnly Cookie 自动携带；Vue 内存只保存 username/displayName/role。</li><li><code>App.vue</code> 依据 <code>authenticated</code> 显示登录页或业务壳，并加载身份、公告、模块状态和未读消息。</li></ol>
+<h3>2.2 前端 HTTP 适配器</h3><p><code>apps/web/src/api.js::request()</code> 是 JSON 主入口。它设置 <code>credentials:'include'</code>；非 GET/HEAD/OPTIONS 从 <code>finals_compass_csrf</code> Cookie 读取值并写 <code>X-CSRF-Token</code>；非 2xx 解析 JSON，401 清会话，并把响应 <code>X-Trace-Id</code> 拼进错误。<code>requestBlob()</code> 用于文件。<code>chatApi.streamMessages()</code> 单独处理 text/event-stream，但复用 Cookie/CSRF 规则。</p>
+<h3>2.3 Nginx 分流</h3><ul><li><code>location /</code>：静态文件不存在时回退 <code>/index.html</code>。</li><li><code>/api/</code>：反代 backend:8080，读超时 120 秒。</li><li><code>/api/ai/invoke</code>：关闭请求缓冲，避免图像体落临时盘。</li><li><code>/ws/browser-bridge</code>：WebSocket Upgrade，读超时 300 秒。</li><li>统一返回 CSP、nosniff、SAMEORIGIN、Referrer/Permissions Policy。</li></ul>
+<h3>2.4 Spring 固定执行顺序</h3><ol><li><code>RequestTraceFilter.doFilter()</code> 创建 requestId/traceId，写响应头、RequestContext attribute 和 MDC；finally 记录 method/path/status/duration 并清 MDC。</li><li><code>AuthenticationInterceptor.preHandle()</code> 从 Bearer 或 Cookie 取 token，调用 <code>AuthService.authenticate()</code> 查询 <code>login_session JOIN app_user</code>，把 CurrentUser 写入 request attribute。</li><li>Cookie 写请求执行 <code>validCsrf()</code> 常量时间比较；失败 403。</li><li><code>ModuleMaintenanceInterceptor.preHandle()</code> 将课程/Circle、CET、AI 分别映射到模块开关；维护时普通用户 503，管理员旁路。</li><li><code>AuthenticatedUserArgumentResolver.resolveArgument()</code> 为 <code>@Authenticated CurrentUser</code> 注入身份；Jackson 与 Jakarta Validation 解析/校验 DTO。</li><li>Controller 进入 Handler/Service；<code>@Transactional</code> 建立事务；Repository 使用 JdbcClient。</li><li><code>ApiExceptionHandler</code> 将校验错误变 400、业务异常保留状态、未知异常脱敏为 500，并附 traceId。</li></ol>
+
+<h2 id="c">3. 请求上下文、安全与追踪</h2>
+<table><tr><th>上下文</th><th>创建/读取</th><th>生命周期</th></tr><tr><td>RequestContext</td><td><code>RequestTraceFilter</code> 创建；字段含 requestId、traceId、时间、方法、路径、客户端地址。</td><td>当前 Servlet request。</td></tr><tr><td>CurrentUser</td><td>拦截器创建；<code>AuthService.current()</code> 或 <code>@Authenticated</code> 读取。</td><td>当前请求；token 不返回前端 JSON。</td></tr><tr><td>HTTP MDC</td><td><code>TraceContext.HTTP_TRACE_ID</code> 与 requestId。</td><td>过滤器 finally 清除。</td></tr><tr><td>AI Trace</td><td><code>AiChatService.answer()</code> 创建 aiTraceId；写 MDC 和执行表。</td><td>AI 调用结束后清除。</td></tr><tr><td>虚拟线程</td><td><code>AiChatController.message()</code> 先 <code>TraceContext.capture()</code>，在 <code>Thread.ofVirtual()</code> 内 <code>runWith()</code>。</td><td>保证异步 SSE 不丢 HTTP trace。</td></tr></table>
+<p class="note">排障先拿用户错误中的追踪号。普通请求在后端日志搜索 <code>trace=...</code>；AI 再用 HTTP trace 找 <code>ai_runtime_execution</code>，继续追 execution/node/provider invocation/event。</p>
+
+<h2 id="d">4. 课程导航与老师圈完整追踪</h2>
+<h3>4.1 首页读取</h3><pre class="flow">HomeView.onMounted/loadData()
+→ Promise.all(catalogApi.colleges(), programs(), courses())
+→ api.js request('/courses/...')
+→ CatalogController.colleges/programs/courses()
+→ CourseCatalogHandler 同名方法
+→ CourseCatalogRepository 接口
+→ JdbcCourseCatalogRepository.findColleges/findPrograms/findCourses
+→ college / academic_program / course / course_program
+→ JSON → colleges/programCatalog/courses ref
+→ visibleCourses computed → 页面</pre>
+<p><code>HomeView.syncNavigationFromRoute()</code> 从 URL query 恢复学院/专业/类型；<code>visibleCourses</code> 加搜索过滤。选择课程后进入 <code>/courses/:courseId</code>。<code>TeachersView.loadTeachers()</code> → <code>catalogApi.teachers()</code> → <code>CatalogController.teachers()</code> → <code>CourseCatalogHandler.teachers()</code> → <code>JdbcCourseCatalogRepository.findTeachers()</code>。</p>
+<h3>4.2 管理员新增课程</h3><p><code>HomeView.submitCourse()</code> → <code>catalogApi.addCourse()</code> → <code>CatalogController.addCourse(@Authenticated,@Valid)</code> → <code>CourseCatalogHandler.createCourse()</code>。Handler 调 <code>AuthorizationPolicy.requireAdmin()</code>，事务内由 <code>JdbcCourseCatalogRepository.createCourse()/link()</code> 写 course 和学院/专业关联；重复 slug/code 转 409。学院、专业、教师走相同结构。</p>
+<h3>4.3 老师圈读取和文件</h3><p><code>TeacherCircleView</code> 调 <code>circleApi.resources/discussions/guide</code>，路由到 <code>CircleController</code>，再分别进入 <code>CircleQueryHandler</code> 和 <code>JdbcCircleQueryRepository</code>。下载链：<code>openResource()</code> → <code>requestBlob()</code> → <code>CircleController.file()</code> → <code>CircleQueryHandler.file()</code> → repository 找受控元数据 → <code>UploadStorage.resolve()</code> → Spring Resource。前端创建 object URL，关闭时 revoke。</p>
+<h3>4.4 老师圈写入</h3><table><tr><th>动作</th><th>逐跳方法</th><th>规则</th></tr><tr><td>上传资料</td><td><code>submitResource → circleApi.upload → CircleController.upload → CircleCommandHandler.upload → JdbcCircleCommandRepository</code></td><td>扩展名、大小、<code>ResourceFilePolicy</code> 魔数/MIME、teacher-course membership、UploadStorage、待审核状态。</td></tr><tr><td>匿名讨论</td><td><code>submitPost → postDiscussion → CircleController.discuss → CircleCommandHandler.discuss</code></td><td>AnonymousIdentityService、父帖校验、ActivityService、事务。</td></tr><tr><td>感谢</td><td><code>thankResource → CircleController.thank → CircleCommandHandler.thank</code></td><td>防重复、计数和贡献活动。</td></tr><tr><td>指南</td><td><code>saveGuide/submitGuideReference → updateGuide/submitGuide</code></td><td>管理员编辑；普通用户投稿进入审核链。</td></tr></table>
+
+<h2 id="e">5. 问题藤完整追踪</h2>
+<h3>5.1 读取</h3><pre class="flow">QuestionVineView.onMounted()
+→ questionVineStore.loadQuestionVineTopics()
+→ questionVineApi.topics()
+→ QuestionVineController.topics()
+→ QuestionVineService.topics()
+→ QuestionVineRepository.topics() + answers(topicId)
+→ question_vine_topic / question_vine_answer
+→ Topic[] → store ref
+→ threadedAnswers computed 以 parentAnswerId 组树 → SVG/叶片/回复树</pre>
+<p><code>focusRouteTopic()</code> 支持 <code>?topic=uid</code> 与 hash；搜索覆盖序号、标题、正文、类别和标签。</p>
+<h3>5.2 发布</h3><ol><li><code>QuestionVineView.publish()</code> → store action → <code>questionVineApi.createTopic()</code>。</li><li><code>QuestionVineController.create()</code> 用 <code>CreateTopic</code> 校验：标题≤100、类别≤30、标签≤3且每项≤20、正文≤5000。</li><li><code>QuestionVineService.create()</code> 先 <code>ActionRateLimitService.questionTopic()</code>，默认每用户每小时 5 次，Redis Lua 原子固定窗口。</li><li>事务内 <code>repository.lockTopics()</code> 执行 FOR UPDATE；<code>nextSequence()</code> 取 max+1；<code>create()</code> 写主题。匿名别名由 userId 稳定派生。</li><li>返回 201 Topic，前端刷新并滚动到新叶片。</li></ol>
+<h3>5.3 回答、回复和通知</h3><p><code>QuestionVineView.answer()</code> → <code>questionVineApi.answer(uid,content,parentId)</code> → <code>QuestionVineController.answer()</code> → <code>QuestionVineService.answer()</code>。先执行每小时 30 次回答限流；<code>topicOwner()</code> 验证主题；楼中楼用 <code>answerOwner()</code> 确保父回答属于同一 topic。回复回答者或顶层回答作者时调用 <code>SiteMessageService.notify()</code>，链接回 <code>/question-vine?topic=uid</code>；最后 <code>addAnswer()</code> 写 parent_answer_id。</p>
+<h3>5.4 管理删除</h3><p><code>DELETE /admin/topics/{sequence}</code> → <code>QuestionVineService.delete()</code>：requireAdmin → 锁序号 → bySequence → answerCount → auditDelete → delete（外键级联回答）→ shiftAfter。单事务保证审计、删除、重排一致。</p>
+
+<h2 id="f">6. CET 完整追踪</h2>
+<h3>6.1 前端状态机</h3><p><code>CetView.vue</code> 保存 level → mode → section → paper → item 五级状态，并用 <code>history.state[CET_HISTORY_KEY]</code> 支持后退。<code>chooseMode('FULL_PAPER')</code> 调 <code>cetApi.papers(level)</code>；<code>chooseSection()</code> 调 <code>cetApi.items(level,mode,section)</code>；<code>choosePaper/openItem</code> 初始化作答、翻译和音频。</p>
+<table><tr><th>读取链</th><th>后端与数据</th></tr><tr><td><code>cetApi.papers → GET /cet/papers</code></td><td><code>CetController.papers → CetQueryHandler.papers → JdbcCetQueryRepository.findPublishedPapers</code>；查询 paper/source 并判断音频。</td></tr><tr><td><code>cetApi.items → GET /cet/items</code></td><td><code>CetController.items → CetQueryHandler.items → findPublishedItems</code>；联结 paper/section/item，只返回发布内容。</td></tr></table>
+<p><code>CetQueryHandler.level()</code> 只接受 CET4/CET6，<code>mode()</code> 只接受 PRACTICE/INTENSIVE，非法值在 SQL 前返回 400。</p>
+<h3>6.2 音频</h3><ol><li><code>openItem()/choosePaper()</code> 先 <code>cetApi.prepareAudioStream()</code>，确保 Cookie 会话。</li><li>原生 <code>&lt;audio&gt;</code> 请求 <code>/api/cet/items/{id}/audio</code>，Cookie 自动携带，GET 无 CSRF。</li><li><code>CetController.audio()</code> → <code>CetItemHandler.audio()</code> → Repository 元数据 → <code>UploadStorage.resolve()</code> → Resource。</li><li><code>prepareAudioSegment/enforceAudioSegment</code> 用 audioStartMs/audioEndMs 限制精听区间。</li></ol>
+<h3>6.3 管理写入</h3><ul><li><code>savePaper → CetPaperHandler.create/update → JdbcCetPaperRepository</code>；create 同时 <code>createSlots()</code> 初始化练习/精听题型槽。</li><li><code>saveItem → CetItemHandler.create/update → JdbcCetItemRepository</code>；validate 校验 mode、section、answerType 和音频区间。</li><li><code>uploadPracticeAudio/uploadItemAudio</code>：管理员、≤200MB、mp3/m4a/wav/ogg/webm/aac，再由 UploadStorage 落盘并写路径。</li><li><code>clearAdminSection → CetPaperHandler.clearSection</code>；<code>removePaper → deletePaper</code>。前端 confirm 只是体验，安全仍由后端 requireAdmin。</li></ul>
+
+<h2 id="g">7. AI Center 完整追踪</h2>
+<h3>7.1 页面和附件</h3><p><code>main.js</code> 将 CHAT、AGENT、MULTI_WEB_AGENT 指向 <code>AiRuntimeChatView.vue</code>，由 <code>route.meta.runtime</code> 区分。设置来自 <code>AiCenterSettings.vue/aiCenterSettings.js</code>。<code>send()</code> 先调用 <code>convert()</code>：图片走 <code>aiApi.analyzeVision()</code>；文档走 <code>aiApi.convertAttachment()</code> → <code>AiDocumentConversionService</code> → MarkItDown Worker。</p>
+<h3>7.2 CHAT SSE 全链</h3><pre class="flow">AiRuntimeChatView.send → sendChat
+→ chatApi.createSession → AiChatController.createSession → AiChatService.createSession(UUID)
+→ chatApi.streamMessages POST text/event-stream
+→ AiChatController.message: CurrentUser + SseEmitter(5min)
+→ TraceContext.capture → virtual thread → AiChatService.answer
+→ AiUsageGuardService.check
+→ KnowledgeService.search（RAG）
+→ RuntimeExecutionTraceStore.createExecution/createNode/transition
+→ AiCredentialResolver.resolve
+→ RuntimeProviderMatcher.match
+→ ChatPromptBuilder + ChatHistoryStore.load(Redis)
+→ RuntimeModelClientGateway.execute(primary + fallback)
+→ Provider Client HTTP
+→ SSE sources/delta/done 或 error
+→ ChatHistoryStore.append + AiUsageGuardService.record
+→ 前端 parseSse → assistant.content/sources/traceId</pre>
+<ul><li><b>限额：</b><code>AiUsageGuardService.check()</code> 使用 Redis 分钟/每日计数和 MySQL 月 token；管理员旁路，平台额度仅限制 PLATFORM。</li><li><b>RAG：</b><code>KnowledgeService.search()</code> 从知识源/Chunk 取候选，结合词法和 embedding 相似度排序。</li><li><b>凭据：</b>PLATFORM 查资格并解密平台 Key；STORED_BYOK 解密用户 Key；EPHEMERAL_BYOK 只存在请求内。</li><li><b>匹配：</b><code>RuntimeProviderMatcher.match()</code> 从 Provider Repository 读取 Provider/Endpoint/Model/Capability，按能力、状态、优先级和成本排序。</li><li><b>执行：</b><code>LegacyRuntimeModelClientGateway.executeInternal()</code> 调 Provider Client，记录 invocation、token、时延、成本和错误；可回退错误尝试候选。</li><li><b>历史：</b><code>ChatHistoryStore</code> key=<code>fc:chat:{user}:{session}</code>，最多 20 条，TTL 120 分钟；Redis 故障降级为空历史。</li></ul>
+<h3>7.3 AGENT</h3><ol><li><code>sendAgent()</code> 拼最近 12 条对话 → <code>aiCenterApi.dispatch()</code> → <code>AiRuntimeDispatchController.start()</code> → <code>AiRuntimeDispatchService.start()</code>。</li><li>Service 写 <code>ai_runtime_run</code>、runKey、callbackToken；<code>invokeAgent()</code> 调 Gateway，可由 <code>knowledgeContext()</code> 加知识。</li><li>Hermes 通过 <code>ExternalAgentCallbackController</code> 回调状态/产物；路径虽免登录拦截，但必须用每次 run 独立 Bearer callbackToken。</li><li>前端每 2 秒 <code>dispatchRun()</code>，watchdog 35 分钟；完成后 <code>dispatchArtifacts()</code> 与 artifact file。</li><li>产物 Controller 验证 run 属于用户，将路径 normalize 且必须在 uploads 根下，然后读 bytes；前端生成 Blob URL 并负责 revoke。</li></ol>
+<h3>7.4 MULTI_WEB_AGENT</h3><ol><li>页面 PING 扩展，READY 后标记连接。</li><li>dispatch providers=KIMI/DEEPSEEK/QWEN；<code>seedParticipants()</code> 写参与者。</li><li><code>multiWebAssignments()</code> 在明确分工时先让内部 Chat 产出 JSON；否则三方拿同一任务。</li><li><code>window.postMessage(START_RUN)</code> 给扩展；登录/验证码由用户完成。</li><li>扩展发 PARTICIPANT_STATUS；页面调用 <code>reportParticipant()</code>；后端 <code>report()</code> 推进 RUNNING/WAITING_LOGIN/SYNTHESIZING。</li><li>BATCH 完成后 <code>summarizeAndReview()</code> 先总结再独立审核，以 phase=SYNTHESIS 写回。runKey 存 sessionStorage，刷新可恢复；取消会 DELETE dispatch 并发 STOP_RUN。</li></ol>
+<h3>7.5 AI Trace 表</h3><table><tr><th>表/实现</th><th>内容</th></tr><tr><td>ai_runtime_execution</td><td>executionId、AI/HTTP trace、runtime、状态。</td></tr><tr><td>ai_runtime_execution_node</td><td>节点类型、父子、状态和错误。</td></tr><tr><td>ai_runtime_provider_invocation</td><td>Provider/Model/Endpoint、token、时延、费用、失败。</td></tr><tr><td>ai_runtime_execution_event</td><td>行锁保护的递增事件序列。</td></tr><tr><td>JdbcRuntimeExecutionTraceStore</td><td>创建记录和状态机迁移。</td></tr></table>
+
+<h2 id="h">8. 分层、数据库、Redis 与文件</h2><ul><li><b>Controller：</b>HTTP、状态码、序列化、multipart/stream。</li><li><b>Application Handler/Service：</b>授权、校验、事务、跨仓储副作用。</li><li><b>Domain Repository interface：</b>课程/Circle/CET 隔离业务与基础设施。</li><li><b>Jdbc Repository：</b>参数化 SQL、行映射、冲突/不存在转换。</li><li><b>Shared：</b>UploadStorage、认证授权、RequestContext、异常处理。</li></ul>
+<p>课程、Circle、CET、问题藤写方法以 <code>@Transactional</code> 保证数据库原子性。文件系统与数据库不是分布式事务：新增上传链必须设计数据库失败后的孤儿文件清理。Flyway 启动自动迁移；已发布 SQL 禁止改写，只新增版本。课程涉及 V1/V6/V15/V73，CET V11/V14/V63/V64，AI V25–V60，问题藤 V74/V75。</p>
+<p>备份用 <code>scripts/db-backup.sh</code>（single-transaction、gzip、SHA-256）；演练用 <code>db-restore-drill.sh</code> 导入隔离库、核对表/Flyway/app_user 并自动删除。完整制度见 <code>docs/数据库备份与恢复演练.md</code>。</p>
+
+<h2 id="i">9. 部署、监控和排障</h2>
+<h3>9.1 启动</h3><ol><li>复制 <code>deploy/.env.example</code> 为 .env，替换全部示例密码、加密 Key、Worker Token、URL/Origin。</li><li>启动 mysql、redis、markitdown-worker、pdf-renderer 并等待 healthy。</li><li>启动 backend；Flyway 和生产配置校验必须成功。</li><li>启动 frontend 或宿主机 Nginx；检查 <code>/api/system/health</code>。</li><li>按需启动 Agent Gateway 和绑定浏览器扩展。</li></ol>
+<p>后端日志在 <code>/app/logs</code> 的 volume；<code>*.log</code>/<code>*.log.gz</code> 不进 Git。Docker json-file 为 20MB×5；Alloy → Loki → Grafana。CI 执行前端测试/双前端构建、Maven、Worker pytest、空 MySQL Flyway migrate+validate，以及四个 Docker 镜像 Buildx。</p>
+<table><tr><th>现象</th><th>检查</th><th>代码入口</th></tr><tr><td>401</td><td>Cookie、session 过期、user.active</td><td>AuthenticationInterceptor / AuthService.authenticate</td></tr><tr><td>403 CSRF</td><td>是否绕过 api.js；Cookie/Header 是否一致</td><td>request() / validCsrf()</td></tr><tr><td>503</td><td>模块维护状态、管理员旁路</td><td>ModuleMaintenanceInterceptor</td></tr><tr><td>429</td><td>动作限流或 AI 分/日/月额度</td><td>ActionRateLimitService / AiUsageGuardService</td></tr><tr><td>CET 音频 404</td><td>元数据、volume、UploadStorage 根</td><td>CetItemHandler.audio</td></tr><tr><td>AI 无输出</td><td>SSE error、invocation、凭据、模型、超时</td><td>AiChatService / ModelClientGateway</td></tr><tr><td>Agent WAITING_CONFIGURATION</td><td>Gateway 地址/进程/回调</td><td>AiRuntimeDispatchService.invokeAgent</td></tr><tr><td>MultiWeb WAITING_LOGIN</td><td>扩展 READY、网页登录、participant</td><td>extensionMessage / report</td></tr></table>
+
+<h2 id="j">10. 开发改动导航与交付检查</h2>
+<table><tr><th>需求</th><th>先改</th><th>联动检查</th></tr><tr><td>课程字段</td><td>新 Flyway → ApiModels → Repository</td><td>Handler、Controller、api.js、View、测试。</td></tr><tr><td>问题藤行为</td><td>Models/Service/Repository</td><td>限流、通知、事务锁、store/view、ServiceTest。</td></tr><tr><td>CET 题型</td><td>Flyway/slot → Handler 白名单</td><td>Query repository、CetView、答案和音频。</td></tr><tr><td>AI Provider</td><td>Flyway 注册表 → Provider Client</td><td>Matcher、凭据、fallback、Trace、契约测试。</td></tr><tr><td>写 API</td><td>api.js request + Controller</td><td>CSRF、身份、后端授权、Validation、事务、异常。</td></tr></table>
+<pre>npm run check
+cd services/api &amp;&amp; mvn --batch-mode test
+cd services/markitdown-worker &amp;&amp; .venv/bin/pytest -q
+git diff --check
+bash -n scripts/*.sh</pre>
+<ol><li>能否从 UI 方法一路指出 Controller、Handler/Service、Repository 和表？</li><li>管理员能力是否在后端授权，而非只隐藏按钮？</li><li>Cookie 写请求是否走公共 CSRF 封装？</li><li>事务是否覆盖原子变化，外部文件/邮件/AI 如何补偿？</li><li>错误是否带 traceId 且不泄露 Key、SQL、路径或堆栈？</li><li>Redis key 是否有环境前缀、TTL、故障策略？</li><li>新结构是否新增 Flyway，空库迁移是否通过？</li><li>SSE/Blob 是否清理，超时是否在 Nginx、Controller、Gateway 对齐？</li></ol>
+<hr><p class="muted">代码是最终事实来源。本说明书适合浏览器阅读，并可通过打印功能导出 PDF。</p></main></body></html>

@@ -6,11 +6,12 @@
 
 | 文档 | 状态 | 用途 |
 | --- | --- | --- |
-| [项目 README](../README.md) | 当前（V73） | 功能边界、开发环境、构建和部署入口 |
+| [项目 README](../README.md) | 当前（V75） | 功能边界、开发环境、构建和部署入口 |
 | [仓库结构与应用边界](仓库结构与应用边界.md) | 当前 | monorepo 目录、两个前端和服务进程的边界 |
 | [liveDoc 与 Scriptorium 维护指南](liveDoc与Scriptorium维护指南.md) | 当前（V72） | `.vdocx` / `.vpptx`、编辑器接入、保存与导出链路 |
 | [AI 模块研发交接文档](AI模块研发交接文档.md) | AI 基线 V54 | Chat / Agent / MultiWeb、注册表、凭据与 Trace；V65 之后的 liveDoc 另见上文 |
 | [日志与 Trace 运维指南](日志与Trace运维指南.md) | 当前 | 日志滚动、HTTP/AI Trace、Loki 与 Grafana |
+| [数据库备份与恢复演练](数据库备份与恢复演练.md) | 当前 | MySQL 一致性备份、校验、隔离恢复演练与 RPO/RTO |
 
 ## 业务与基础设施
 

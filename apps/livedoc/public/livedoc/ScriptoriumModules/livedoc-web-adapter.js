@@ -223,7 +223,12 @@
     }
 
     async function apiFetch(url, options = {}) {
-        const response = await fetch(url, { credentials: 'same-origin', ...options });
+        const headers = new Headers(options.headers || {});
+        if (!['GET', 'HEAD', 'OPTIONS'].includes((options.method || 'GET').toUpperCase())) {
+            const csrf = document.cookie.split('; ').find((item) => item.startsWith('finals_compass_csrf='))?.split('=').slice(1).join('=');
+            if (csrf) headers.set('X-CSRF-Token', decodeURIComponent(csrf));
+        }
+        const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
         if (!response.ok) {
             let message = `HTTP ${response.status}`;
             try { message = (await response.json()).error || message; } catch {}

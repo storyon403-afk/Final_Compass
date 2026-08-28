@@ -18,7 +18,24 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       - run: npm run build
+
+  markitdown-worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/markitdown-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: services/markitdown-worker/pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[test]'
+      - run: python -m pytest -q
 
   backend:
     runs-on: ubuntu-latest
@@ -31,3 +48,60 @@ jobs:
           cache: maven
       - run: mvn --batch-mode test
         working-directory: services/api
+
+  flyway-empty-database:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root-ci-password
+          MYSQL_DATABASE: finals_compass_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot-ci-password --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Migrate a brand-new MySQL database
+        working-directory: services/api
+        run: >-
+          mvn --batch-mode
+          -Dflyway.url='jdbc:mysql://127.0.0.1:3306/finals_compass_ci?allowPublicKeyRetrieval=true&useSSL=false'
+          -Dflyway.user=root
+          -Dflyway.password=root-ci-password
+          flyway:migrate flyway:validate
+
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            dockerfile: deploy/backend/Dockerfile
+          - name: frontend
+            dockerfile: deploy/frontend/Dockerfile
+          - name: markitdown-worker
+            dockerfile: services/markitdown-worker/Dockerfile
+          - name: pdf-renderer
+            dockerfile: services/pdf-renderer/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: finals-compass/${{ matrix.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

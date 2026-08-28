@@ -16,6 +16,16 @@ uploads/*
 services/api/uploads/
 backups/
 *.log
+*.log.gz
+
+# Local document-generation work products
+.codex-*
+_markdown_*/
+rivermemo_topology_v3_paper.*
+RiverMemo_*.tex
+scripts/prepare-rivermemo-paper.mjs
+wsl2_ubuntu_commands.txt
+wsl2部署ubuntu指南_纯命令.docx
 .env
 .env.*
 !.env.example

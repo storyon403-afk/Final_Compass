@@ -42,7 +42,11 @@ public final class ApiModels {
       @NotBlank @Pattern(regexp = "^\\d{6}$", message = "请输入 6 位数字验证码") String code) {}
 
   public record AuthProfile(
-      String token, String username, String displayName, String role, boolean mustChangePassword) {}
+      @com.fasterxml.jackson.annotation.JsonIgnore String token,
+      String username,
+      String displayName,
+      String role,
+      boolean mustChangePassword) {}
 
   /** 修改密码请求 */
   public record ChangePasswordRequest(

@@ -40,6 +40,11 @@ app:
   auth-throttle:
     failures-before-lock: ${AUTH_FAILURES_BEFORE_LOCK:5}
     maximum-lock-seconds: ${AUTH_MAXIMUM_LOCK_SECONDS:900}
+  action-limits:
+    question-topics-per-hour: ${QUESTION_TOPICS_PER_HOUR:5}
+    question-answers-per-hour: ${QUESTION_ANSWERS_PER_HOUR:30}
+    admin-contacts-per-hour: ${ADMIN_CONTACTS_PER_HOUR:5}
+    admin-broadcasts-per-hour: ${ADMIN_BROADCASTS_PER_HOUR:10}
   browser-bridge:
     allowed-origin-patterns: ${BROWSER_BRIDGE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,chrome-extension://*}
   mail:

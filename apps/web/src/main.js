@@ -10,6 +10,7 @@ import AiRuntimeChatView from './views/AiRuntimeChatView.vue'
 import VcpRuntimeView from './views/VcpRuntimeView.vue'
 import LiveDocRuntimeView from './views/LiveDocRuntimeView.vue'
 import QuestionVineView from './views/QuestionVineView.vue'
+import { authApi } from './api'
 import './styles.css'
 
 const router = createRouter({
@@ -32,4 +33,5 @@ const router = createRouter({
   ]
 })
 
+await authApi.restore().catch(() => null)
 createApp(App).use(router).mount('#app')

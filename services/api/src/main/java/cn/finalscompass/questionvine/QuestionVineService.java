@@ -2,6 +2,7 @@ package cn.finalscompass.questionvine;
 
 import static cn.finalscompass.questionvine.QuestionVineModels.*;
 import cn.finalscompass.service.AuthService;
+import cn.finalscompass.service.ActionRateLimitService;
 import cn.finalscompass.message.SiteMessageService;
 import cn.finalscompass.shared.security.AuthorizationPolicy;
 import java.util.List;
@@ -12,11 +13,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class QuestionVineService {
-  private final QuestionVineRepository repository; private final AuthorizationPolicy authorization; private final SiteMessageService messages;
-  public QuestionVineService(QuestionVineRepository repository,AuthorizationPolicy authorization,SiteMessageService messages){this.repository=repository;this.authorization=authorization;this.messages=messages;}
+  private final QuestionVineRepository repository; private final AuthorizationPolicy authorization; private final SiteMessageService messages; private final ActionRateLimitService limits;
+  public QuestionVineService(QuestionVineRepository repository,AuthorizationPolicy authorization,SiteMessageService messages,ActionRateLimitService limits){this.repository=repository;this.authorization=authorization;this.messages=messages;this.limits=limits;}
   public List<Topic> topics(){return repository.topics();}
-  @Transactional public Topic create(AuthService.CurrentUser user,CreateTopic input){repository.lockTopics();int sequence=repository.nextSequence();long uid=repository.create(user.id(),alias(user.id()),input,sequence);return repository.topic(uid);}
-  @Transactional public Answer answer(AuthService.CurrentUser user,long uid,CreateAnswer input){var topic=repository.topicOwner(uid);if(topic==null)throw missing();Long parent=input.parentAnswerId();
+  @Transactional public Topic create(AuthService.CurrentUser user,CreateTopic input){limits.questionTopic(user.id());repository.lockTopics();int sequence=repository.nextSequence();long uid=repository.create(user.id(),alias(user.id()),input,sequence);return repository.topic(uid);}
+  @Transactional public Answer answer(AuthService.CurrentUser user,long uid,CreateAnswer input){limits.questionAnswer(user.id());var topic=repository.topicOwner(uid);if(topic==null)throw missing();Long parent=input.parentAnswerId();
     if(parent!=null){var owner=repository.answerOwner(parent);if(owner==null||owner.topicId()!=uid)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"回复目标不属于这片叶子");if(owner.authorId()!=null)messages.notify(owner.authorId(),user.id(),"问题藤里有人回复了你","序号 #"+String.format("%04d",topic.sequenceNo())+" 的叶子里，你收到了一条回复。","/question-vine?topic="+uid);}
     else if(topic.authorId()!=null)messages.notify(topic.authorId(),user.id(),"你的问题收到新回答","你在问题藤发布的 #"+String.format("%04d",topic.sequenceNo())+" 收到了一条新回答。","/question-vine?topic="+uid);
     long id=repository.addAnswer(uid,parent,user.id(),alias(user.id()),input.content());return new Answer(id,parent,alias(user.id()),input.content().trim(),0,false);}

@@ -1,16 +1,18 @@
 # Finals Compass / 期末指南
 
-Finals Compass 是一个面向课程复习、学习资料协作和 AI 辅助创作的开源平台，目前主要服务于树桶学院。项目以“学院 → 专业 → 课程 → 任课老师 → 老师圈”组织课程内容，并提供 CET 学习、AI Center 与 liveDoc 创作空间。
+Finals Compass 是一个面向课程复习、学习资料协作和 AI 辅助创作的开源平台，目前主要服务于树桶学院。项目以“学院 → 专业 → 课程 → 任课老师 → 老师圈”组织课程内容，并提供 CET 学习、问题藤交流、AI Center 与 liveDoc 创作空间。
 
 ## 项目现在能做什么
 
 - **课程与老师圈**：按学院、专业和课程组织资料、讨论、老师与复习指南；公共课程可关联多个专业。
 - **资料协作**：上传和预览学习资料，支持感谢、讨论、指南引用及管理员审核。
 - **CET 学习**：维护四、六级试卷结构、分类练习和听力材料；公开仓库不分发受版权保护的真题资源。
+- **问题藤与站内消息**：用户可匿名发布问题、回答并进行树状回复，相关回复会进入站内收件箱；普通用户可联系管理员，管理员可发送定向消息或全站广播，并管理违规主题。
 - **AI Center**：Chat 支持知识库 RAG、Redis 对话历史、SSE 和模型降级；本地 Agent 支持浏览器只读命令、状态回调与文件产物；MultiWeb AI 通过 Chrome 扩展复用用户已有网页登录态，并由审核模型汇总结果。
 - **AI 运行时治理**：统一管理 Provider、Model、Endpoint、Skill、Tool、MCP、执行 Trace 和反馈优化；支持平台 Key、加密保存的 BYOK 与仅驻留当前请求的临时 BYOK。
 - **liveDoc**：内置 VCP Scriptorium 编辑器，可创建连续流文稿（`.vdocx`）和 HTML Scene 演示（`.vpptx`），支持源码与渲染态编辑、导入导出、本地恢复和账号项目保存。
 - **账号与邮件**：使用 Redis 管理验证码、有效期、失败次数、限流和短期安全状态，由管理员审核并发放账号；SMTP 配置和模板可在管理端维护，Microsoft Graph OAuth2 Provider 未配置时保持关闭。
+- **体验调查**：支持用户提交评分与建议，管理员可动态维护问卷题目并查看回收结果。
 - **暂挂体验**：提供全局可访问的短暂休息入口，支持视频预加载和后台配置。
 
 当前主站包含 `CHAT`、`AGENT`、`MULTI_WEB_AGENT` 三种通用 AI Runtime，以及独立的 VCP 介绍页和 liveDoc 创作空间。旧 Workflow 路由只保留重定向，历史 Skill/Workflow 数据表不是面向用户的可调用入口。仓库不包含平台生产 API Key，也不捆绑或自动部署本地大模型。
@@ -19,7 +21,7 @@ Finals Compass 是一个面向课程复习、学习资料协作和 AI 辅助创�
 
 - Vue 3、Vue Router、Vite 8、npm workspaces
 - Java 21、Spring Boot、Spring MVC、JdbcClient
-- MySQL 8、Flyway（当前迁移至 V73）
+- MySQL 8、Flyway（当前迁移至 V75）
 - Redis 7
 - Chrome Manifest V3、WebSocket 浏览器桥接
 - Python 3.10+、Microsoft MarkItDown（可选附件解析 Worker）
@@ -151,9 +153,12 @@ npm run check
 
 cd services/api
 mvn test
+
+cd ../markitdown-worker
+.venv/bin/pytest -q
 ```
 
-前端构建顺序为主站后 liveDoc，输出分别位于 `dist/` 和 `dist/livedoc/`。Agent 与浏览器桥接的手工联调见 [E2E 指南](scripts/test-e2e.md)。
+`npm run check` 会先执行前端纯业务与 SSE 解析测试，再构建主站和 liveDoc，输出分别位于 `dist/` 和 `dist/livedoc/`。GitHub Actions 还会验证 MarkItDown Worker、在空 MySQL 库执行全部 Flyway 迁移并校验，以及构建 backend、frontend、Worker、PDF Renderer 四个 Docker 镜像。Agent 与浏览器桥接的手工联调见 [E2E 指南](scripts/test-e2e.md)。
 
 ## Docker Compose
 
@@ -175,6 +180,8 @@ docker compose --profile container-frontend up -d --build
 ```bash
 docker compose up -d --build mysql redis markitdown-worker pdf-renderer backend
 ```
+
+数据库一致性备份与隔离恢复演练分别使用 `./scripts/db-backup.sh` 和 `./scripts/db-restore-drill.sh BACKUP.sql.gz`，完整周期、RPO/RTO 和灾难恢复约束见[数据库备份与恢复演练](docs/数据库备份与恢复演练.md)。
 
 随后在仓库根目录执行 `npm ci && npm run build`，把组合后的 `dist/` 发布到静态目录，并将 `/api/` 和 `/ws/` 代理给后端。
 
